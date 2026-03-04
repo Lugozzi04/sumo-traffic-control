@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="manhattan8x8_50pcAlt_noSem.net.xml"/>
+        <route-files value="manhattan8x8_50pcAlt_noSem.rou.xml,../vehicletypes.rou.xml"/>
+    </input>
+
+    <gui-only>
+        <gui-settings-file value="../realworld.view.xml"/>
+    </gui-only>
+
+</configuration>

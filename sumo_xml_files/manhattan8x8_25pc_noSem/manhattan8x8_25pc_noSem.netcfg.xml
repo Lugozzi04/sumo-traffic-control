@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/Configuration.xsd">
+
+    <grid_network>
+        <grid value="true"/>
+        <grid.number value="8"/>
+        <grid.length value="160"/>
+    </grid_network>
+
+    <spider_network>
+        <spider value="false"/>
+    </spider_network>
+
+    <random_network>
+        <rand value="false"/>
+        <rand.grid value="false"/>
+    </random_network>
+
+    <output>
+        <output-file value="manhattan8x8_100pc.net.xml"/>
+    </output>
+
+    <building_defaults>
+        <default.lanenumber value="2"/>
+        <default-junction-type value="traffic_light"/>
+    </building_defaults>
+
+    <tls_building>
+        <tls.green.time value="42"/>
+        <tls.yellow.time value="3"/>
+        <tls.allred.time value="3"/>
+        <tls.no-mixed value="true"/>
+    </tls_building>
+
+    <junctions>
+        <no-turnarounds value="true"/>
+        <no-turnarounds.tls value="true"/>
+    </junctions>
+
+</configuration>

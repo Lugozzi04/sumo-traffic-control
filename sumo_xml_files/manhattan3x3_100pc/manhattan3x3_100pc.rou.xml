@@ -1,0 +1,203 @@
+<?xml version="1.0"?>
+<routes>
+    <route id="route1" edges="B2B1 B1B0 B0A0 A0A1" />
+    <route id="route2" edges="A2B2 B2C2 C2C1 C1B1 B1B2 B2A2 A2A1" />
+    <route id="route3" edges="C0B0 B0B1 B1B2 B2C2" />
+    <route id="route4" edges="C1C2 C2B2 B2A2 A2A1 A1A0" />
+    <route id="route5" edges="B1A1 A1A2 A2B2 B2B1 B1B0 B0A0 A0A1" />
+    <route id="route6" edges="A2A1 A1B1 B1B2" />
+    <route id="route7" edges="A0A1 A1B1" />
+    <route id="route8" edges="B2B1 B1C1" />
+    <route id="route9" edges="A2A1 A1B1 B1B2 B2A2" />
+    <route id="route10" edges="C1B1 B1B0 B0A0 A0A1" />
+    <route id="route11" edges="C1B1 B1B2 B2C2" />
+    <route id="route12" edges="B0B1 B1A1 A1A2" />
+    <route id="route13" edges="C2B2 B2A2 A2A1 A1A0 A0B0 B0B1" />
+    <route id="route14" edges="A1A0" />
+    <route id="route15" edges="C1C0 C0B0 B0B1 B1B2 B2A2" />
+    <route id="route16" edges="C1B1 B1B2 B2C2 C2C1 C1C0 C0B0" />
+    <route id="route17" edges="B1B2 B2C2 C2C1" />
+    <route id="route18" edges="B0C0 C0C1 C1C2 C2B2 B2B1 B1C1" />
+    <route id="route19" edges="C1B1 B1B2 B2A2" />
+    <route id="route20" edges="C1C0 C0B0 B0B1 B1C1" />
+    <route id="route21" edges="B2C2 C2C1 C1B1 B1A1 A1A0 A0B0" />
+    <route id="route22" edges="A2A1 A1B1 B1B0 B0A0 A0A1 A1A2 A2B2" />
+    <route id="route23" edges="A0B0 B0B1 B1B2 B2A2 A2A1" />
+    <route id="route24" edges="A1A0 A0B0 B0B1 B1A1 A1A2 A2B2" />
+    <route id="route25" edges="B2B1 B1C1 C1C0 C0B0 B0B1" />
+    <route id="route26" edges="B0B1 B1B2 B2A2 A2A1" />
+    <route id="route27" edges="A2B2 B2B1 B1C1 C1C2 C2B2" />
+    <route id="route28" edges="B2B1 B1C1 C1C2 C2B2 B2A2" />
+    <route id="route29" edges="A1B1 B1C1 C1C0 C0B0" />
+    <route id="route30" edges="A1A2 A2B2 B2B1 B1B0 B0C0" />
+    <route id="route31" edges="C2C1 C1B1 B1A1 A1A2 A2B2 B2B1" />
+    <route id="route32" edges="B1C1 C1C0 C0B0 B0B1 B1B2 B2C2" />
+    <route id="route33" edges="C1C0 C0B0 B0A0 A0A1 A1B1 B1B0 B0C0 C0C1" />
+    <route id="route34" edges="A2A1 A1B1 B1B0 B0A0 A0A1" />
+    <route id="route35" edges="B0A0 A0A1 A1A2 A2B2" />
+    <route id="route36" edges="A2A1 A1B1 B1C1 C1C2 C2B2" />
+    <route id="route37" edges="C1C2 C2B2 B2B1 B1B0 B0A0" />
+    <route id="route38" edges="B2B1 B1B0 B0C0" />
+    <route id="route39" edges="C1C2 C2B2 B2B1 B1B0" />
+    <route id="route40" edges="A2B2 B2C2 C2C1 C1B1 B1B2 B2A2 A2A1" />
+    <route id="route41" edges="B1C1 C1C0 C0B0 B0A0 A0A1 A1A2 A2B2" />
+    <route id="route42" edges="B2A2 A2A1 A1B1 B1C1 C1C2" />
+    <route id="route43" edges="B0C0 C0C1 C1C2 C2B2 B2A2 A2A1" />
+    <route id="route44" edges="C2C1 C1B1 B1B2" />
+    <route id="route45" edges="A1A0 A0B0" />
+    <route id="route46" edges="A1A0 A0B0 B0C0 C0C1 C1C2 C2B2 B2B1" />
+    <route id="route47" edges="C1B1 B1A1" />
+    <route id="route48" edges="A0B0 B0C0" />
+    <route id="route49" edges="C2C1 C1B1 B1B2" />
+    <route id="route50" edges="C2C1 C1C0" />
+    <route id="route51" edges="A0A1 A1B1 B1C1 C1C0 C0B0" />
+    <route id="route52" edges="B2C2 C2C1 C1B1 B1B2" />
+    <route id="route53" edges="A2B2 B2B1" />
+    <route id="route54" edges="A1A0 A0B0 B0B1 B1A1" />
+    <route id="route55" edges="B1A1 A1A0 A0B0 B0C0 C0C1 C1C2 C2B2" />
+    <route id="route56" edges="C1C2 C2B2 B2B1 B1A1 A1A2 A2B2" />
+    <route id="route57" edges="B1B2 B2A2 A2A1 A1B1" />
+    <route id="route58" edges="C1C2 C2B2 B2B1 B1C1 C1C0" />
+    <route id="route59" edges="B0A0 A0A1 A1A2 A2B2 B2B1" />
+    <route id="route60" edges="B2A2 A2A1 A1B1 B1B0 B0A0 A0A1 A1A2" />
+    <route id="route61" edges="C0C1 C1B1 B1B2" />
+    <route id="route62" edges="C0C1 C1B1 B1B2" />
+    <route id="route63" edges="A0A1 A1B1 B1B0 B0A0" />
+    <route id="route64" edges="A0A1 A1B1 B1C1 C1C2 C2B2" />
+    <route id="route65" edges="C1C2 C2B2 B2B1 B1B0 B0C0 C0C1 C1B1" />
+    <route id="route66" edges="B0A0 A0A1 A1A2 A2B2 B2B1 B1A1 A1A0 A0B0" />
+    <route id="route67" edges="C1C2 C2B2" />
+    <route id="route68" edges="A1A0 A0B0 B0C0 C0C1 C1B1 B1B0" />
+    <route id="route69" edges="A0B0 B0C0 C0C1" />
+    <route id="route70" edges="C0C1 C1B1 B1A1 A1A2" />
+    <route id="route71" edges="B1B0 B0A0 A0A1 A1B1 B1C1" />
+    <route id="route72" edges="A2B2 B2C2 C2C1 C1C0" />
+    <route id="route73" edges="B1A1 A1A0 A0B0 B0B1 B1B2 B2A2 A2A1" />
+    <route id="route74" edges="B1B2 B2C2 C2C1 C1C0 C0B0" />
+    <route id="route75" edges="A1B1 B1B0 B0A0" />
+    <route id="route76" edges="C2C1 C1B1 B1A1 A1A2 A2B2 B2B1" />
+    <route id="route77" edges="B1A1 A1A0 A0B0 B0B1 B1B2" />
+    <route id="route78" edges="A1A0 A0B0 B0B1 B1B2 B2A2 A2A1" />
+    <route id="route79" edges="B0B1 B1B2 B2A2" />
+    <route id="route80" edges="A2A1" />
+    <route id="route81" edges="A0B0 B0C0 C0C1 C1C2 C2B2 B2B1" />
+    <route id="route82" edges="A2A1 A1B1 B1C1 C1C2" />
+    <route id="route83" edges="C1C0 C0B0 B0B1 B1A1 A1A0 A0B0" />
+    <route id="route84" edges="A2A1 A1B1 B1B2 B2C2" />
+    <route id="route85" edges="A2A1 A1B1 B1B0 B0A0 A0A1 A1A2" />
+    <route id="route86" edges="C2B2 B2B1 B1C1" />
+    <route id="route87" edges="B1B0 B0C0 C0C1" />
+    <route id="route88" edges="C1B1 B1B0 B0A0 A0A1 A1B1" />
+    <route id="route89" edges="A1A0 A0B0 B0B1 B1A1" />
+    <route id="route90" edges="B1A1 A1A2 A2B2 B2B1 B1B0" />
+    <route id="route91" edges="C0B0 B0B1 B1B2 B2C2" />
+    <route id="route92" edges="C2C1 C1B1 B1A1 A1A0" />
+    <route id="route93" edges="B0C0 C0C1 C1B1 B1A1 A1A0 A0B0 B0B1" />
+    <route id="route94" edges="C1C0 C0B0 B0B1 B1B2 B2A2 A2A1" />
+    <route id="route95" edges="A1B1 B1C1 C1C0 C0B0 B0B1 B1A1" />
+    <route id="route96" edges="B1A1 A1A2 A2B2" />
+    <route id="route97" edges="A2A1 A1B1 B1C1 C1C2 C2B2" />
+    <route id="route98" edges="B1A1 A1A2 A2B2 B2C2 C2C1 C1C0" />
+    <route id="route99" edges="B1C1 C1C2 C2B2 B2A2 A2A1 A1A0 A0B0" />
+    <route id="route100" edges="C2C1 C1C0" />
+    <route id="route101" edges="C2C1 C1C0 C0B0 B0B1 B1C1 C1C2 C2B2" />
+    <route id="route102" edges="C1C0 C0B0 B0A0 A0A1 A1A2" />
+    <route id="route103" edges="B1B0 B0C0 C0C1 C1C2 C2B2 B2A2 A2A1" />
+    <route id="route104" edges="B0C0 C0C1 C1B1 B1A1 A1A0 A0B0" />
+    <route id="route105" edges="B0C0 C0C1 C1B1 B1B2 B2C2 C2C1" />
+    <route id="route106" edges="A2B2 B2B1 B1B0 B0C0 C0C1" />
+    <route id="route107" edges="B1A1" />
+    <route id="route108" edges="C2B2 B2B1 B1A1 A1A2 A2B2 B2C2 C2C1" />
+    <route id="route109" edges="B1C1 C1C0 C0B0" />
+    <route id="route110" edges="A1A2 A2B2 B2B1 B1B0 B0A0" />
+    <route id="route111" edges="C2C1 C1C0 C0B0 B0B1 B1C1" />
+    <route id="route112" edges="B1C1 C1C0 C0B0" />
+    <route id="route113" edges="A0B0 B0B1 B1B2 B2A2" />
+    <route id="route114" edges="B1B2 B2C2 C2C1 C1C0" />
+    <route id="route115" edges="A1A2 A2B2 B2C2 C2C1" />
+    <route id="route116" edges="A0B0 B0B1 B1B2 B2A2 A2A1 A1B1" />
+    <route id="route117" edges="B2A2 A2A1 A1B1 B1B2 B2C2" />
+    <route id="route118" edges="A2A1 A1A0" />
+    <route id="route119" edges="C1C2 C2B2 B2A2 A2A1" />
+    <route id="route120" edges="B2A2" />
+    <route id="route121" edges="B1A1 A1A0 A0B0 B0B1 B1B2 B2A2" />
+    <route id="route122" edges="B1B2 B2A2 A2A1 A1B1 B1C1 C1C2 C2B2" />
+    <route id="route123" edges="A1B1 B1C1 C1C0 C0B0" />
+    <route id="route124" edges="A2A1 A1A0 A0B0 B0C0" />
+    <route id="route125" edges="B2C2 C2C1 C1C0 C0B0 B0A0" />
+    <route id="route126" edges="B0A0 A0A1 A1B1 B1B0 B0C0 C0C1" />
+    <route id="route127" edges="A0B0 B0B1 B1A1" />
+    <route id="route128" edges="C2C1" />
+    <route id="route129" edges="A0B0 B0B1 B1B2 B2A2 A2A1" />
+    <route id="route130" edges="A2B2 B2B1 B1C1 C1C2 C2B2" />
+    <route id="route131" edges="C1C2" />
+    <route id="route132" edges="B0B1 B1A1 A1A2" />
+    <route id="route133" edges="C1C0 C0B0 B0B1 B1B2 B2C2" />
+    <route id="route134" edges="B2A2 A2A1 A1B1 B1B2 B2C2 C2C1" />
+    <route id="route135" edges="B2B1 B1B0 B0A0 A0A1" />
+    <route id="route136" edges="C1B1 B1B0 B0A0" />
+    <route id="route137" edges="B2B1 B1C1 C1C2 C2B2" />
+    <route id="route138" edges="A1A2 A2B2 B2B1 B1A1 A1A0" />
+    <route id="route139" edges="A1A0 A0B0 B0B1 B1C1" />
+    <route id="route140" edges="A2B2 B2C2 C2C1 C1B1 B1B2 B2A2" />
+    <route id="route141" edges="C0B0 B0A0 A0A1 A1B1" />
+    <route id="route142" edges="B2B1 B1A1 A1A2 A2B2" />
+    <route id="route143" edges="B1B0 B0C0 C0C1 C1C2" />
+    <route id="route144" edges="C1C0 C0B0 B0B1 B1A1 A1A0" />
+    <route id="route145" edges="B1A1 A1A2 A2B2" />
+    <route id="route146" edges="A0A1 A1B1 B1B0 B0C0 C0C1" />
+    <route id="route147" edges="B2B1 B1A1 A1A2 A2B2" />
+    <route id="route148" edges="C0B0 B0B1 B1C1" />
+    <route id="route149" edges="B1A1 A1A2 A2B2 B2B1 B1B0 B0A0 A0A1" />
+    <route id="route150" edges="A0B0 B0C0 C0C1 C1C2" />
+    <route id="route151" edges="C1C2 C2B2 B2B1 B1C1" />
+    <route id="route152" edges="C1C0 C0B0 B0B1 B1C1" />
+    <route id="route153" edges="A1A2" />
+    <route id="route154" edges="B0A0 A0A1 A1B1 B1C1 C1C2" />
+    <route id="route155" edges="C1B1 B1B2 B2C2 C2C1 C1C0" />
+    <route id="route156" edges="C1C2 C2B2 B2A2 A2A1" />
+    <route id="route157" edges="A2A1 A1A0" />
+    <route id="route158" edges="C0C1 C1C2" />
+    <route id="route159" edges="B0C0 C0C1 C1C2 C2B2 B2A2" />
+    <route id="route160" edges="A1A2 A2B2 B2B1 B1C1 C1C2 C2B2" />
+    <route id="route161" edges="C1C0 C0B0 B0B1 B1B2 B2C2 C2C1" />
+    <route id="route162" edges="C1B1 B1B0 B0C0 C0C1 C1C2" />
+    <route id="route163" edges="A0A1 A1B1 B1C1 C1C0 C0B0" />
+    <route id="route164" edges="B0A0 A0A1 A1B1 B1C1 C1C2 C2B2" />
+    <route id="route165" edges="C1B1 B1B2 B2C2 C2C1 C1C0" />
+    <route id="route166" edges="C1B1 B1A1 A1A2 A2B2" />
+    <route id="route167" edges="C0C1 C1B1 B1A1 A1A0" />
+    <route id="route168" edges="C1C0" />
+    <route id="route169" edges="A2A1 A1A0 A0B0 B0C0 C0C1 C1B1" />
+    <route id="route170" edges="B1B0 B0A0" />
+    <route id="route171" edges="C1B1 B1B2 B2A2 A2A1" />
+    <route id="route172" edges="A0A1 A1B1" />
+    <route id="route173" edges="B0A0 A0A1 A1B1 B1C1 C1C0" />
+    <route id="route174" edges="C2C1 C1B1 B1A1 A1A2 A2B2" />
+    <route id="route175" edges="B2B1 B1B0 B0C0" />
+    <route id="route176" edges="C2C1 C1B1 B1B2" />
+    <route id="route177" edges="C2B2 B2A2 A2A1 A1A0" />
+    <route id="route178" edges="C2C1 C1C0 C0B0 B0A0 A0A1 A1B1" />
+    <route id="route179" edges="C2C1 C1B1 B1A1 A1A2 A2B2" />
+    <route id="route180" edges="A1A0 A0B0 B0B1 B1A1" />
+    <route id="route181" edges="C0B0 B0A0" />
+    <route id="route182" edges="B2A2 A2A1 A1B1 B1B2" />
+    <route id="route183" edges="B0C0 C0C1 C1C2 C2B2 B2B1 B1C1" />
+    <route id="route184" edges="A2B2 B2C2 C2C1 C1C0 C0B0" />
+    <route id="route185" edges="A0A1 A1B1 B1C1 C1C2 C2B2" />
+    <route id="route186" edges="B1B2 B2C2 C2C1 C1C0 C0B0" />
+    <route id="route187" edges="C0B0 B0B1 B1B2 B2C2" />
+    <route id="route188" edges="B0B1 B1A1 A1A0 A0B0" />
+    <route id="route189" edges="B2B1 B1B0 B0A0" />
+    <route id="route190" edges="B0A0 A0A1 A1B1 B1C1 C1C0" />
+    <route id="route191" edges="C0B0 B0A0" />
+    <route id="route192" edges="B0A0 A0A1 A1B1 B1B0 B0C0" />
+    <route id="route193" edges="B0C0 C0C1 C1B1 B1B0 B0A0" />
+    <route id="route194" edges="A1A2 A2B2 B2B1 B1A1" />
+    <route id="route195" edges="C2B2 B2B1 B1A1 A1A2 A2B2 B2C2" />
+    <route id="route196" edges="C1C2 C2B2 B2A2" />
+    <route id="route197" edges="B0A0 A0A1 A1B1 B1C1" />
+    <route id="route198" edges="A0A1 A1A2 A2B2" />
+    <route id="route199" edges="B1A1 A1A2 A2B2 B2B1 B1C1" />
+    <route id="route200" edges="B2B1 B1B0" />
+</routes>
