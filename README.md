@@ -7,7 +7,7 @@ Base template per iniziare un progetto personale di controllo traffico in SUMO.
 - `sumo_xml_files/`: scenari e mappe (copiati dal progetto di riferimento)
 - `runner.py`: entrypoint principale per eseguire simulazioni
 - `generate_population.py`: genera una popolazione YAML compatibile col runner
-- `src/controllers/`: controller semaforici (`fixed`, `smart` template e `mp` max-pressure MVP)
+- `src/controllers/`: controller semaforici (`fixed` e `mp` max-pressure MVP)
 - `src/metrics.py`: raccolta metriche base per veicolo
 - `data/populations/`: popolazioni di input
 - `logs/`: risultati CSV
@@ -43,15 +43,6 @@ python3 runner.py \
   --controller fixed
 ```
 
-Controller template (da sviluppare):
-
-```bash
-python3 runner.py \
-  -n manhattan3x3_100pc \
-  -p data/populations/manhattan3x3_demo.yaml \
-  --controller smart
-```
-
 Controller Max-Pressure MVP:
 
 ```bash
@@ -67,13 +58,12 @@ python3 runner.py \
 Con GUI:
 
 ```bash
-python3 runner.py -n manhattan3x3_100pc -p data/populations/manhattan3x3_demo.yaml --controller smart --gui
+python3 runner.py -n manhattan3x3_100pc -p data/populations/manhattan3x3_demo.yaml --controller mp --gui
 ```
 
 ## Dove mettere la tua idea
 
 - Logica decisionale Max-Pressure: `src/controllers/max_pressure.py`
-- Controller sperimentale alternativo: `src/controllers/smart_template.py`
 - Nuove metriche: `src/metrics.py`
 - Pipeline esperimenti: `runner.py`
 

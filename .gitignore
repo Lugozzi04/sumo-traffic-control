@@ -7,6 +7,7 @@ __pycache__/
 logs/*.csv
 sumo_xml_files/vehicletypes.rou.xml
 usefull_commands
+appunti.txt
 
 # Generated populations
 data/populations/*.yaml

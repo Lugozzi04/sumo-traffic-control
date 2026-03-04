@@ -6,7 +6,6 @@ import traci
 
 from src.controllers.fixed_time import FixedTimeController
 from src.controllers.max_pressure import MaxPressureController
-from src.controllers.smart_template import SmartTemplateController
 from src.metrics import aggregate_runs, write_metrics_csv, MetricsCollector
 from src.paths import logs_dir, sumocfg_path, vehicletypes_path
 from src.population import (
@@ -21,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Runner template per simulazioni SUMO")
     parser.add_argument("-n", "--map-name", dest="map_name", required=True, help="Nome scenario (cartella in sumo_xml_files)")
     parser.add_argument("-p", "--population-file", dest="population_file", required=True, help="YAML popolazione")
-    parser.add_argument("--controller", choices=["fixed", "smart", "mp"], default="fixed", help="Controller semaforico")
+    parser.add_argument("--controller", choices=["fixed", "mp"], default="fixed", help="Controller semaforico")
     parser.add_argument("--gui", action="store_true", help="Usa sumo-gui invece di sumo")
     parser.add_argument("--step-length", type=float, default=1.0, help="Durata step simulazione in secondi")
     parser.add_argument("--repeat", type=int, default=1, help="Ripeti l'esperimento e media i risultati")
@@ -57,8 +56,6 @@ def build_controller(name: str, args: argparse.Namespace):
             max_green=args.max_green,
             switch_epsilon=args.switch_epsilon,
         )
-    if name == "smart":
-        return SmartTemplateController(min_green=args.min_green, max_green=args.max_green)
     return FixedTimeController()
 
 
