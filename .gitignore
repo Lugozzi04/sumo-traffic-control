@@ -6,3 +6,8 @@ __pycache__/
 # Runtime outputs
 logs/*.csv
 sumo_xml_files/vehicletypes.rou.xml
+usefull_commands
+
+# Generated populations
+data/populations/*.yaml
+!data/populations/.gitkeep

@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run from project root:
+#   bash clean_tests.txt
+#   bash clean_tests.txt --yes
+
+python3 - "$@" <<'PY'
+import sys
+from pathlib import Path
+import shutil
+
+root = Path(".").resolve()
+
+auto_confirm = "--yes" in sys.argv[1:]
+
+files_removed = 0
+dirs_removed = 0
+
+targets = []
+# Safe cleanup: remove only generated test/demo files.
+targets.extend((root / "logs").glob("log_*.csv"))
+targets.extend((root / "data" / "populations").glob("mp_*.yaml"))
+targets.extend((root / "data" / "populations").glob("*_test*.yaml"))
+targets.extend((root / "data" / "populations").glob("*_demo*.yaml"))
+targets.extend((root / "data" / "populations").glob("*_gui*.yaml"))
+targets.append(root / "sumo_xml_files" / "vehicletypes.rou.xml")
+targets.extend(root.glob("**/*.pyc"))
+
+unique_targets = sorted({path for path in targets if path.exists()})
+
+if not unique_targets:
+    print("Nothing to clean.")
+    sys.exit(0)
+
+print("Safe cleanup will remove:")
+for path in unique_targets:
+    print(f"  - {path.relative_to(root)}")
+
+if not auto_confirm:
+    answer = input("\nProceed? [y/N]: ").strip().lower()
+    if answer not in {"y", "yes"}:
+        print("Aborted.")
+        sys.exit(0)
+
+for path in unique_targets:
+    if path.exists() and path.is_file():
+        path.unlink()
+        files_removed += 1
+        print(f"Removed file: {path.relative_to(root)}")
+
+for cache_dir in root.glob("**/__pycache__"):
+    if cache_dir.is_dir():
+        shutil.rmtree(cache_dir)
+        dirs_removed += 1
+        print(f"Removed dir:  {cache_dir.relative_to(root)}")
+
+print(f"\nCleanup done. Files removed: {files_removed}, dirs removed: {dirs_removed}")
+PY

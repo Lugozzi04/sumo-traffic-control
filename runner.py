@@ -5,6 +5,7 @@ from pathlib import Path
 import traci
 
 from src.controllers.fixed_time import FixedTimeController
+from src.controllers.max_pressure import MaxPressureController
 from src.controllers.smart_template import SmartTemplateController
 from src.metrics import aggregate_runs, write_metrics_csv, MetricsCollector
 from src.paths import logs_dir, sumocfg_path, vehicletypes_path
@@ -20,11 +21,14 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Runner template per simulazioni SUMO")
     parser.add_argument("-n", "--map-name", dest="map_name", required=True, help="Nome scenario (cartella in sumo_xml_files)")
     parser.add_argument("-p", "--population-file", dest="population_file", required=True, help="YAML popolazione")
-    parser.add_argument("--controller", choices=["fixed", "smart"], default="fixed", help="Controller semaforico")
+    parser.add_argument("--controller", choices=["fixed", "smart", "mp"], default="fixed", help="Controller semaforico")
     parser.add_argument("--gui", action="store_true", help="Usa sumo-gui invece di sumo")
     parser.add_argument("--step-length", type=float, default=1.0, help="Durata step simulazione in secondi")
     parser.add_argument("--repeat", type=int, default=1, help="Ripeti l'esperimento e media i risultati")
     parser.add_argument("--max-steps", type=int, default=0, help="Stop anticipato (0 = nessun limite)")
+    parser.add_argument("--min-green", type=float, default=10.0, help="Minimo tempo di verde per phase hold")
+    parser.add_argument("--max-green", type=float, default=120.0, help="Massimo tempo di verde prima di forzare rivalutazione")
+    parser.add_argument("--switch-epsilon", type=float, default=0.0, help="Margine minimo di pressione per cambiare fase")
     return parser.parse_args()
 
 
@@ -46,9 +50,15 @@ def start_sumo(map_name: str, gui: bool, step_length: float) -> None:
     )
 
 
-def build_controller(name: str):
+def build_controller(name: str, args: argparse.Namespace):
+    if name == "mp":
+        return MaxPressureController(
+            min_green=args.min_green,
+            max_green=args.max_green,
+            switch_epsilon=args.switch_epsilon,
+        )
     if name == "smart":
-        return SmartTemplateController()
+        return SmartTemplateController(min_green=args.min_green, max_green=args.max_green)
     return FixedTimeController()
 
 
@@ -60,7 +70,7 @@ def run_once(args: argparse.Namespace, population_file: Path) -> dict:
     start_sumo(args.map_name, args.gui, args.step_length)
     add_vehicles_to_simulation(population)
 
-    controller = build_controller(args.controller)
+    controller = build_controller(args.controller, args)
     controller.attach_to_all_traffic_lights()
 
     metrics = MetricsCollector()
