@@ -28,7 +28,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-green", type=float, default=10.0, help="Minimo tempo di verde per phase hold")
     parser.add_argument("--max-green", type=float, default=120.0, help="Massimo tempo di verde prima di forzare rivalutazione")
     parser.add_argument("--switch-epsilon", type=float, default=0.0, help="Margine minimo di pressione per cambiare fase")
-    return parser.parse_args()
+    parser.add_argument("--spillback", action="store_true", help="Abilita vincolo hard anti-spillback sui rami a valle (solo controller MP)",
+    )
+    parser.add_argument("--spillback-on", type=float, default=0.90, help="Soglia ON occupazione downstream [0-1]")
+    parser.add_argument("--spillback-off", type=float, default=0.75, help="Soglia OFF occupazione downstream [0-1]")
+    parser.add_argument("--spillback-min-halts", type=int, default=1, help="Min veicoli fermi richiesti per attivare blocco")
+    parser.add_argument("--spillback-alpha", type=float, default=0.5, help="Fattore EMA occupazione downstream [0-1]")
+
+    args = parser.parse_args()
+    if not 0.0 <= args.spillback_off <= args.spillback_on <= 1.0:
+        parser.error("Richiesto: 0 <= --spillback-off <= --spillback-on <= 1")
+    if args.spillback_min_halts < 0:
+        parser.error("--spillback-min-halts deve essere >= 0")
+    if not 0.0 <= args.spillback_alpha <= 1.0:
+        parser.error("--spillback-alpha deve essere nel range [0, 1]")
+    return args
 
 
 def start_sumo(map_name: str, gui: bool, step_length: float) -> None:
@@ -55,6 +69,11 @@ def build_controller(name: str, args: argparse.Namespace):
             min_green=args.min_green,
             max_green=args.max_green,
             switch_epsilon=args.switch_epsilon,
+            hard_spillback=args.spillback,
+            spillback_on=args.spillback_on,
+            spillback_off=args.spillback_off,
+            spillback_min_halts=args.spillback_min_halts,
+            spillback_alpha=args.spillback_alpha,
         )
     return FixedTimeController()
 

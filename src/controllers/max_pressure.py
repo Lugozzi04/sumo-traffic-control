@@ -20,14 +20,37 @@ class MaxPressureController(TrafficController):
 
     Pressure for a phase is the sum of (upstream queue - downstream queue)
     over all lane->lane movements with green in that phase.
+    Optional hard spillback excludes movements whose downstream lane is near saturation.
     """
 
-    def __init__(self, min_green: float = 10.0, max_green: float = 120.0, switch_epsilon: float = 0.0) -> None:
+    DEFAULT_SPILLBACK_ON = 0.90
+    DEFAULT_SPILLBACK_OFF = 0.75
+    DEFAULT_SPILLBACK_MIN_HALTS = 1
+    DEFAULT_SPILLBACK_ALPHA = 0.5
+
+    def __init__(
+        self,
+        min_green: float = 10.0,
+        max_green: float = 120.0,
+        switch_epsilon: float = 0.0,
+        hard_spillback: bool = False,
+        spillback_on: float = DEFAULT_SPILLBACK_ON,
+        spillback_off: float = DEFAULT_SPILLBACK_OFF,
+        spillback_min_halts: int = DEFAULT_SPILLBACK_MIN_HALTS,
+        spillback_alpha: float = DEFAULT_SPILLBACK_ALPHA,
+    ) -> None:
         super().__init__()
         self.min_green = min_green
         self.max_green = max_green
         self.switch_epsilon = switch_epsilon
+        self.hard_spillback = hard_spillback
+        self.spillback_on = spillback_on
+        self.spillback_off = spillback_off
+        self.spillback_min_halts = spillback_min_halts
+        self.spillback_alpha = spillback_alpha
         self._data: dict[str, _TrafficLightData] = {}
+        self._downstream_occ_ema: dict[str, float] = {}
+        self._downstream_blocked: dict[str, bool] = {}
 
     def on_attach(self) -> None:
         for tl_id in self.traffic_lights:
@@ -91,6 +114,33 @@ class MaxPressureController(TrafficController):
         duration = traci.trafficlight.getPhaseDuration(tl_id)
         return spent >= duration - 1e-6
 
+    def _downstream_occupancy(self, lane_id: str) -> float:
+        raw_occ = float(traci.lane.getLastStepOccupancy(lane_id)) / 100.0
+        previous = self._downstream_occ_ema.get(lane_id)
+        if previous is None:
+            ema = raw_occ
+        else:
+            ema = self.spillback_alpha * raw_occ + (1.0 - self.spillback_alpha) * previous
+        self._downstream_occ_ema[lane_id] = ema
+        return ema
+
+    def _is_downstream_blocked(self, out_lane: str) -> bool:
+        if not self.hard_spillback:
+            return False
+
+        occ = self._downstream_occupancy(out_lane)
+        halts = int(traci.lane.getLastStepHaltingNumber(out_lane))
+        blocked = self._downstream_blocked.get(out_lane, False)
+
+        if blocked:
+            # Hysteresis release: keep blocked until occupancy goes below the "off" threshold.
+            blocked = occ >= self.spillback_off
+        else:
+            blocked = occ >= self.spillback_on and halts >= self.spillback_min_halts
+
+        self._downstream_blocked[out_lane] = blocked
+        return blocked
+
     def _phase_pressures(self, tl_data: _TrafficLightData) -> dict[int, float]:
         lane_queue_cache: dict[str, float] = {}
 
@@ -102,9 +152,19 @@ class MaxPressureController(TrafficController):
         pressures: dict[int, float] = {}
         for phase_index, movements in tl_data.movements_by_phase.items():
             pressure = 0.0
+            available_movements = 0
+            phase_blocked = False
             for in_lane, out_lane in movements:
+                if self._is_downstream_blocked(out_lane):
+                    # Hard constraint at phase level: if one movement spills back, skip the whole phase.
+                    phase_blocked = True
+                    break
                 pressure += queue_on_lane(in_lane) - queue_on_lane(out_lane)
-            pressures[phase_index] = pressure
+                available_movements += 1
+            if phase_blocked or available_movements == 0:
+                pressures[phase_index] = float("-inf")
+            else:
+                pressures[phase_index] = pressure
         return pressures
 
     @staticmethod
@@ -160,6 +220,8 @@ class MaxPressureController(TrafficController):
             pressures = self._phase_pressures(tl_data)
             if current_phase not in pressures or len(pressures) <= 1:
                 continue
+            if all(value == float("-inf") for value in pressures.values()):
+                continue
 
             best_phase, best_pressure = max(pressures.items(), key=lambda item: item[1])
             current_pressure = pressures[current_phase]
@@ -170,6 +232,6 @@ class MaxPressureController(TrafficController):
                 continue
 
             # Safety cap to avoid overextending one phase in pathological cases.
-            if spent >= self.max_green and best_phase != current_phase:
+            if spent >= self.max_green and best_phase != current_phase and best_pressure > float("-inf"):
                 tl_data.pending_target = best_phase
                 self._advance_to_next_phase(tl_id, tl_data.phase_count)

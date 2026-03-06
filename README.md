@@ -55,6 +55,30 @@ python3 runner.py \
   --switch-epsilon 0.0
 ```
 
+Controller MP con anti-spillback hard (toggle ON):
+
+```bash
+python3 runner.py \
+  -n manhattan3x3_100pc \
+  -p data/populations/manhattan3x3_demo.yaml \
+  --controller mp \
+  --spillback
+```
+
+Versione con tuning parametri spillback:
+
+```bash
+python3 runner.py \
+  -n manhattan3x3_100pc \
+  -p data/populations/manhattan3x3_demo.yaml \
+  --controller mp \
+  --spillback \
+  --spillback-on 0.90 \
+  --spillback-off 0.75 \
+  --spillback-min-halts 1 \
+  --spillback-alpha 0.5
+```
+
 Con GUI:
 
 ```bash
@@ -66,6 +90,14 @@ python3 runner.py -n manhattan3x3_100pc -p data/populations/manhattan3x3_demo.ya
 - Logica decisionale Max-Pressure: `src/controllers/max_pressure.py`
 - Nuove metriche: `src/metrics.py`
 - Pipeline esperimenti: `runner.py`
+
+## Feature toggles MP
+
+- `--spillback`: abilita/disabilita il vincolo hard anti-spillback
+- `--spillback-on`: soglia ON occupazione downstream [0-1] (default 0.90)
+- `--spillback-off`: soglia OFF occupazione downstream [0-1] (default 0.75)
+- `--spillback-min-halts`: min veicoli fermi richiesti per attivare blocco (default 1)
+- `--spillback-alpha`: fattore EMA [0-1] (default 0.5)
 
 
 ## Utility mappe
