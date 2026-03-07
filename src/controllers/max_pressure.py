@@ -13,6 +13,9 @@ class _TrafficLightData:
     main_phases: list[int]
     movements_by_phase: dict[int, list[tuple[str, str]]]
     wait_time_by_phase: dict[int, float]
+    active_phase: Optional[int] = None
+    active_hold_seconds: float = 0.0
+    active_empty_seconds: float = 0.0
     pending_target: Optional[int] = None
 
 
@@ -41,6 +44,10 @@ class MaxPressureController(TrafficController):
         fairness: bool = False,
         fairness_mu: float = 5.0,
         fairness_w_half: float = 30.0,
+        nmin_dynamic: bool = False,
+        nmin_alpha: float = 1.0,
+        nmin_floor: int = 2,
+        nmin_empty_release_seconds: float = 2.0,
         hard_spillback: bool = False,
         spillback_on: float = DEFAULT_SPILLBACK_ON,
         spillback_off: float = DEFAULT_SPILLBACK_OFF,
@@ -57,6 +64,10 @@ class MaxPressureController(TrafficController):
         self.fairness = fairness
         self.fairness_mu = fairness_mu
         self.fairness_w_half = fairness_w_half
+        self.nmin_dynamic = nmin_dynamic
+        self.nmin_alpha = nmin_alpha
+        self.nmin_floor = nmin_floor
+        self.nmin_empty_release_seconds = nmin_empty_release_seconds
         self.hard_spillback = hard_spillback
         self.spillback_on = spillback_on
         self.spillback_off = spillback_off
@@ -131,11 +142,8 @@ class MaxPressureController(TrafficController):
         duration = traci.trafficlight.getPhaseDuration(tl_id)
         return spent >= duration - 1e-6
 
-    def _switch_margin(self, tl_data: _TrafficLightData, current_phase: int) -> float:
-        margin = self.switch_epsilon
-        if not self.lost_time_aware:
-            return margin
-
+    @staticmethod
+    def _lost_time_seconds(tl_data: _TrafficLightData, current_phase: int) -> float:
         # Lost time is the transition block (yellow/all-red) after leaving current main phase.
         lost_time = 0.0
         phase_idx = (current_phase + 1) % tl_data.phase_count
@@ -144,7 +152,14 @@ class MaxPressureController(TrafficController):
                 break
             lost_time += tl_data.phase_durations[phase_idx]
             phase_idx = (phase_idx + 1) % tl_data.phase_count
+        return lost_time
 
+    def _switch_margin(self, tl_data: _TrafficLightData, current_phase: int) -> float:
+        margin = self.switch_epsilon
+        if not self.lost_time_aware:
+            return margin
+
+        lost_time = self._lost_time_seconds(tl_data, current_phase)
         return margin + self.lost_time_gain * self.lost_time_sat_flow * lost_time
 
     @staticmethod
@@ -179,7 +194,7 @@ class MaxPressureController(TrafficController):
         self._downstream_blocked[out_lane] = blocked
         return blocked
 
-    def _phase_pressures(self, tl_data: _TrafficLightData) -> tuple[dict[int, float], dict[int, bool]]:
+    def _phase_pressures(self, tl_data: _TrafficLightData) -> tuple[dict[int, float], dict[int, float]]:
         lane_queue_cache: dict[str, float] = {}
         downstream_blocked_cache: dict[str, bool] = {}
 
@@ -194,12 +209,12 @@ class MaxPressureController(TrafficController):
             return downstream_blocked_cache[lane_id]
 
         pressures: dict[int, float] = {}
-        has_demand: dict[int, bool] = {}
+        phase_demand: dict[int, float] = {}
         for phase_index, movements in tl_data.movements_by_phase.items():
             pressure = 0.0
             available_movements = 0
             phase_blocked = False
-            phase_has_demand = False
+            demand_sum = 0.0
             for in_lane, out_lane in movements:
                 if downstream_blocked(out_lane):
                     # Hard constraint at phase level: if one movement spills back, skip the whole phase.
@@ -207,18 +222,18 @@ class MaxPressureController(TrafficController):
                     break
                 in_queue = queue_on_lane(in_lane)
                 out_queue = queue_on_lane(out_lane)
-                phase_has_demand = phase_has_demand or in_queue > 0.0
+                demand_sum += in_queue
                 pressure += in_queue - out_queue
                 available_movements += 1
             if phase_blocked or available_movements == 0:
                 pressures[phase_index] = float("-inf")
-                has_demand[phase_index] = False
+                phase_demand[phase_index] = 0.0
             else:
                 pressures[phase_index] = pressure
-                has_demand[phase_index] = phase_has_demand
-        return pressures, has_demand
+                phase_demand[phase_index] = demand_sum
+        return pressures, phase_demand
 
-    def _update_wait_times(self, tl_data: _TrafficLightData, current_phase: int, has_demand: dict[int, bool]) -> None:
+    def _update_wait_times(self, tl_data: _TrafficLightData, current_phase: int, phase_demand: dict[int, float]) -> None:
         if not self.fairness:
             return
 
@@ -227,7 +242,7 @@ class MaxPressureController(TrafficController):
             if phase == current_phase:
                 tl_data.wait_time_by_phase[phase] = 0.0
                 continue
-            if has_demand.get(phase, False):
+            if phase_demand.get(phase, 0.0) > 0.0:
                 tl_data.wait_time_by_phase[phase] = tl_data.wait_time_by_phase.get(phase, 0.0) + delta_seconds
             else:
                 tl_data.wait_time_by_phase[phase] = 0.0
@@ -248,6 +263,53 @@ class MaxPressureController(TrafficController):
             bonus = self._fairness_bonus(tl_data.wait_time_by_phase.get(phase, 0.0))
             scores[phase] = pressure + bonus
         return scores
+
+    def _nmin_hold_seconds(self, tl_data: _TrafficLightData, current_phase: int, phase_demand: dict[int, float]) -> float:
+        if not self.nmin_dynamic:
+            return self.min_green
+
+        if self.lost_time_sat_flow <= 1e-6:
+            return self.min_green
+
+        lost_time = self._lost_time_seconds(tl_data, current_phase)
+        n_cost = self.nmin_alpha * self.lost_time_sat_flow * lost_time
+        n_target = max(float(self.nmin_floor), n_cost)
+
+        # If current demand is small, avoid overholding a phase that is already almost drained.
+        demand = max(0.0, phase_demand.get(current_phase, 0.0))
+        if demand > 0.0:
+            n_target = min(n_target, demand)
+
+        service_seconds = n_target / self.lost_time_sat_flow
+        return max(self.min_green, service_seconds)
+
+    def _refresh_active_phase_state(self, tl_data: _TrafficLightData, current_phase: int, phase_demand: dict[int, float]) -> None:
+        if tl_data.active_phase == current_phase:
+            return
+        tl_data.active_phase = current_phase
+        tl_data.active_empty_seconds = 0.0
+        tl_data.active_hold_seconds = self._nmin_hold_seconds(tl_data, current_phase, phase_demand)
+
+    def _must_hold_current_phase(
+        self,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        spent: float,
+        phase_demand: dict[int, float],
+    ) -> bool:
+        if not self.nmin_dynamic:
+            return False
+        if tl_data.active_phase != current_phase:
+            return False
+        if spent >= tl_data.active_hold_seconds:
+            return False
+
+        if phase_demand.get(current_phase, 0.0) > 0.0:
+            tl_data.active_empty_seconds = 0.0
+            return True
+
+        tl_data.active_empty_seconds += self._delta_seconds()
+        return tl_data.active_empty_seconds < self.nmin_empty_release_seconds
 
     @staticmethod
     def _advance_to_next_phase(tl_id: str, phase_count: int) -> None:
@@ -295,11 +357,14 @@ class MaxPressureController(TrafficController):
             if current_phase not in tl_data.main_phases:
                 continue
 
-            pressures, has_demand = self._phase_pressures(tl_data)
-            self._update_wait_times(tl_data, current_phase, has_demand)
+            pressures, phase_demand = self._phase_pressures(tl_data)
+            self._update_wait_times(tl_data, current_phase, phase_demand)
+            self._refresh_active_phase_state(tl_data, current_phase, phase_demand)
 
             spent = traci.trafficlight.getSpentDuration(tl_id)
             if spent < self.min_green:
+                continue
+            if self._must_hold_current_phase(tl_data, current_phase, spent, phase_demand):
                 continue
 
             if current_phase not in pressures or len(pressures) <= 1:

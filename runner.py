@@ -29,11 +29,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-green", type=float, default=120.0, help="Massimo tempo di verde prima di forzare rivalutazione")
     parser.add_argument("--switch-epsilon", type=float, default=0.0, help="Margine minimo di pressione per cambiare fase")
     parser.add_argument("--lost-time-aware", action="store_true", help="Abilita isteresi proporzionale al costo di switch (yellow+all-red)")
-    parser.add_argument("--lost-time-sat-flow", type=float, default=0.5, help="Flusso di saturazione equivalente in veicoli/s")
+    parser.add_argument("--lost-time-sat-flow", type=float, default=0.5, help="Flusso di saturazione equivalente in veicoli/s (riusato da LTA e Nmin dinamico)")
     parser.add_argument("--lost-time-gain", type=float, default=1.0, help="Guadagno del margine di isteresi lost-time-aware")
     parser.add_argument("--fairness", action="store_true", help="Abilita fairness con impatience saturata")
     parser.add_argument("--fairness-mu", type=float, default=5.0, help="Peso massimo del bonus fairness")
     parser.add_argument("--fairness-w-half", type=float, default=30.0, help="Secondi per avere il 50%% del bonus fairness")
+    parser.add_argument("--nmin-dynamic", action="store_true", help="Abilita minimo servizio dinamico dopo ogni switch fase")
+    parser.add_argument("--nmin-alpha", type=float, default=1.0, help="Guadagno Nmin dinamico rispetto al costo di switch")
+    parser.add_argument("--nmin-floor", type=int, default=2, help="Numero minimo di veicoli equivalenti da servire per attivazione")
+    parser.add_argument("--nmin-empty-release-seconds", type=float, default=2.0, help="Rilascio anticipato se la fase resta vuota per questo tempo")
     parser.add_argument("--spillback", action="store_true", help="Abilita vincolo hard anti-spillback sui rami a valle (solo controller MP)")
     parser.add_argument("--spillback-on", type=float, default=0.90, help="Soglia ON occupazione downstream [0-1]")
     parser.add_argument("--spillback-off", type=float, default=0.75, help="Soglia OFF occupazione downstream [0-1]")
@@ -49,12 +53,20 @@ def parse_args() -> argparse.Namespace:
         parser.error("--spillback-alpha deve essere nel range [0, 1]")
     if args.lost_time_sat_flow < 0:
         parser.error("--lost-time-sat-flow deve essere >= 0")
+    if (args.lost_time_aware or args.nmin_dynamic) and args.lost_time_sat_flow <= 0:
+        parser.error("--lost-time-sat-flow deve essere > 0 se abiliti --lost-time-aware e/o --nmin-dynamic")
     if args.lost_time_gain < 0:
         parser.error("--lost-time-gain deve essere >= 0")
     if args.fairness_mu < 0:
         parser.error("--fairness-mu deve essere >= 0")
     if args.fairness_w_half < 0:
         parser.error("--fairness-w-half deve essere >= 0")
+    if args.nmin_alpha < 0:
+        parser.error("--nmin-alpha deve essere >= 0")
+    if args.nmin_floor < 0:
+        parser.error("--nmin-floor deve essere >= 0")
+    if args.nmin_empty_release_seconds < 0:
+        parser.error("--nmin-empty-release-seconds deve essere >= 0")
     return args
 
 
@@ -88,6 +100,10 @@ def build_controller(name: str, args: argparse.Namespace):
             fairness=args.fairness,
             fairness_mu=args.fairness_mu,
             fairness_w_half=args.fairness_w_half,
+            nmin_dynamic=args.nmin_dynamic,
+            nmin_alpha=args.nmin_alpha,
+            nmin_floor=args.nmin_floor,
+            nmin_empty_release_seconds=args.nmin_empty_release_seconds,
             hard_spillback=args.spillback,
             spillback_on=args.spillback_on,
             spillback_off=args.spillback_off,
