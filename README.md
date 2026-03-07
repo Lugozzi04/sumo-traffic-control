@@ -77,6 +77,18 @@ python3 runner.py \
   --lost-time-gain 1.0
 ```
 
+Controller MP con fairness impatience saturata:
+
+```bash
+python3 runner.py \
+  -n manhattan3x3_100pc \
+  -p data/populations/manhattan3x3_demo.yaml \
+  --controller mp \
+  --fairness \
+  --fairness-mu 5.0 \
+  --fairness-w-half 30.0
+```
+
 Versione con tuning parametri spillback:
 
 ```bash
@@ -108,6 +120,9 @@ python3 runner.py -n manhattan3x3_100pc -p data/populations/manhattan3x3_demo.ya
 - `--lost-time-aware`: abilita isteresi proporzionale al costo di switch (yellow+all-red)
 - `--lost-time-sat-flow`: flusso di saturazione equivalente [veh/s] (default 0.5)
 - `--lost-time-gain`: guadagno del margine lost-time-aware (default 1.0)
+- `--fairness`: abilita fairness con impatience saturata
+- `--fairness-mu`: peso massimo del bonus fairness (default 5.0)
+- `--fairness-w-half`: secondi per raggiungere il 50% del bonus fairness (default 30.0)
 - `--spillback`: abilita/disabilita il vincolo hard anti-spillback
 - `--spillback-on`: soglia ON occupazione downstream [0-1] (default 0.90)
 - `--spillback-off`: soglia OFF occupazione downstream [0-1] (default 0.75)

@@ -31,6 +31,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lost-time-aware", action="store_true", help="Abilita isteresi proporzionale al costo di switch (yellow+all-red)")
     parser.add_argument("--lost-time-sat-flow", type=float, default=0.5, help="Flusso di saturazione equivalente in veicoli/s")
     parser.add_argument("--lost-time-gain", type=float, default=1.0, help="Guadagno del margine di isteresi lost-time-aware")
+    parser.add_argument("--fairness", action="store_true", help="Abilita fairness con impatience saturata")
+    parser.add_argument("--fairness-mu", type=float, default=5.0, help="Peso massimo del bonus fairness")
+    parser.add_argument("--fairness-w-half", type=float, default=30.0, help="Secondi per avere il 50%% del bonus fairness")
     parser.add_argument("--spillback", action="store_true", help="Abilita vincolo hard anti-spillback sui rami a valle (solo controller MP)")
     parser.add_argument("--spillback-on", type=float, default=0.90, help="Soglia ON occupazione downstream [0-1]")
     parser.add_argument("--spillback-off", type=float, default=0.75, help="Soglia OFF occupazione downstream [0-1]")
@@ -48,6 +51,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--lost-time-sat-flow deve essere >= 0")
     if args.lost_time_gain < 0:
         parser.error("--lost-time-gain deve essere >= 0")
+    if args.fairness_mu < 0:
+        parser.error("--fairness-mu deve essere >= 0")
+    if args.fairness_w_half < 0:
+        parser.error("--fairness-w-half deve essere >= 0")
     return args
 
 
@@ -78,6 +85,9 @@ def build_controller(name: str, args: argparse.Namespace):
             lost_time_aware=args.lost_time_aware,
             lost_time_sat_flow=args.lost_time_sat_flow,
             lost_time_gain=args.lost_time_gain,
+            fairness=args.fairness,
+            fairness_mu=args.fairness_mu,
+            fairness_w_half=args.fairness_w_half,
             hard_spillback=args.spillback,
             spillback_on=args.spillback_on,
             spillback_off=args.spillback_off,

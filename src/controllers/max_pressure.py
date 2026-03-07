@@ -12,6 +12,7 @@ class _TrafficLightData:
     phase_durations: list[float]
     main_phases: list[int]
     movements_by_phase: dict[int, list[tuple[str, str]]]
+    wait_time_by_phase: dict[int, float]
     pending_target: Optional[int] = None
 
 
@@ -37,6 +38,9 @@ class MaxPressureController(TrafficController):
         lost_time_aware: bool = False,
         lost_time_sat_flow: float = 0.5,
         lost_time_gain: float = 1.0,
+        fairness: bool = False,
+        fairness_mu: float = 5.0,
+        fairness_w_half: float = 30.0,
         hard_spillback: bool = False,
         spillback_on: float = DEFAULT_SPILLBACK_ON,
         spillback_off: float = DEFAULT_SPILLBACK_OFF,
@@ -50,6 +54,9 @@ class MaxPressureController(TrafficController):
         self.lost_time_aware = lost_time_aware
         self.lost_time_sat_flow = lost_time_sat_flow
         self.lost_time_gain = lost_time_gain
+        self.fairness = fairness
+        self.fairness_mu = fairness_mu
+        self.fairness_w_half = fairness_w_half
         self.hard_spillback = hard_spillback
         self.spillback_on = spillback_on
         self.spillback_off = spillback_off
@@ -104,11 +111,13 @@ class MaxPressureController(TrafficController):
             if movements:
                 movements_by_phase[phase_index] = movements
 
+        main_phases = sorted(movements_by_phase.keys())
         return _TrafficLightData(
             phase_count=len(logic.phases),
             phase_durations=[float(phase.duration) for phase in logic.phases],
-            main_phases=sorted(movements_by_phase.keys()),
+            main_phases=main_phases,
             movements_by_phase=movements_by_phase,
+            wait_time_by_phase={phase: 0.0 for phase in main_phases},
         )
 
     @staticmethod
@@ -138,6 +147,11 @@ class MaxPressureController(TrafficController):
 
         return margin + self.lost_time_gain * self.lost_time_sat_flow * lost_time
 
+    @staticmethod
+    def _delta_seconds() -> float:
+        delta_t = float(traci.simulation.getDeltaT())
+        return delta_t / 1000.0 if delta_t > 10.0 else delta_t
+
     def _downstream_occupancy(self, lane_id: str) -> float:
         raw_occ = float(traci.lane.getLastStepOccupancy(lane_id)) / 100.0
         previous = self._downstream_occ_ema.get(lane_id)
@@ -165,31 +179,75 @@ class MaxPressureController(TrafficController):
         self._downstream_blocked[out_lane] = blocked
         return blocked
 
-    def _phase_pressures(self, tl_data: _TrafficLightData) -> dict[int, float]:
+    def _phase_pressures(self, tl_data: _TrafficLightData) -> tuple[dict[int, float], dict[int, bool]]:
         lane_queue_cache: dict[str, float] = {}
+        downstream_blocked_cache: dict[str, bool] = {}
 
         def queue_on_lane(lane_id: str) -> float:
             if lane_id not in lane_queue_cache:
                 lane_queue_cache[lane_id] = float(traci.lane.getLastStepHaltingNumber(lane_id))
             return lane_queue_cache[lane_id]
 
+        def downstream_blocked(lane_id: str) -> bool:
+            if lane_id not in downstream_blocked_cache:
+                downstream_blocked_cache[lane_id] = self._is_downstream_blocked(lane_id)
+            return downstream_blocked_cache[lane_id]
+
         pressures: dict[int, float] = {}
+        has_demand: dict[int, bool] = {}
         for phase_index, movements in tl_data.movements_by_phase.items():
             pressure = 0.0
             available_movements = 0
             phase_blocked = False
+            phase_has_demand = False
             for in_lane, out_lane in movements:
-                if self._is_downstream_blocked(out_lane):
+                if downstream_blocked(out_lane):
                     # Hard constraint at phase level: if one movement spills back, skip the whole phase.
                     phase_blocked = True
                     break
-                pressure += queue_on_lane(in_lane) - queue_on_lane(out_lane)
+                in_queue = queue_on_lane(in_lane)
+                out_queue = queue_on_lane(out_lane)
+                phase_has_demand = phase_has_demand or in_queue > 0.0
+                pressure += in_queue - out_queue
                 available_movements += 1
             if phase_blocked or available_movements == 0:
                 pressures[phase_index] = float("-inf")
+                has_demand[phase_index] = False
             else:
                 pressures[phase_index] = pressure
-        return pressures
+                has_demand[phase_index] = phase_has_demand
+        return pressures, has_demand
+
+    def _update_wait_times(self, tl_data: _TrafficLightData, current_phase: int, has_demand: dict[int, bool]) -> None:
+        if not self.fairness:
+            return
+
+        delta_seconds = self._delta_seconds()
+        for phase in tl_data.main_phases:
+            if phase == current_phase:
+                tl_data.wait_time_by_phase[phase] = 0.0
+                continue
+            if has_demand.get(phase, False):
+                tl_data.wait_time_by_phase[phase] = tl_data.wait_time_by_phase.get(phase, 0.0) + delta_seconds
+            else:
+                tl_data.wait_time_by_phase[phase] = 0.0
+
+    def _fairness_bonus(self, wait_seconds: float) -> float:
+        if not self.fairness:
+            return 0.0
+        if self.fairness_w_half <= 0.0:
+            return self.fairness_mu
+        return self.fairness_mu * (wait_seconds / (wait_seconds + self.fairness_w_half))
+
+    def _phase_scores(self, tl_data: _TrafficLightData, pressures: dict[int, float]) -> dict[int, float]:
+        scores: dict[int, float] = {}
+        for phase, pressure in pressures.items():
+            if pressure == float("-inf"):
+                scores[phase] = pressure
+                continue
+            bonus = self._fairness_bonus(tl_data.wait_time_by_phase.get(phase, 0.0))
+            scores[phase] = pressure + bonus
+        return scores
 
     @staticmethod
     def _advance_to_next_phase(tl_id: str, phase_count: int) -> None:
@@ -237,26 +295,29 @@ class MaxPressureController(TrafficController):
             if current_phase not in tl_data.main_phases:
                 continue
 
+            pressures, has_demand = self._phase_pressures(tl_data)
+            self._update_wait_times(tl_data, current_phase, has_demand)
+
             spent = traci.trafficlight.getSpentDuration(tl_id)
             if spent < self.min_green:
                 continue
 
-            pressures = self._phase_pressures(tl_data)
             if current_phase not in pressures or len(pressures) <= 1:
                 continue
             if all(value == float("-inf") for value in pressures.values()):
                 continue
 
-            best_phase, best_pressure = max(pressures.items(), key=lambda item: item[1])
-            current_pressure = pressures[current_phase]
+            scores = self._phase_scores(tl_data, pressures)
+            best_phase, best_score = max(scores.items(), key=lambda item: item[1])
+            current_score = scores[current_phase]
             switch_margin = self._switch_margin(tl_data, current_phase)
 
-            if best_phase != current_phase and best_pressure > current_pressure + switch_margin:
+            if best_phase != current_phase and best_score > current_score + switch_margin:
                 tl_data.pending_target = best_phase
                 self._advance_to_next_phase(tl_id, tl_data.phase_count)
                 continue
 
             # Safety cap to avoid overextending one phase in pathological cases.
-            if spent >= self.max_green and best_phase != current_phase and best_pressure > float("-inf"):
+            if spent >= self.max_green and best_phase != current_phase and best_score > float("-inf"):
                 tl_data.pending_target = best_phase
                 self._advance_to_next_phase(tl_id, tl_data.phase_count)
