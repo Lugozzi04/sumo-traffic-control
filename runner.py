@@ -28,8 +28,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-green", type=float, default=10.0, help="Minimo tempo di verde per phase hold")
     parser.add_argument("--max-green", type=float, default=120.0, help="Massimo tempo di verde prima di forzare rivalutazione")
     parser.add_argument("--switch-epsilon", type=float, default=0.0, help="Margine minimo di pressione per cambiare fase")
-    parser.add_argument("--spillback", action="store_true", help="Abilita vincolo hard anti-spillback sui rami a valle (solo controller MP)",
-    )
+    parser.add_argument("--lost-time-aware", action="store_true", help="Abilita isteresi proporzionale al costo di switch (yellow+all-red)")
+    parser.add_argument("--lost-time-sat-flow", type=float, default=0.5, help="Flusso di saturazione equivalente in veicoli/s")
+    parser.add_argument("--lost-time-gain", type=float, default=1.0, help="Guadagno del margine di isteresi lost-time-aware")
+    parser.add_argument("--spillback", action="store_true", help="Abilita vincolo hard anti-spillback sui rami a valle (solo controller MP)")
     parser.add_argument("--spillback-on", type=float, default=0.90, help="Soglia ON occupazione downstream [0-1]")
     parser.add_argument("--spillback-off", type=float, default=0.75, help="Soglia OFF occupazione downstream [0-1]")
     parser.add_argument("--spillback-min-halts", type=int, default=1, help="Min veicoli fermi richiesti per attivare blocco")
@@ -42,6 +44,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--spillback-min-halts deve essere >= 0")
     if not 0.0 <= args.spillback_alpha <= 1.0:
         parser.error("--spillback-alpha deve essere nel range [0, 1]")
+    if args.lost_time_sat_flow < 0:
+        parser.error("--lost-time-sat-flow deve essere >= 0")
+    if args.lost_time_gain < 0:
+        parser.error("--lost-time-gain deve essere >= 0")
     return args
 
 
@@ -69,6 +75,9 @@ def build_controller(name: str, args: argparse.Namespace):
             min_green=args.min_green,
             max_green=args.max_green,
             switch_epsilon=args.switch_epsilon,
+            lost_time_aware=args.lost_time_aware,
+            lost_time_sat_flow=args.lost_time_sat_flow,
+            lost_time_gain=args.lost_time_gain,
             hard_spillback=args.spillback,
             spillback_on=args.spillback_on,
             spillback_off=args.spillback_off,

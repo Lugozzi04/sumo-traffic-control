@@ -65,6 +65,18 @@ python3 runner.py \
   --spillback
 ```
 
+Controller MP con isteresi lost-time-aware:
+
+```bash
+python3 runner.py \
+  -n manhattan3x3_100pc \
+  -p data/populations/manhattan3x3_demo.yaml \
+  --controller mp \
+  --lost-time-aware \
+  --lost-time-sat-flow 0.5 \
+  --lost-time-gain 1.0
+```
+
 Versione con tuning parametri spillback:
 
 ```bash
@@ -93,6 +105,9 @@ python3 runner.py -n manhattan3x3_100pc -p data/populations/manhattan3x3_demo.ya
 
 ## Feature toggles MP
 
+- `--lost-time-aware`: abilita isteresi proporzionale al costo di switch (yellow+all-red)
+- `--lost-time-sat-flow`: flusso di saturazione equivalente [veh/s] (default 0.5)
+- `--lost-time-gain`: guadagno del margine lost-time-aware (default 1.0)
 - `--spillback`: abilita/disabilita il vincolo hard anti-spillback
 - `--spillback-on`: soglia ON occupazione downstream [0-1] (default 0.90)
 - `--spillback-off`: soglia OFF occupazione downstream [0-1] (default 0.75)

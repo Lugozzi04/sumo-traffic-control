@@ -9,6 +9,7 @@ from .base import TrafficController
 @dataclass
 class _TrafficLightData:
     phase_count: int
+    phase_durations: list[float]
     main_phases: list[int]
     movements_by_phase: dict[int, list[tuple[str, str]]]
     pending_target: Optional[int] = None
@@ -33,6 +34,9 @@ class MaxPressureController(TrafficController):
         min_green: float = 10.0,
         max_green: float = 120.0,
         switch_epsilon: float = 0.0,
+        lost_time_aware: bool = False,
+        lost_time_sat_flow: float = 0.5,
+        lost_time_gain: float = 1.0,
         hard_spillback: bool = False,
         spillback_on: float = DEFAULT_SPILLBACK_ON,
         spillback_off: float = DEFAULT_SPILLBACK_OFF,
@@ -43,6 +47,9 @@ class MaxPressureController(TrafficController):
         self.min_green = min_green
         self.max_green = max_green
         self.switch_epsilon = switch_epsilon
+        self.lost_time_aware = lost_time_aware
+        self.lost_time_sat_flow = lost_time_sat_flow
+        self.lost_time_gain = lost_time_gain
         self.hard_spillback = hard_spillback
         self.spillback_on = spillback_on
         self.spillback_off = spillback_off
@@ -99,6 +106,7 @@ class MaxPressureController(TrafficController):
 
         return _TrafficLightData(
             phase_count=len(logic.phases),
+            phase_durations=[float(phase.duration) for phase in logic.phases],
             main_phases=sorted(movements_by_phase.keys()),
             movements_by_phase=movements_by_phase,
         )
@@ -113,6 +121,22 @@ class MaxPressureController(TrafficController):
         spent = traci.trafficlight.getSpentDuration(tl_id)
         duration = traci.trafficlight.getPhaseDuration(tl_id)
         return spent >= duration - 1e-6
+
+    def _switch_margin(self, tl_data: _TrafficLightData, current_phase: int) -> float:
+        margin = self.switch_epsilon
+        if not self.lost_time_aware:
+            return margin
+
+        # Lost time is the transition block (yellow/all-red) after leaving current main phase.
+        lost_time = 0.0
+        phase_idx = (current_phase + 1) % tl_data.phase_count
+        for _ in range(tl_data.phase_count):
+            if phase_idx in tl_data.main_phases:
+                break
+            lost_time += tl_data.phase_durations[phase_idx]
+            phase_idx = (phase_idx + 1) % tl_data.phase_count
+
+        return margin + self.lost_time_gain * self.lost_time_sat_flow * lost_time
 
     def _downstream_occupancy(self, lane_id: str) -> float:
         raw_occ = float(traci.lane.getLastStepOccupancy(lane_id)) / 100.0
@@ -225,8 +249,9 @@ class MaxPressureController(TrafficController):
 
             best_phase, best_pressure = max(pressures.items(), key=lambda item: item[1])
             current_pressure = pressures[current_phase]
+            switch_margin = self._switch_margin(tl_data, current_phase)
 
-            if best_phase != current_phase and best_pressure > current_pressure + self.switch_epsilon:
+            if best_phase != current_phase and best_pressure > current_pressure + switch_margin:
                 tl_data.pending_target = best_phase
                 self._advance_to_next_phase(tl_id, tl_data.phase_count)
                 continue
