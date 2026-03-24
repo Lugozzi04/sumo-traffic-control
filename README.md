@@ -101,6 +101,20 @@ python3 runner.py \
   --downstream-alpha 0.5
 ```
 
+Controller MP con platoon extension (headway + guardia downstream):
+
+```bash
+python3 runner.py \
+  -n manhattan3x3_100pc \
+  -p data/populations/manhattan3x3_demo.yaml \
+  --controller mp \
+  --platoon-extension \
+  --platoon-headway-threshold 2.0 \
+  --platoon-gap-out-seconds 2.5 \
+  --platoon-max-extra-green 8.0 \
+  --platoon-guard-occ 0.85
+```
+
 Controller MP con Nmin dinamico:
 
 ```bash
@@ -151,6 +165,11 @@ python3 runner.py -n manhattan3x3_100pc -p data/populations/manhattan3x3_demo.ya
 - `--downstream-penalty`: abilita penalita continua downstream (P -= beta * occ_down)
 - `--downstream-beta`: peso della penalita downstream (default 5.0)
 - `--downstream-alpha`: fattore EMA downstream [0-1] per smoothing corto (default 0.5)
+- `--platoon-extension`: abilita estensione verde per arrivi in platoon
+- `--platoon-headway-threshold`: soglia headway media [s] per riconoscere platoon (default 2.0)
+- `--platoon-gap-out-seconds`: se non passa nessuno per questo tempo, il platoon termina (default 2.5s)
+- `--platoon-max-extra-green`: estensione massima extra per attivazione fase (default 8.0s)
+- `--platoon-guard-occ`: soglia downstream [0-1] per consentire estensione (default 0.85)
 - `--nmin-dynamic`: abilita minimo servizio dinamico dopo ogni switch
 - `--nmin-alpha`: guadagno del target Nmin rispetto al costo di switch (default 1.0)
 - `--nmin-floor`: minimo veicoli equivalenti per attivazione (default 2)

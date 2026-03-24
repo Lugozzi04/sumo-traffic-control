@@ -1,3 +1,4 @@
+from collections import deque
 from dataclasses import dataclass
 from typing import Optional
 
@@ -16,6 +17,7 @@ class _TrafficLightData:
     active_phase: Optional[int] = None
     active_hold_seconds: float = 0.0
     active_empty_seconds: float = 0.0
+    active_platoon_extension_seconds: float = 0.0
     pending_target: Optional[int] = None
 
 
@@ -32,6 +34,8 @@ class MaxPressureController(TrafficController):
     DEFAULT_SPILLBACK_OFF = 0.75
     DEFAULT_SPILLBACK_MIN_HALTS = 1
     DEFAULT_SPILLBACK_ALPHA = 0.5
+    PLATOON_DETECTOR_DISTANCE = 8.0
+    PLATOON_MAX_HEADWAY_SAMPLES = 4
 
     def __init__(
         self,
@@ -47,6 +51,11 @@ class MaxPressureController(TrafficController):
         downstream_penalty: bool = False,
         downstream_beta: float = 5.0,
         downstream_alpha: float = 0.5,
+        platoon_extension: bool = False,
+        platoon_headway_threshold: float = 2.0,
+        platoon_gap_out_seconds: float = 2.5,
+        platoon_max_extra_green: float = 8.0,
+        platoon_guard_occ: float = 0.85,
         nmin_dynamic: bool = False,
         nmin_alpha: float = 1.0,
         nmin_floor: int = 2,
@@ -70,6 +79,11 @@ class MaxPressureController(TrafficController):
         self.downstream_penalty = downstream_penalty
         self.downstream_beta = downstream_beta
         self.downstream_alpha = downstream_alpha
+        self.platoon_extension = platoon_extension
+        self.platoon_headway_threshold = platoon_headway_threshold
+        self.platoon_gap_out_seconds = platoon_gap_out_seconds
+        self.platoon_max_extra_green = platoon_max_extra_green
+        self.platoon_guard_occ = platoon_guard_occ
         self.nmin_dynamic = nmin_dynamic
         self.nmin_alpha = nmin_alpha
         self.nmin_floor = nmin_floor
@@ -83,6 +97,8 @@ class MaxPressureController(TrafficController):
         self._spillback_occ_ema: dict[str, float] = {}
         self._penalty_occ_ema: dict[str, float] = {}
         self._downstream_blocked: dict[str, bool] = {}
+        self._lane_prev_positions: dict[str, dict[str, float]] = {}
+        self._lane_passage_times: dict[str, deque[float]] = {}
 
     def on_attach(self) -> None:
         for tl_id in self.traffic_lights:
@@ -214,6 +230,106 @@ class MaxPressureController(TrafficController):
         occ = self._penalty_downstream_occupancy(out_lane)
         return self.downstream_beta * occ
 
+    def _lane_detector_position(self, lane_id: str) -> float:
+        lane_length = float(traci.lane.getLength(lane_id))
+        return max(0.0, lane_length - self.PLATOON_DETECTOR_DISTANCE)
+
+    def _record_lane_passage(self, lane_id: str, sim_time: float) -> None:
+        history = self._lane_passage_times.setdefault(lane_id, deque())
+        history.append(sim_time)
+
+        # Keep only recent passages used by headway and gap-out checks.
+        horizon = max(10.0, self.platoon_gap_out_seconds * 3.0)
+        while history and sim_time - history[0] > horizon:
+            history.popleft()
+
+    def _update_lane_passages(self, lane_id: str, sim_time: float) -> None:
+        detector_pos = self._lane_detector_position(lane_id)
+        previous_positions = self._lane_prev_positions.get(lane_id, {})
+        current_positions: dict[str, float] = {}
+
+        for vehicle_id in traci.lane.getLastStepVehicleIDs(lane_id):
+            position = float(traci.vehicle.getLanePosition(vehicle_id))
+            current_positions[vehicle_id] = position
+            prev_position = previous_positions.get(vehicle_id)
+
+            crossed = prev_position is not None and prev_position < detector_pos <= position
+            if crossed:
+                self._record_lane_passage(lane_id, sim_time)
+                continue
+
+            if prev_position is None and position >= detector_pos and float(traci.vehicle.getSpeed(vehicle_id)) > 0.1:
+                # Fallback for vehicles first observed after detector crossing due to lane changes/step granularity.
+                self._record_lane_passage(lane_id, sim_time)
+
+        self._lane_prev_positions[lane_id] = current_positions
+
+    def _lane_headway(self, lane_id: str, sim_time: float) -> Optional[float]:
+        history = self._lane_passage_times.get(lane_id)
+        if not history or len(history) < 2:
+            return None
+        if sim_time - history[-1] > self.platoon_gap_out_seconds:
+            return None
+
+        sample_count = min(len(history) - 1, self.PLATOON_MAX_HEADWAY_SAMPLES)
+        intervals = []
+        start_index = len(history) - sample_count
+        for index in range(start_index, len(history)):
+            intervals.append(history[index] - history[index - 1])
+
+        if not intervals:
+            return None
+        return sum(intervals) / float(len(intervals))
+
+    def _phase_downstream_guard_ok(self, out_lanes: set[str]) -> bool:
+        for out_lane in out_lanes:
+            if self.hard_spillback and self._is_downstream_blocked(out_lane):
+                return False
+            if self._penalty_downstream_occupancy(out_lane) >= self.platoon_guard_occ:
+                return False
+        return True
+
+    def _track_phase_platoon_arrivals(self, tl_data: _TrafficLightData, phase_index: int, sim_time: float) -> None:
+        if not self.platoon_extension:
+            return
+        movements = tl_data.movements_by_phase.get(phase_index, [])
+        if not movements:
+            return
+        for in_lane, _ in movements:
+            self._update_lane_passages(in_lane, sim_time)
+
+    def _should_extend_for_platoon(self, tl_data: _TrafficLightData, current_phase: int, spent: float) -> bool:
+        if not self.platoon_extension:
+            return False
+        if tl_data.active_phase != current_phase:
+            return False
+        if spent >= self.max_green:
+            return False
+        if tl_data.active_platoon_extension_seconds >= self.platoon_max_extra_green:
+            return False
+
+        movements = tl_data.movements_by_phase.get(current_phase, [])
+        if not movements:
+            return False
+
+        sim_time = float(traci.simulation.getTime())
+        in_lanes = {in_lane for in_lane, _ in movements}
+        out_lanes = {out_lane for _, out_lane in movements}
+
+        has_platoon = False
+        for in_lane in in_lanes:
+            headway = self._lane_headway(in_lane, sim_time)
+            if headway is not None and headway <= self.platoon_headway_threshold:
+                has_platoon = True
+                break
+        if not has_platoon:
+            return False
+        if not self._phase_downstream_guard_ok(out_lanes):
+            return False
+
+        tl_data.active_platoon_extension_seconds += self._delta_seconds()
+        return True
+
     def _phase_pressures(self, tl_data: _TrafficLightData) -> tuple[dict[int, float], dict[int, float]]:
         lane_queue_cache: dict[str, float] = {}
         downstream_blocked_cache: dict[str, bool] = {}
@@ -315,6 +431,7 @@ class MaxPressureController(TrafficController):
             return
         tl_data.active_phase = current_phase
         tl_data.active_empty_seconds = 0.0
+        tl_data.active_platoon_extension_seconds = 0.0
         tl_data.active_hold_seconds = self._nmin_hold_seconds(tl_data, current_phase, phase_demand)
 
     def _must_hold_current_phase(
@@ -387,11 +504,14 @@ class MaxPressureController(TrafficController):
             pressures, phase_demand = self._phase_pressures(tl_data)
             self._update_wait_times(tl_data, current_phase, phase_demand)
             self._refresh_active_phase_state(tl_data, current_phase, phase_demand)
+            self._track_phase_platoon_arrivals(tl_data, current_phase, float(traci.simulation.getTime()))
 
             spent = traci.trafficlight.getSpentDuration(tl_id)
             if spent < self.min_green:
                 continue
             if self._must_hold_current_phase(tl_data, current_phase, spent, phase_demand):
+                continue
+            if self._should_extend_for_platoon(tl_data, current_phase, spent):
                 continue
 
             if current_phase not in pressures or len(pressures) <= 1:

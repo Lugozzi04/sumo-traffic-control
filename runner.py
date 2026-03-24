@@ -37,6 +37,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--downstream-penalty", action="store_true", help="Abilita penalita continua downstream nel calcolo pressione")
     parser.add_argument("--downstream-beta", type=float, default=5.0, help="Peso della penalita downstream (P -= beta * occ_down)")
     parser.add_argument("--downstream-alpha", type=float, default=0.5, help="Fattore EMA downstream per la penalita [0-1]")
+    parser.add_argument("--platoon-extension", action="store_true", help="Abilita estensione verde per arrivi in platoon")
+    parser.add_argument("--platoon-headway-threshold", type=float, default=2.0, help="Soglia headway media [s] per riconoscere un platoon")
+    parser.add_argument("--platoon-gap-out-seconds", type=float, default=2.5, help="Se non passa nessuno per questo tempo il platoon termina")
+    parser.add_argument("--platoon-max-extra-green", type=float, default=8.0, help="Massima estensione verde extra per attivazione fase [s]")
+    parser.add_argument("--platoon-guard-occ", type=float, default=0.85, help="Soglia guardia downstream occupazione [0-1] per consentire estensione")
     parser.add_argument("--nmin-dynamic", action="store_true", help="Abilita minimo servizio dinamico dopo ogni switch fase")
     parser.add_argument("--nmin-alpha", type=float, default=1.0, help="Guadagno Nmin dinamico rispetto al costo di switch")
     parser.add_argument("--nmin-floor", type=int, default=2, help="Numero minimo di veicoli equivalenti da servire per attivazione")
@@ -68,6 +73,14 @@ def parse_args() -> argparse.Namespace:
         parser.error("--downstream-beta deve essere >= 0")
     if not 0.0 <= args.downstream_alpha <= 1.0:
         parser.error("--downstream-alpha deve essere nel range [0, 1]")
+    if args.platoon_headway_threshold < 0:
+        parser.error("--platoon-headway-threshold deve essere >= 0")
+    if args.platoon_gap_out_seconds < 0:
+        parser.error("--platoon-gap-out-seconds deve essere >= 0")
+    if args.platoon_max_extra_green < 0:
+        parser.error("--platoon-max-extra-green deve essere >= 0")
+    if not 0.0 <= args.platoon_guard_occ <= 1.0:
+        parser.error("--platoon-guard-occ deve essere nel range [0, 1]")
     if args.nmin_alpha < 0:
         parser.error("--nmin-alpha deve essere >= 0")
     if args.nmin_floor < 0:
@@ -110,6 +123,11 @@ def build_controller(name: str, args: argparse.Namespace):
             downstream_penalty=args.downstream_penalty,
             downstream_beta=args.downstream_beta,
             downstream_alpha=args.downstream_alpha,
+            platoon_extension=args.platoon_extension,
+            platoon_headway_threshold=args.platoon_headway_threshold,
+            platoon_gap_out_seconds=args.platoon_gap_out_seconds,
+            platoon_max_extra_green=args.platoon_max_extra_green,
+            platoon_guard_occ=args.platoon_guard_occ,
             nmin_dynamic=args.nmin_dynamic,
             nmin_alpha=args.nmin_alpha,
             nmin_floor=args.nmin_floor,
