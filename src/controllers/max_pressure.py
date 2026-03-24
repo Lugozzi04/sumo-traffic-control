@@ -44,6 +44,9 @@ class MaxPressureController(TrafficController):
         fairness: bool = False,
         fairness_mu: float = 5.0,
         fairness_w_half: float = 30.0,
+        downstream_penalty: bool = False,
+        downstream_beta: float = 5.0,
+        downstream_alpha: float = 0.5,
         nmin_dynamic: bool = False,
         nmin_alpha: float = 1.0,
         nmin_floor: int = 2,
@@ -64,6 +67,9 @@ class MaxPressureController(TrafficController):
         self.fairness = fairness
         self.fairness_mu = fairness_mu
         self.fairness_w_half = fairness_w_half
+        self.downstream_penalty = downstream_penalty
+        self.downstream_beta = downstream_beta
+        self.downstream_alpha = downstream_alpha
         self.nmin_dynamic = nmin_dynamic
         self.nmin_alpha = nmin_alpha
         self.nmin_floor = nmin_floor
@@ -74,7 +80,8 @@ class MaxPressureController(TrafficController):
         self.spillback_min_halts = spillback_min_halts
         self.spillback_alpha = spillback_alpha
         self._data: dict[str, _TrafficLightData] = {}
-        self._downstream_occ_ema: dict[str, float] = {}
+        self._spillback_occ_ema: dict[str, float] = {}
+        self._penalty_occ_ema: dict[str, float] = {}
         self._downstream_blocked: dict[str, bool] = {}
 
     def on_attach(self) -> None:
@@ -167,21 +174,28 @@ class MaxPressureController(TrafficController):
         delta_t = float(traci.simulation.getDeltaT())
         return delta_t / 1000.0 if delta_t > 10.0 else delta_t
 
-    def _downstream_occupancy(self, lane_id: str) -> float:
+    @staticmethod
+    def _ema_occupancy(lane_id: str, alpha: float, cache: dict[str, float]) -> float:
         raw_occ = float(traci.lane.getLastStepOccupancy(lane_id)) / 100.0
-        previous = self._downstream_occ_ema.get(lane_id)
+        previous = cache.get(lane_id)
         if previous is None:
             ema = raw_occ
         else:
-            ema = self.spillback_alpha * raw_occ + (1.0 - self.spillback_alpha) * previous
-        self._downstream_occ_ema[lane_id] = ema
+            ema = alpha * raw_occ + (1.0 - alpha) * previous
+        cache[lane_id] = ema
         return ema
+
+    def _spillback_downstream_occupancy(self, lane_id: str) -> float:
+        return self._ema_occupancy(lane_id, self.spillback_alpha, self._spillback_occ_ema)
+
+    def _penalty_downstream_occupancy(self, lane_id: str) -> float:
+        return self._ema_occupancy(lane_id, self.downstream_alpha, self._penalty_occ_ema)
 
     def _is_downstream_blocked(self, out_lane: str) -> bool:
         if not self.hard_spillback:
             return False
 
-        occ = self._downstream_occupancy(out_lane)
+        occ = self._spillback_downstream_occupancy(out_lane)
         halts = int(traci.lane.getLastStepHaltingNumber(out_lane))
         blocked = self._downstream_blocked.get(out_lane, False)
 
@@ -194,9 +208,16 @@ class MaxPressureController(TrafficController):
         self._downstream_blocked[out_lane] = blocked
         return blocked
 
+    def _movement_downstream_penalty(self, out_lane: str) -> float:
+        if not self.downstream_penalty:
+            return 0.0
+        occ = self._penalty_downstream_occupancy(out_lane)
+        return self.downstream_beta * occ
+
     def _phase_pressures(self, tl_data: _TrafficLightData) -> tuple[dict[int, float], dict[int, float]]:
         lane_queue_cache: dict[str, float] = {}
         downstream_blocked_cache: dict[str, bool] = {}
+        downstream_penalty_cache: dict[str, float] = {}
 
         def queue_on_lane(lane_id: str) -> float:
             if lane_id not in lane_queue_cache:
@@ -207,6 +228,11 @@ class MaxPressureController(TrafficController):
             if lane_id not in downstream_blocked_cache:
                 downstream_blocked_cache[lane_id] = self._is_downstream_blocked(lane_id)
             return downstream_blocked_cache[lane_id]
+
+        def movement_downstream_penalty(lane_id: str) -> float:
+            if lane_id not in downstream_penalty_cache:
+                downstream_penalty_cache[lane_id] = self._movement_downstream_penalty(lane_id)
+            return downstream_penalty_cache[lane_id]
 
         pressures: dict[int, float] = {}
         phase_demand: dict[int, float] = {}
@@ -222,8 +248,9 @@ class MaxPressureController(TrafficController):
                     break
                 in_queue = queue_on_lane(in_lane)
                 out_queue = queue_on_lane(out_lane)
+                downstream_penalty = movement_downstream_penalty(out_lane)
                 demand_sum += in_queue
-                pressure += in_queue - out_queue
+                pressure += in_queue - out_queue - downstream_penalty
                 available_movements += 1
             if phase_blocked or available_movements == 0:
                 pressures[phase_index] = float("-inf")

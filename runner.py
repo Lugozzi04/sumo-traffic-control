@@ -34,6 +34,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fairness", action="store_true", help="Abilita fairness con impatience saturata")
     parser.add_argument("--fairness-mu", type=float, default=5.0, help="Peso massimo del bonus fairness")
     parser.add_argument("--fairness-w-half", type=float, default=30.0, help="Secondi per avere il 50%% del bonus fairness")
+    parser.add_argument("--downstream-penalty", action="store_true", help="Abilita penalita continua downstream nel calcolo pressione")
+    parser.add_argument("--downstream-beta", type=float, default=5.0, help="Peso della penalita downstream (P -= beta * occ_down)")
+    parser.add_argument("--downstream-alpha", type=float, default=0.5, help="Fattore EMA downstream per la penalita [0-1]")
     parser.add_argument("--nmin-dynamic", action="store_true", help="Abilita minimo servizio dinamico dopo ogni switch fase")
     parser.add_argument("--nmin-alpha", type=float, default=1.0, help="Guadagno Nmin dinamico rispetto al costo di switch")
     parser.add_argument("--nmin-floor", type=int, default=2, help="Numero minimo di veicoli equivalenti da servire per attivazione")
@@ -61,6 +64,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--fairness-mu deve essere >= 0")
     if args.fairness_w_half < 0:
         parser.error("--fairness-w-half deve essere >= 0")
+    if args.downstream_beta < 0:
+        parser.error("--downstream-beta deve essere >= 0")
+    if not 0.0 <= args.downstream_alpha <= 1.0:
+        parser.error("--downstream-alpha deve essere nel range [0, 1]")
     if args.nmin_alpha < 0:
         parser.error("--nmin-alpha deve essere >= 0")
     if args.nmin_floor < 0:
@@ -100,6 +107,9 @@ def build_controller(name: str, args: argparse.Namespace):
             fairness=args.fairness,
             fairness_mu=args.fairness_mu,
             fairness_w_half=args.fairness_w_half,
+            downstream_penalty=args.downstream_penalty,
+            downstream_beta=args.downstream_beta,
+            downstream_alpha=args.downstream_alpha,
             nmin_dynamic=args.nmin_dynamic,
             nmin_alpha=args.nmin_alpha,
             nmin_floor=args.nmin_floor,

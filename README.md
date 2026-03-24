@@ -89,6 +89,18 @@ python3 runner.py \
   --fairness-w-half 30.0
 ```
 
+Controller MP con penalita downstream continua:
+
+```bash
+python3 runner.py \
+  -n manhattan3x3_100pc \
+  -p data/populations/manhattan3x3_demo.yaml \
+  --controller mp \
+  --downstream-penalty \
+  --downstream-beta 5.0 \
+  --downstream-alpha 0.5
+```
+
 Controller MP con Nmin dinamico:
 
 ```bash
@@ -136,6 +148,9 @@ python3 runner.py -n manhattan3x3_100pc -p data/populations/manhattan3x3_demo.ya
 - `--fairness`: abilita fairness con impatience saturata
 - `--fairness-mu`: peso massimo del bonus fairness (default 5.0)
 - `--fairness-w-half`: secondi per raggiungere il 50% del bonus fairness (default 30.0)
+- `--downstream-penalty`: abilita penalita continua downstream (P -= beta * occ_down)
+- `--downstream-beta`: peso della penalita downstream (default 5.0)
+- `--downstream-alpha`: fattore EMA downstream [0-1] per smoothing corto (default 0.5)
 - `--nmin-dynamic`: abilita minimo servizio dinamico dopo ogni switch
 - `--nmin-alpha`: guadagno del target Nmin rispetto al costo di switch (default 1.0)
 - `--nmin-floor`: minimo veicoli equivalenti per attivazione (default 2)
