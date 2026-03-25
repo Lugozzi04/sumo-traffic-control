@@ -168,11 +168,28 @@ python3 utils/run_ablation.py \
   --max-steps 5400
 ```
 
+Opzionale:
+- `--progress-interval <s>`: frequenza aggiornamento `progress.txt/.yaml` (default 15s).
+
+Nota:
+- lo script fa preflight automatico (`traci/sumolib/yaml`, comando `sumo`, mappe presenti);
+- se tutti i run falliscono, `progress.txt` termina in stato `ERRORE`;
+- se una parte fallisce, termina in `COMPLETATO_CON_ERRORI`.
+- `--batch-name` e' ignorato: il nome run e' sempre automatico e ordinato.
+
 Output in:
-- `logs/ablation/<batch_id>/run_results.csv`
-- `logs/ablation/<batch_id>/summary_by_group.csv`
-- `logs/ablation/<batch_id>/summary_vs_base.csv`
-- `logs/ablation/<batch_id>/summary.md`
+- `logs/ablation/progress.txt` (UNICO file progresso: sempre ultimo run lanciato)
+- `logs/ablation/progress.yaml` (stessa info in YAML)
+- `logs/ablation/latest_run.txt` (puntatore al run piu recente)
+- `logs/ablation/runs/run_XXXX_YYYYMMDD_HHMMSS/` (cartella risultati del singolo run)
+  - `config_resolved.yaml`
+  - `run_results.csv`
+  - `summary_by_group.csv`
+  - `summary_vs_base.csv`
+  - `summary.md`
+  - `populations/`
+  - `runs/<map__demand__seed__scenario>/stdout_stderr.log`
+  - `runs/<map__demand__seed__scenario>/vehicle_metrics.csv`
 
 ## Dove mettere la tua idea
 

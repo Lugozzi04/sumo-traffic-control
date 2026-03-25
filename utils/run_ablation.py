@@ -1,7 +1,10 @@
 import argparse
 import csv
+import datetime as dt
 import math
+import os
 import re
+import selectors
 import statistics
 import subprocess
 import sys
@@ -50,6 +53,9 @@ SCENARIOS: tuple[Scenario, ...] = (
     ),
 )
 
+STEP_PATTERN = re.compile(r"Step #([0-9]+(?:\.[0-9]+)?)")
+RUN_DIR_PATTERN = re.compile(r"^run_(\d+)_")
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Batch ablation runner (seriale, con summary automatico)")
@@ -70,9 +76,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed-start", type=int, default=1, help="Seed iniziale (incluso)")
     parser.add_argument("--step-length", type=float, default=1.0, help="Step simulation in secondi")
     parser.add_argument("--max-steps", type=int, default=5400, help="Tetto massimo simulazione (0 = nessun limite)")
-    parser.add_argument("--batch-name", default="", help="Nome batch opzionale (default: timestamp)")
+    parser.add_argument(
+        "--progress-interval",
+        type=float,
+        default=15.0,
+        help="Intervallo aggiornamento file progresso in secondi",
+    )
+    parser.add_argument(
+        "--batch-name",
+        default="",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--python-exe", default=sys.executable, help="Interprete python da usare per subprocess")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.progress_interval <= 0:
+        parser.error("--progress-interval deve essere > 0")
+    return args
 
 
 def percentile(values: list[float], p: float) -> float:
@@ -110,6 +129,80 @@ def run_command(cmd: list[str], cwd: Path) -> tuple[int, str]:
     )
     combined = (result.stdout or "") + ("\n" if result.stdout and result.stderr else "") + (result.stderr or "")
     return result.returncode, combined
+
+
+def run_runner_command_with_live_progress(
+    cmd: list[str],
+    cwd: Path,
+    live_log_file: Path,
+    progress_interval: float,
+    on_tick,
+) -> tuple[int, str]:
+    env = dict(os.environ)
+    env["PYTHONUNBUFFERED"] = "1"
+    process = subprocess.Popen(
+        cmd,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=False,
+        bufsize=0,
+    )
+
+    if process.stdout is None:
+        raise RuntimeError("Impossibile catturare output subprocess")
+
+    selector = selectors.DefaultSelector()
+    selector.register(process.stdout, selectors.EVENT_READ)
+
+    output_chunks: list[str] = []
+    parse_tail = ""
+    last_tick = 0.0
+    start_time = time.time()
+    latest_step: float | None = None
+
+    def tick(force: bool = False) -> None:
+        nonlocal last_tick
+        now = time.time()
+        if force or (now - last_tick) >= progress_interval:
+            on_tick(latest_step, now - start_time)
+            last_tick = now
+
+    tick(force=True)
+    with live_log_file.open("w", encoding="utf-8") as fd:
+        while True:
+            events = selector.select(timeout=1.0)
+            for key, _ in events:
+                stream = key.fileobj
+                chunk_bytes = stream.read1(4096) if hasattr(stream, "read1") else stream.read(4096)
+                if chunk_bytes:
+                    chunk_text = chunk_bytes.decode("utf-8", errors="replace")
+                    fd.write(chunk_text)
+                    fd.flush()
+                    output_chunks.append(chunk_text)
+                    parse_text = parse_tail + chunk_text
+                    for match in STEP_PATTERN.finditer(parse_text):
+                        latest_step = float(match.group(1))
+                    parse_tail = parse_text[-64:]
+
+            if process.poll() is not None:
+                remainder_bytes = process.stdout.read() or b""
+                if remainder_bytes:
+                    remainder = remainder_bytes.decode("utf-8", errors="replace")
+                    fd.write(remainder)
+                    fd.flush()
+                    output_chunks.append(remainder)
+                    parse_text = parse_tail + remainder
+                    for match in STEP_PATTERN.finditer(parse_text):
+                        latest_step = float(match.group(1))
+                break
+
+            tick(force=False)
+
+    selector.unregister(process.stdout)
+    tick(force=True)
+    return process.returncode, "".join(output_chunks)
 
 
 def parse_runner_log_path(output_text: str) -> Path:
@@ -166,26 +259,99 @@ def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
     return "\n".join(lines)
 
 
+def format_ts(epoch_seconds: float) -> str:
+    return dt.datetime.fromtimestamp(epoch_seconds).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def allocate_run_directory(ablation_root: Path) -> tuple[str, Path]:
+    runs_root = ablation_root / "runs"
+    runs_root.mkdir(parents=True, exist_ok=True)
+
+    max_index = 0
+    for child in runs_root.iterdir():
+        if not child.is_dir():
+            continue
+        match = RUN_DIR_PATTERN.match(child.name)
+        if not match:
+            continue
+        max_index = max(max_index, int(match.group(1)))
+
+    run_index = max_index + 1
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    run_id = f"run_{run_index:04d}_{timestamp}"
+    run_dir = runs_root / run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+    return run_id, run_dir
+
+
+def format_eta(seconds: float | None) -> str:
+    if seconds is None:
+        return "n/a"
+    total = max(0, int(round(seconds)))
+    hours, rem = divmod(total, 3600)
+    minutes, secs = divmod(rem, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def write_atomic_text(path: Path, content: str) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    tmp.replace(path)
+
+
+def preflight_checks(args: argparse.Namespace, root: Path) -> None:
+    import_cmd = [args.python_exe, "-c", "import traci, sumolib, yaml; print('python deps ok')"]
+    code, output = run_command(import_cmd, root)
+    if code != 0:
+        raise RuntimeError(
+            "Preflight fallito: dipendenze python mancanti nell'interprete selezionato.\n"
+            f"Comando: {' '.join(import_cmd)}\n"
+            f"Output:\n{output}"
+        )
+
+    sumo_cmd = ["sumo", "--version"]
+    code, output = run_command(sumo_cmd, root)
+    if code != 0:
+        raise RuntimeError(
+            "Preflight fallito: comando 'sumo' non disponibile nel PATH.\n"
+            "Installa/carica SUMO prima del batch.\n"
+            f"Output:\n{output}"
+        )
+
+    missing_maps: list[str] = []
+    for map_name in args.maps:
+        cfg = root / "sumo_xml_files" / map_name / f"{map_name}.sumocfg"
+        if not cfg.exists():
+            missing_maps.append(str(cfg))
+    if missing_maps:
+        raise RuntimeError("Preflight fallito: mappe non trovate:\n" + "\n".join(missing_maps))
+
+
 def main() -> None:
     args = parse_args()
     root = Path(__file__).resolve().parents[1]
 
-    batch_id = args.batch_name.strip() or time.strftime("%Y%m%d_%H%M%S")
-    batch_dir = root / "logs" / "ablation" / batch_id
+    ablation_root = root / "logs" / "ablation"
+    ablation_root.mkdir(parents=True, exist_ok=True)
+    run_id, batch_dir = allocate_run_directory(ablation_root)
     populations_dir = batch_dir / "populations"
     runs_dir = batch_dir / "runs"
-    batch_dir.mkdir(parents=True, exist_ok=True)
     populations_dir.mkdir(parents=True, exist_ok=True)
     runs_dir.mkdir(parents=True, exist_ok=True)
+    if args.batch_name.strip():
+        print("[info] --batch-name ignorato: ora il nome run e' sempre progressivo+timestamp")
+    write_atomic_text(ablation_root / "latest_run.txt", f"{run_id}\n{batch_dir}\n")
 
     config = {
-        "batch_id": batch_id,
+        "run_id": run_id,
+        "run_dir": str(batch_dir),
         "maps": args.maps,
         "demands": args.demands,
         "num_seeds": args.num_seeds,
         "seed_start": args.seed_start,
         "step_length": args.step_length,
         "max_steps": args.max_steps,
+        "progress_interval": args.progress_interval,
         "python_exe": args.python_exe,
         "demand_presets": {
             key: {
@@ -205,115 +371,251 @@ def main() -> None:
     current_run = 0
 
     run_rows: list[dict] = []
-    for map_name in args.maps:
-        for demand_name in args.demands:
-            demand = DEMANDS[demand_name]
-            for pop_seed in seed_values:
-                population_file = populations_dir / f"{map_name}_{demand_name}_seed{pop_seed}.yaml"
-                generate_cmd = [
-                    args.python_exe,
-                    "generate_population.py",
-                    "-n",
-                    map_name,
-                    "-o",
-                    str(population_file),
-                    "-N",
-                    str(demand.vehicles),
-                    "--start-time",
-                    str(demand.start_time),
-                    "--end-time",
-                    str(demand.end_time),
-                    "--seed",
-                    str(pop_seed),
-                ]
-                generate_code, generate_output = run_command(generate_cmd, root)
-                if generate_code != 0:
-                    raise RuntimeError(
-                        f"Errore generazione popolazione {population_file}\n{generate_output}"
-                    )
+    script_start = time.time()
+    script_start_label = format_ts(script_start)
+    progress_yaml_file = ablation_root / "progress.yaml"
+    progress_txt_file = ablation_root / "progress.txt"
+    current_activity = "inizializzazione"
+    current_run_id = ""
+    current_run_started_at: float | None = None
+    current_run_step: float | None = None
+    current_run_meta: tuple[str, str, int, str] | None = None
 
-                for scenario in SCENARIOS:
-                    current_run += 1
-                    run_id = f"{map_name}__{demand_name}__seed{pop_seed}__{scenario.name}"
-                    print(f"[{current_run}/{total_runs}] {run_id}")
+    def write_progress_files(status: str, error_message: str = "") -> None:
+        status_label = {
+            "running": "IN_CORSO",
+            "completed": "COMPLETATO",
+            "completed_with_errors": "COMPLETATO_CON_ERRORI",
+            "failed": "ERRORE",
+            "stopped": "INTERROTTO",
+        }.get(status, status.upper())
 
-                    cmd = [
+        now = time.time()
+        runs_done = len(run_rows)
+        runs_success = sum(1 for row in run_rows if row["status"] == "ok")
+        runs_failed = sum(1 for row in run_rows if row["status"] != "ok")
+        remaining_runs = max(0, total_runs - runs_done)
+        avg_run_seconds = safe_mean([float(row["wall_seconds"]) for row in run_rows]) if run_rows else 0.0
+        eta_seconds = avg_run_seconds * remaining_runs if avg_run_seconds > 0 else None
+
+        run_elapsed = (now - current_run_started_at) if current_run_started_at is not None else None
+        run_progress_pct: float | None = None
+        if args.max_steps > 0 and current_run_step is not None:
+            run_progress_pct = min(100.0, max(0.0, (current_run_step / float(args.max_steps)) * 100.0))
+
+        next_update = format_ts(now + args.progress_interval) if status == "running" else "n/a"
+        payload = {
+            "status": status_label,
+            "run_id": run_id,
+            "run_dir": str(batch_dir),
+            "started_at": script_start_label,
+            "last_update": format_ts(now),
+            "next_update_expected": next_update,
+            "update_interval_seconds": args.progress_interval,
+            "elapsed_batch_seconds": round(now - script_start, 3),
+            "eta_remaining_hms": format_eta(eta_seconds),
+            "total_runs": total_runs,
+            "runs_done": runs_done,
+            "runs_success": runs_success,
+            "runs_failed": runs_failed,
+            "current_activity": current_activity,
+            "current_run_id": current_run_id,
+            "current_run_elapsed_seconds": round(run_elapsed, 3) if run_elapsed is not None else None,
+            "current_run_step": current_run_step,
+            "current_run_progress_pct": round(run_progress_pct, 2) if run_progress_pct is not None else None,
+            "current_run_meta": {
+                "map": current_run_meta[0],
+                "demand": current_run_meta[1],
+                "seed": current_run_meta[2],
+                "scenario": current_run_meta[3],
+            }
+            if current_run_meta is not None
+            else None,
+            "error_message": error_message,
+        }
+
+        write_atomic_text(progress_yaml_file, yaml.safe_dump(payload, sort_keys=False))
+        text_lines = [
+            f"stato: {status_label}",
+            f"run: {run_id}",
+            f"cartella risultati: {batch_dir}",
+            f"inizio simulazione: {script_start_label}",
+            f"ultimo aggiornamento: {payload['last_update']}",
+            f"prossimo aggiornamento atteso entro: {payload['next_update_expected']} (ogni {args.progress_interval:.1f}s)",
+            f"attivita corrente: {current_activity}",
+            f"run completati: {runs_done}/{total_runs} (ok={runs_success}, fail={runs_failed})",
+            f"tempo batch trascorso: {format_eta(now - script_start)}",
+            f"stima tempo rimanente: {payload['eta_remaining_hms']}",
+            f"run corrente: {current_run_id or 'n/a'}",
+            f"run corrente elapsed: {round(run_elapsed, 1) if run_elapsed is not None else 'n/a'} s",
+            f"run corrente step: {current_run_step if current_run_step is not None else 'n/a'}",
+            f"run corrente progresso: {f'{run_progress_pct:.2f}%' if run_progress_pct is not None else 'n/a'}",
+        ]
+        if error_message:
+            text_lines.append(f"errore: {error_message}")
+        write_atomic_text(progress_txt_file, "\n".join(text_lines) + "\n")
+
+    write_progress_files(status="running")
+    try:
+        current_activity = "preflight dipendenze/mappe"
+        write_progress_files(status="running")
+        preflight_checks(args, root)
+
+        for map_name in args.maps:
+            for demand_name in args.demands:
+                demand = DEMANDS[demand_name]
+                for pop_seed in seed_values:
+                    current_activity = f"generazione popolazione {map_name}/{demand_name}/seed{pop_seed}"
+                    current_run_id = ""
+                    current_run_meta = None
+                    current_run_started_at = None
+                    current_run_step = None
+                    write_progress_files(status="running")
+
+                    population_file = populations_dir / f"{map_name}_{demand_name}_seed{pop_seed}.yaml"
+                    generate_cmd = [
                         args.python_exe,
-                        "runner.py",
+                        "generate_population.py",
                         "-n",
                         map_name,
-                        "-p",
+                        "-o",
                         str(population_file),
-                        "--controller",
-                        "mp",
-                        "--step-length",
-                        str(args.step_length),
+                        "-N",
+                        str(demand.vehicles),
+                        "--start-time",
+                        str(demand.start_time),
+                        "--end-time",
+                        str(demand.end_time),
+                        "--seed",
+                        str(pop_seed),
                     ]
-                    if args.max_steps > 0:
-                        cmd.extend(["--max-steps", str(args.max_steps)])
-                    cmd.extend(scenario.flags)
+                    generate_code, generate_output = run_command(generate_cmd, root)
+                    if generate_code != 0:
+                        raise RuntimeError(
+                            f"Errore generazione popolazione {population_file}\n{generate_output}"
+                        )
 
-                    wall_start = time.time()
-                    return_code, output_text = run_command(cmd, root)
-                    wall_seconds = time.time() - wall_start
+                    for scenario in SCENARIOS:
+                        current_run += 1
+                        case_id = f"{map_name}__{demand_name}__seed{pop_seed}__{scenario.name}"
+                        current_run_id = case_id
+                        current_run_meta = (map_name, demand_name, pop_seed, scenario.name)
+                        current_run_started_at = time.time()
+                        current_run_step = None
+                        current_activity = f"esecuzione {current_run}/{total_runs}"
+                        write_progress_files(status="running")
 
-                    run_dir = runs_dir / run_id
-                    run_dir.mkdir(parents=True, exist_ok=True)
-                    (run_dir / "stdout_stderr.log").write_text(output_text, encoding="utf-8")
+                        print(f"[{current_run}/{total_runs}] {case_id}")
 
-                    base_row = {
-                        "run_id": run_id,
-                        "map": map_name,
-                        "demand": demand_name,
-                        "pop_seed": pop_seed,
-                        "scenario": scenario.name,
-                        "flags": " ".join(scenario.flags),
-                        "population_file": str(population_file),
-                        "status": "ok" if return_code == 0 else "fail",
-                        "wall_seconds": round(wall_seconds, 3),
-                    }
+                        cmd = [
+                            args.python_exe,
+                            "runner.py",
+                            "-n",
+                            map_name,
+                            "-p",
+                            str(population_file),
+                            "--controller",
+                            "mp",
+                            "--step-length",
+                            str(args.step_length),
+                        ]
+                        if args.max_steps > 0:
+                            cmd.extend(["--max-steps", str(args.max_steps)])
+                        cmd.extend(scenario.flags)
 
-                    if return_code != 0:
+                        run_dir = runs_dir / case_id
+                        run_dir.mkdir(parents=True, exist_ok=True)
+                        live_log_file = run_dir / "stdout_stderr.log"
+
+                        def on_runner_tick(step_value: float | None, _elapsed_seconds: float) -> None:
+                            nonlocal current_run_step
+                            current_run_step = step_value
+                            write_progress_files(status="running")
+
+                        wall_start = time.time()
+                        return_code, output_text = run_runner_command_with_live_progress(
+                            cmd=cmd,
+                            cwd=root,
+                            live_log_file=live_log_file,
+                            progress_interval=args.progress_interval,
+                            on_tick=on_runner_tick,
+                        )
+                        wall_seconds = time.time() - wall_start
+
+                        base_row = {
+                            "run_id": case_id,
+                            "map": map_name,
+                            "demand": demand_name,
+                            "pop_seed": pop_seed,
+                            "scenario": scenario.name,
+                            "flags": " ".join(scenario.flags),
+                            "population_file": str(population_file),
+                            "status": "ok" if return_code == 0 else "fail",
+                            "wall_seconds": round(wall_seconds, 3),
+                        }
+
+                        if return_code != 0:
+                            base_row.update(
+                                {
+                                    "log_file": "",
+                                    "vehicles_count": 0,
+                                    "mean_wait_s": 0.0,
+                                    "p95_wait_s": 0.0,
+                                    "mean_travel_s": 0.0,
+                                    "p95_travel_s": 0.0,
+                                    "mean_speed_mps": 0.0,
+                                    "mean_co2_g": 0.0,
+                                    "mean_fuel_g": 0.0,
+                                }
+                            )
+                            run_rows.append(base_row)
+                            write_progress_files(status="running")
+                            continue
+
+                        log_file = parse_runner_log_path(output_text)
+                        if not log_file.is_absolute():
+                            log_file = (root / log_file).resolve()
+                        if not log_file.exists():
+                            raise RuntimeError(f"Log file non trovato: {log_file}")
+
+                        copied_log_file = run_dir / "vehicle_metrics.csv"
+                        copied_log_file.write_text(log_file.read_text(encoding="utf-8"), encoding="utf-8")
+                        metrics = parse_vehicle_log(log_file)
+                        try:
+                            logs_root = (root / "logs").resolve()
+                            if log_file.resolve().is_relative_to(logs_root):
+                                log_file.unlink(missing_ok=True)
+                        except OSError:
+                            pass
+
                         base_row.update(
                             {
-                                "log_file": "",
-                                "vehicles_count": 0,
-                                "mean_wait_s": 0.0,
-                                "p95_wait_s": 0.0,
-                                "mean_travel_s": 0.0,
-                                "p95_travel_s": 0.0,
-                                "mean_speed_mps": 0.0,
-                                "mean_co2_g": 0.0,
-                                "mean_fuel_g": 0.0,
+                                "log_file": str(copied_log_file),
+                                "vehicles_count": int(metrics["vehicles_count"]),
+                                "mean_wait_s": round(metrics["mean_wait_s"], 6),
+                                "p95_wait_s": round(metrics["p95_wait_s"], 6),
+                                "mean_travel_s": round(metrics["mean_travel_s"], 6),
+                                "p95_travel_s": round(metrics["p95_travel_s"], 6),
+                                "mean_speed_mps": round(metrics["mean_speed_mps"], 6),
+                                "mean_co2_g": round(metrics["mean_co2_g"], 6),
+                                "mean_fuel_g": round(metrics["mean_fuel_g"], 6),
                             }
                         )
                         run_rows.append(base_row)
-                        continue
+                        current_run_started_at = None
+                        current_run_step = None
+                        write_progress_files(status="running")
+    except KeyboardInterrupt:
+        current_activity = "interrotto da utente"
+        write_progress_files(status="stopped", error_message="interrotto da tastiera (CTRL+C)")
+        raise
+    except Exception as exc:
+        current_activity = "errore batch"
+        write_progress_files(status="failed", error_message=str(exc))
+        raise
 
-                    log_file = parse_runner_log_path(output_text)
-                    if not log_file.is_absolute():
-                        log_file = (root / log_file).resolve()
-                    if not log_file.exists():
-                        raise RuntimeError(f"Log file non trovato: {log_file}")
-
-                    copied_log_file = run_dir / "vehicle_metrics.csv"
-                    copied_log_file.write_text(log_file.read_text(encoding="utf-8"), encoding="utf-8")
-                    metrics = parse_vehicle_log(log_file)
-
-                    base_row.update(
-                        {
-                            "log_file": str(log_file),
-                            "vehicles_count": int(metrics["vehicles_count"]),
-                            "mean_wait_s": round(metrics["mean_wait_s"], 6),
-                            "p95_wait_s": round(metrics["p95_wait_s"], 6),
-                            "mean_travel_s": round(metrics["mean_travel_s"], 6),
-                            "p95_travel_s": round(metrics["p95_travel_s"], 6),
-                            "mean_speed_mps": round(metrics["mean_speed_mps"], 6),
-                            "mean_co2_g": round(metrics["mean_co2_g"], 6),
-                            "mean_fuel_g": round(metrics["mean_fuel_g"], 6),
-                        }
-                    )
-                    run_rows.append(base_row)
+    current_activity = "aggregazione risultati"
+    write_progress_files(status="running")
 
     run_results_file = batch_dir / "run_results.csv"
     run_fields = [
@@ -429,7 +731,7 @@ def main() -> None:
     ]
     write_csv(delta_file, delta_rows, delta_fields)
 
-    md_lines = [f"# Ablation Summary - {batch_id}", ""]
+    md_lines = [f"# Ablation Summary - {run_id}", ""]
     failed_runs = [row for row in run_rows if row["status"] != "ok"]
     md_lines.append(f"- Total runs: {len(run_rows)}")
     md_lines.append(f"- Successful runs: {len(ok_rows)}")
@@ -494,11 +796,29 @@ def main() -> None:
 
     (batch_dir / "summary.md").write_text("\n".join(md_lines), encoding="utf-8")
 
-    print(f"\nBatch completato: {batch_dir}")
+    current_activity = "batch completato"
+    current_run_id = ""
+    current_run_meta = None
+    current_run_started_at = None
+    current_run_step = None
+    if failed_runs and len(failed_runs) == len(run_rows):
+        write_progress_files(
+            status="failed",
+            error_message="tutti i run sono falliti; controlla stdout_stderr.log dei run e le dipendenze SUMO/TraCI",
+        )
+    elif failed_runs:
+        write_progress_files(status="completed_with_errors")
+    else:
+        write_progress_files(status="completed")
+
+    print(f"\nRun completato: {run_id}")
+    print(f"- Cartella run:     {batch_dir}")
     print(f"- Run-level results: {run_results_file}")
     print(f"- Summary by group: {summary_file}")
     print(f"- Summary vs base:  {delta_file}")
     print(f"- Markdown report:  {batch_dir / 'summary.md'}")
+    print(f"- Progress (ultimo run): {ablation_root / 'progress.txt'}")
+    print(f"- Puntatore latest:      {ablation_root / 'latest_run.txt'}")
 
 
 if __name__ == "__main__":
