@@ -5,6 +5,7 @@ __pycache__/
 
 # Runtime outputs
 logs/*.csv
+logs/ablation/
 sumo_xml_files/vehicletypes.rou.xml
 usefull_commands
 appunti.txt

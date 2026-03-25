@@ -148,6 +148,32 @@ Con GUI:
 python3 runner.py -n manhattan3x3_100pc -p data/populations/manhattan3x3_demo.yaml --controller mp --gui
 ```
 
+## Ablation batch (seriale + summary automatico)
+
+Script:
+- `utils/run_ablation.py`
+
+Cosa fa:
+- genera popolazioni `low/medium/high` per ogni mappa e seed;
+- esegue scenari MP predefiniti (base, switch-aware, downstream-aware, fairness, platoon-safe, all-on);
+- salva risultati run-level e summary aggregati.
+
+Esempio:
+
+```bash
+python3 utils/run_ablation.py \
+  --maps manhattan6x6_100pc manhattan8x8_100pc \
+  --demands low medium high \
+  --num-seeds 5 \
+  --max-steps 5400
+```
+
+Output in:
+- `logs/ablation/<batch_id>/run_results.csv`
+- `logs/ablation/<batch_id>/summary_by_group.csv`
+- `logs/ablation/<batch_id>/summary_vs_base.csv`
+- `logs/ablation/<batch_id>/summary.md`
+
 ## Dove mettere la tua idea
 
 - Logica decisionale Max-Pressure: `src/controllers/max_pressure.py`
