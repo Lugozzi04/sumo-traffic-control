@@ -10,7 +10,8 @@ Base template per iniziare un progetto personale di controllo traffico in SUMO.
 - `src/controllers/`: controller semaforici (`fixed` e `mp` max-pressure MVP)
 - `src/metrics.py`: raccolta metriche base per veicolo
 - `data/populations/`: popolazioni di input
-- `logs/`: risultati CSV
+- `logs/simulations/`: output delle simulazioni singole (`runner.py`)
+- `logs/ablation/`: output batch/ablation (`utils/run_ablation.py`)
 
 ## Setup rapido
 
@@ -42,6 +43,13 @@ python3 runner.py \
   -p data/populations/manhattan3x3_demo.yaml \
   --controller fixed
 ```
+
+Output (default runner):
+- viene creata una cartella nuova per ogni run in `logs/simulations/`
+- formato: `sim_XXXX_YYYYMMDD_HHMMSS/`
+- dentro trovi:
+  - `vehicle_metrics.csv`
+  - `run_info.json` (parametri e metadata del run)
 
 Controller Max-Pressure MVP:
 
@@ -156,6 +164,7 @@ Script:
 Cosa fa:
 - genera popolazioni `low/medium/high` per ogni mappa e seed;
 - esegue scenari MP predefiniti (base, switch-aware, downstream-aware, fairness, platoon-safe, all-on);
+- usa preset scenario conservativi (tuning v1) per ridurre over-switch/over-penalty rispetto ai default grezzi;
 - salva risultati run-level e summary aggregati.
 
 Esempio:
@@ -170,12 +179,29 @@ python3 utils/run_ablation.py \
 
 Opzionale:
 - `--progress-interval <s>`: frequenza aggiornamento `progress.txt/.yaml` (default 15s).
+- `--jobs <N>`: parallelismo semplice tra scenari per ogni seed (default 1, es. 2/3/4).
+- `--scenario-pack <name>`: set scenari da usare (`tuned_v1` default, `tuning_matrix_v1` per tuning).
+- `--scenarios <nome1 nome2 ...>`: subset scenari del pack (utile per mini-run veloci).
+- `--list-scenarios`: stampa gli scenari disponibili nel pack selezionato ed esce.
 
 Nota:
 - lo script fa preflight automatico (`traci/sumolib/yaml`, comando `sumo`, mappe presenti);
 - se tutti i run falliscono, `progress.txt` termina in stato `ERRORE`;
 - se una parte fallisce, termina in `COMPLETATO_CON_ERRORI`.
 - `--batch-name` e' ignorato: il nome run e' sempre automatico e ordinato.
+
+Esempio tuning mirato (mini-matrix):
+
+```bash
+.venv/bin/python utils/run_ablation.py \
+  --maps manhattan6x6_100pc \
+  --demands low medium high \
+  --num-seeds 3 \
+  --jobs 3 \
+  --max-steps 5400 \
+  --scenario-pack tuning_matrix_v1 \
+  --scenarios mp_base mp_lta_g020 mp_lta_g030 mp_lta_g040 mp_nmin_only mp_lta_plus_nmin mp_downstream_b08 mp_downstream_b12 mp_downstream_b16 mp_platoon_x2 mp_platoon_x3 mp_platoon_x4 mp_fair_mu2 mp_fair_mu3 mp_fair_mu4
+```
 
 Output in:
 - `logs/ablation/progress.txt` (UNICO file progresso: sempre ultimo run lanciato)

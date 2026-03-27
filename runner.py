@@ -1,5 +1,8 @@
 import argparse
+import json
+import re
 import time
+from datetime import datetime
 from pathlib import Path
 
 import traci
@@ -16,6 +19,30 @@ from src.population import (
 )
 
 
+SIM_RUN_PATTERN = re.compile(r"^sim_(\d+)_")
+
+
+def allocate_simulation_output_dir() -> tuple[str, Path]:
+    simulations_root = logs_dir() / "simulations"
+    simulations_root.mkdir(parents=True, exist_ok=True)
+
+    max_index = 0
+    for child in simulations_root.iterdir():
+        if not child.is_dir():
+            continue
+        match = SIM_RUN_PATTERN.match(child.name)
+        if not match:
+            continue
+        max_index = max(max_index, int(match.group(1)))
+
+    run_index = max_index + 1
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    run_id = f"sim_{run_index:04d}_{timestamp}"
+    run_dir = simulations_root / run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+    return run_id, run_dir
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Runner template per simulazioni SUMO")
     parser.add_argument("-n", "--map-name", dest="map_name", required=True, help="Nome scenario (cartella in sumo_xml_files)")
@@ -25,6 +52,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--step-length", type=float, default=1.0, help="Durata step simulazione in secondi")
     parser.add_argument("--repeat", type=int, default=1, help="Ripeti l'esperimento e media i risultati")
     parser.add_argument("--max-steps", type=int, default=0, help="Stop anticipato (0 = nessun limite)")
+    parser.add_argument("--output-log", default="", help="Path CSV di output (opzionale)")
     parser.add_argument("--min-green", type=float, default=10.0, help="Minimo tempo di verde per phase hold")
     parser.add_argument("--max-green", type=float, default=120.0, help="Massimo tempo di verde prima di forzare rivalutazione")
     parser.add_argument("--switch-epsilon", type=float, default=0.0, help="Margine minimo di pressione per cambiare fase")
@@ -181,11 +209,30 @@ def main() -> None:
         all_runs.append(run_once(args, population_file))
 
     merged = aggregate_runs(all_runs)
-    logs_dir().mkdir(parents=True, exist_ok=True)
+    if args.output_log:
+        output = Path(args.output_log)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        run_dir: Path | None = None
+    else:
+        _, run_dir = allocate_simulation_output_dir()
+        output = run_dir / "vehicle_metrics.csv"
 
-    ts = int(time.time())
-    output = logs_dir() / f"log_{args.map_name}_{args.controller}_{ts}.csv"
     write_metrics_csv(output, merged)
+    if run_dir is not None:
+        run_info = {
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "map_name": args.map_name,
+            "population_file": str(population_file),
+            "controller": args.controller,
+            "repeat": args.repeat,
+            "step_length": args.step_length,
+            "max_steps": args.max_steps,
+            "gui": args.gui,
+            "output_metrics_file": str(output),
+        }
+        (run_dir / "run_info.json").write_text(json.dumps(run_info, indent=2), encoding="utf-8")
+        print(f"Simulazione salvata in: {run_dir}")
+
     print(f"Log salvato in: {output}")
 
 

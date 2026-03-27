@@ -9,6 +9,7 @@ import statistics
 import subprocess
 import sys
 import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -34,24 +35,365 @@ DEMANDS: dict[str, DemandPreset] = {
     "high": DemandPreset(vehicles=7000, start_time=0.0, end_time=3600.0),
 }
 
-SCENARIOS: tuple[Scenario, ...] = (
+TUNED_V1_SCENARIOS: tuple[Scenario, ...] = (
     Scenario("mp_base", ()),
-    Scenario("mp_switch_aware", ("--lost-time-aware", "--nmin-dynamic")),
-    Scenario("mp_downstream_aware", ("--spillback", "--downstream-penalty")),
-    Scenario("mp_fairness", ("--fairness",)),
-    Scenario("mp_platoon_safe", ("--platoon-extension", "--spillback", "--downstream-penalty")),
+    # LTA-only and conservative: avoid the very large hysteresis that was hurting low/medium demand.
+    Scenario(
+        "mp_switch_aware",
+        (
+            "--lost-time-aware",
+            "--lost-time-sat-flow",
+            "0.35",
+            "--lost-time-gain",
+            "0.35",
+        ),
+    ),
+    # Keep anti-spillback + downstream penalty but with softer thresholds/weights.
+    Scenario(
+        "mp_downstream_aware",
+        (
+            "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-penalty",
+            "--downstream-beta",
+            "1.50",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_fairness",
+        (
+            "--fairness",
+            "--fairness-mu",
+            "3.0",
+            "--fairness-w-half",
+            "45.0",
+        ),
+    ),
+    # Conservative platoon extension to reduce over-holding green when platoons are weak/noisy.
+    Scenario(
+        "mp_platoon_safe",
+        (
+            "--platoon-extension",
+            "--platoon-headway-threshold",
+            "1.6",
+            "--platoon-gap-out-seconds",
+            "1.6",
+            "--platoon-max-extra-green",
+            "3.0",
+            "--platoon-guard-occ",
+            "0.80",
+            "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-penalty",
+            "--downstream-beta",
+            "1.00",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
     Scenario(
         "mp_all_on",
         (
             "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
             "--lost-time-aware",
+            "--lost-time-sat-flow",
+            "0.35",
+            "--lost-time-gain",
+            "0.30",
             "--downstream-penalty",
+            "--downstream-beta",
+            "1.00",
+            "--downstream-alpha",
+            "0.30",
             "--fairness",
+            "--fairness-mu",
+            "3.0",
+            "--fairness-w-half",
+            "45.0",
             "--nmin-dynamic",
+            "--nmin-alpha",
+            "0.60",
+            "--nmin-floor",
+            "1",
+            "--nmin-empty-release-seconds",
+            "1.2",
             "--platoon-extension",
+            "--platoon-headway-threshold",
+            "1.6",
+            "--platoon-gap-out-seconds",
+            "1.6",
+            "--platoon-max-extra-green",
+            "3.0",
+            "--platoon-guard-occ",
+            "0.80",
         ),
     ),
 )
+
+TUNING_MATRIX_V1_SCENARIOS: tuple[Scenario, ...] = (
+    Scenario("mp_base", ()),
+    Scenario(
+        "mp_lta_g020",
+        (
+            "--lost-time-aware",
+            "--lost-time-sat-flow",
+            "0.35",
+            "--lost-time-gain",
+            "0.20",
+        ),
+    ),
+    Scenario(
+        "mp_lta_g030",
+        (
+            "--lost-time-aware",
+            "--lost-time-sat-flow",
+            "0.35",
+            "--lost-time-gain",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_lta_g040",
+        (
+            "--lost-time-aware",
+            "--lost-time-sat-flow",
+            "0.35",
+            "--lost-time-gain",
+            "0.40",
+        ),
+    ),
+    Scenario(
+        "mp_nmin_only",
+        (
+            "--nmin-dynamic",
+            "--lost-time-sat-flow",
+            "0.35",
+            "--nmin-alpha",
+            "0.60",
+            "--nmin-floor",
+            "1",
+            "--nmin-empty-release-seconds",
+            "1.2",
+        ),
+    ),
+    Scenario(
+        "mp_lta_plus_nmin",
+        (
+            "--lost-time-aware",
+            "--nmin-dynamic",
+            "--lost-time-sat-flow",
+            "0.35",
+            "--lost-time-gain",
+            "0.30",
+            "--nmin-alpha",
+            "0.60",
+            "--nmin-floor",
+            "1",
+            "--nmin-empty-release-seconds",
+            "1.2",
+        ),
+    ),
+    Scenario(
+        "mp_downstream_b08",
+        (
+            "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-penalty",
+            "--downstream-beta",
+            "0.8",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_downstream_b12",
+        (
+            "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-penalty",
+            "--downstream-beta",
+            "1.2",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_downstream_b16",
+        (
+            "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-penalty",
+            "--downstream-beta",
+            "1.6",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_platoon_x2",
+        (
+            "--platoon-extension",
+            "--platoon-headway-threshold",
+            "1.6",
+            "--platoon-gap-out-seconds",
+            "1.6",
+            "--platoon-max-extra-green",
+            "2.0",
+            "--platoon-guard-occ",
+            "0.80",
+            "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-penalty",
+            "--downstream-beta",
+            "1.00",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_platoon_x3",
+        (
+            "--platoon-extension",
+            "--platoon-headway-threshold",
+            "1.6",
+            "--platoon-gap-out-seconds",
+            "1.6",
+            "--platoon-max-extra-green",
+            "3.0",
+            "--platoon-guard-occ",
+            "0.80",
+            "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-penalty",
+            "--downstream-beta",
+            "1.00",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_platoon_x4",
+        (
+            "--platoon-extension",
+            "--platoon-headway-threshold",
+            "1.6",
+            "--platoon-gap-out-seconds",
+            "1.6",
+            "--platoon-max-extra-green",
+            "4.0",
+            "--platoon-guard-occ",
+            "0.80",
+            "--spillback",
+            "--spillback-on",
+            "0.95",
+            "--spillback-off",
+            "0.85",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-penalty",
+            "--downstream-beta",
+            "1.00",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_fair_mu2",
+        (
+            "--fairness",
+            "--fairness-mu",
+            "2.0",
+            "--fairness-w-half",
+            "45.0",
+        ),
+    ),
+    Scenario(
+        "mp_fair_mu3",
+        (
+            "--fairness",
+            "--fairness-mu",
+            "3.0",
+            "--fairness-w-half",
+            "45.0",
+        ),
+    ),
+    Scenario(
+        "mp_fair_mu4",
+        (
+            "--fairness",
+            "--fairness-mu",
+            "4.0",
+            "--fairness-w-half",
+            "45.0",
+        ),
+    ),
+)
+
+SCENARIO_PACKS: dict[str, tuple[Scenario, ...]] = {
+    "tuned_v1": TUNED_V1_SCENARIOS,
+    "tuning_matrix_v1": TUNING_MATRIX_V1_SCENARIOS,
+}
 
 STEP_PATTERN = re.compile(r"Step #([0-9]+(?:\.[0-9]+)?)")
 RUN_DIR_PATTERN = re.compile(r"^run_(\d+)_")
@@ -74,6 +416,24 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--num-seeds", type=int, default=5, help="Numero seed popolazione per ogni mappa/domanda")
     parser.add_argument("--seed-start", type=int, default=1, help="Seed iniziale (incluso)")
+    parser.add_argument(
+        "--scenario-pack",
+        choices=sorted(SCENARIO_PACKS.keys()),
+        default="tuned_v1",
+        help="Pacchetto scenari da eseguire",
+    )
+    parser.add_argument(
+        "--scenarios",
+        nargs="+",
+        default=[],
+        help="Subset opzionale di scenari (nomi scenario del pack selezionato)",
+    )
+    parser.add_argument(
+        "--list-scenarios",
+        action="store_true",
+        help="Mostra gli scenari disponibili nel pack selezionato ed esce",
+    )
+    parser.add_argument("--jobs", type=int, default=1, help="Numero massimo di simulazioni in parallelo (1 = seriale)")
     parser.add_argument("--step-length", type=float, default=1.0, help="Step simulation in secondi")
     parser.add_argument("--max-steps", type=int, default=5400, help="Tetto massimo simulazione (0 = nessun limite)")
     parser.add_argument(
@@ -89,8 +449,16 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--python-exe", default=sys.executable, help="Interprete python da usare per subprocess")
     args = parser.parse_args()
+    if args.jobs <= 0:
+        parser.error("--jobs deve essere >= 1")
     if args.progress_interval <= 0:
         parser.error("--progress-interval deve essere > 0")
+    valid_names = {scenario.name for scenario in SCENARIO_PACKS[args.scenario_pack]}
+    unknown = sorted({name for name in args.scenarios if name not in valid_names})
+    if unknown:
+        parser.error(
+            f"--scenarios contiene nomi non validi per pack '{args.scenario_pack}': {', '.join(unknown)}"
+        )
     return args
 
 
@@ -327,9 +695,149 @@ def preflight_checks(args: argparse.Namespace, root: Path) -> None:
         raise RuntimeError("Preflight fallito: mappe non trovate:\n" + "\n".join(missing_maps))
 
 
+def fill_failed_metrics(base_row: dict) -> dict:
+    base_row.update(
+        {
+            "log_file": "",
+            "vehicles_count": 0,
+            "mean_wait_s": 0.0,
+            "p95_wait_s": 0.0,
+            "mean_travel_s": 0.0,
+            "p95_travel_s": 0.0,
+            "mean_speed_mps": 0.0,
+            "mean_co2_g": 0.0,
+            "mean_fuel_g": 0.0,
+        }
+    )
+    return base_row
+
+
+def build_case_id(map_name: str, demand_name: str, pop_seed: int, scenario_name: str) -> str:
+    return f"{map_name}__{demand_name}__seed{pop_seed}__{scenario_name}"
+
+
+def execute_case(
+    *,
+    args: argparse.Namespace,
+    root: Path,
+    runs_dir: Path,
+    map_name: str,
+    demand_name: str,
+    pop_seed: int,
+    scenario: Scenario,
+    population_file: Path,
+) -> tuple[str, dict]:
+    case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
+    run_dir = runs_dir / case_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    live_log_file = run_dir / "stdout_stderr.log"
+    case_metrics_file = run_dir / "vehicle_metrics.csv"
+
+    cmd = [
+        args.python_exe,
+        "runner.py",
+        "-n",
+        map_name,
+        "-p",
+        str(population_file),
+        "--controller",
+        "mp",
+        "--step-length",
+        str(args.step_length),
+        "--output-log",
+        str(case_metrics_file),
+    ]
+    if args.max_steps > 0:
+        cmd.extend(["--max-steps", str(args.max_steps)])
+    cmd.extend(scenario.flags)
+
+    wall_start = time.time()
+    try:
+        return_code, output_text = run_runner_command_with_live_progress(
+            cmd=cmd,
+            cwd=root,
+            live_log_file=live_log_file,
+            progress_interval=max(1.0, args.progress_interval),
+            on_tick=lambda _step, _elapsed: None,
+        )
+    except Exception:
+        wall_seconds = time.time() - wall_start
+        base_row = {
+            "run_id": case_id,
+            "map": map_name,
+            "demand": demand_name,
+            "pop_seed": pop_seed,
+            "scenario": scenario.name,
+            "flags": " ".join(scenario.flags),
+            "population_file": str(population_file),
+            "status": "fail",
+            "wall_seconds": round(wall_seconds, 3),
+        }
+        return case_id, fill_failed_metrics(base_row)
+
+    wall_seconds = time.time() - wall_start
+    base_row = {
+        "run_id": case_id,
+        "map": map_name,
+        "demand": demand_name,
+        "pop_seed": pop_seed,
+        "scenario": scenario.name,
+        "flags": " ".join(scenario.flags),
+        "population_file": str(population_file),
+        "status": "ok" if return_code == 0 else "fail",
+        "wall_seconds": round(wall_seconds, 3),
+    }
+
+    if return_code != 0:
+        return case_id, fill_failed_metrics(base_row)
+
+    try:
+        log_file = parse_runner_log_path(output_text)
+        if not log_file.is_absolute():
+            log_file = (root / log_file).resolve()
+        if not log_file.exists():
+            raise FileNotFoundError(f"Log file non trovato: {log_file}")
+
+        metrics = parse_vehicle_log(log_file)
+
+        base_row.update(
+            {
+                "log_file": str(log_file),
+                "vehicles_count": int(metrics["vehicles_count"]),
+                "mean_wait_s": round(metrics["mean_wait_s"], 6),
+                "p95_wait_s": round(metrics["p95_wait_s"], 6),
+                "mean_travel_s": round(metrics["mean_travel_s"], 6),
+                "p95_travel_s": round(metrics["p95_travel_s"], 6),
+                "mean_speed_mps": round(metrics["mean_speed_mps"], 6),
+                "mean_co2_g": round(metrics["mean_co2_g"], 6),
+                "mean_fuel_g": round(metrics["mean_fuel_g"], 6),
+            }
+        )
+    except Exception:
+        base_row["status"] = "fail"
+        return case_id, fill_failed_metrics(base_row)
+
+    return case_id, base_row
+
+
 def main() -> None:
     args = parse_args()
     root = Path(__file__).resolve().parents[1]
+    scenario_pack = SCENARIO_PACKS[args.scenario_pack]
+    if args.list_scenarios:
+        print(f"Scenario pack: {args.scenario_pack}")
+        for scenario in scenario_pack:
+            flags = " ".join(scenario.flags) if scenario.flags else "(none)"
+            print(f"- {scenario.name}: {flags}")
+        return
+
+    if args.scenarios:
+        selected_names = set(args.scenarios)
+        selected_scenarios = tuple(scenario for scenario in scenario_pack if scenario.name in selected_names)
+    else:
+        selected_scenarios = scenario_pack
+    if not selected_scenarios:
+        raise RuntimeError("Nessuno scenario selezionato")
 
     ablation_root = root / "logs" / "ablation"
     ablation_root.mkdir(parents=True, exist_ok=True)
@@ -348,7 +856,9 @@ def main() -> None:
         "maps": args.maps,
         "demands": args.demands,
         "num_seeds": args.num_seeds,
+        "jobs": args.jobs,
         "seed_start": args.seed_start,
+        "scenario_pack": args.scenario_pack,
         "step_length": args.step_length,
         "max_steps": args.max_steps,
         "progress_interval": args.progress_interval,
@@ -361,13 +871,13 @@ def main() -> None:
             }
             for key in args.demands
         },
-        "scenarios": [{"name": scenario.name, "flags": list(scenario.flags)} for scenario in SCENARIOS],
+        "scenarios": [{"name": scenario.name, "flags": list(scenario.flags)} for scenario in selected_scenarios],
     }
     with (batch_dir / "config_resolved.yaml").open("w", encoding="utf-8") as fd:
         yaml.safe_dump(config, fd, sort_keys=False)
 
     seed_values = [args.seed_start + offset for offset in range(args.num_seeds)]
-    total_runs = len(args.maps) * len(args.demands) * len(seed_values) * len(SCENARIOS)
+    total_runs = len(args.maps) * len(args.demands) * len(seed_values) * len(selected_scenarios)
     current_run = 0
 
     run_rows: list[dict] = []
@@ -396,7 +906,8 @@ def main() -> None:
         runs_failed = sum(1 for row in run_rows if row["status"] != "ok")
         remaining_runs = max(0, total_runs - runs_done)
         avg_run_seconds = safe_mean([float(row["wall_seconds"]) for row in run_rows]) if run_rows else 0.0
-        eta_seconds = avg_run_seconds * remaining_runs if avg_run_seconds > 0 else None
+        parallel_factor = max(1, min(args.jobs, len(selected_scenarios)))
+        eta_seconds = (avg_run_seconds * remaining_runs / parallel_factor) if avg_run_seconds > 0 else None
 
         run_elapsed = (now - current_run_started_at) if current_run_started_at is not None else None
         run_progress_pct: float | None = None
@@ -443,6 +954,7 @@ def main() -> None:
             f"ultimo aggiornamento: {payload['last_update']}",
             f"prossimo aggiornamento atteso entro: {payload['next_update_expected']} (ogni {args.progress_interval:.1f}s)",
             f"attivita corrente: {current_activity}",
+            f"parallelismo: x{max(1, min(args.jobs, len(selected_scenarios)))}",
             f"run completati: {runs_done}/{total_runs} (ok={runs_success}, fail={runs_failed})",
             f"tempo batch trascorso: {format_eta(now - script_start)}",
             f"stima tempo rimanente: {payload['eta_remaining_hms']}",
@@ -495,116 +1007,112 @@ def main() -> None:
                             f"Errore generazione popolazione {population_file}\n{generate_output}"
                         )
 
-                    for scenario in SCENARIOS:
-                        current_run += 1
-                        case_id = f"{map_name}__{demand_name}__seed{pop_seed}__{scenario.name}"
-                        current_run_id = case_id
-                        current_run_meta = (map_name, demand_name, pop_seed, scenario.name)
-                        current_run_started_at = time.time()
-                        current_run_step = None
-                        current_activity = f"esecuzione {current_run}/{total_runs}"
-                        write_progress_files(status="running")
-
-                        print(f"[{current_run}/{total_runs}] {case_id}")
-
-                        cmd = [
-                            args.python_exe,
-                            "runner.py",
-                            "-n",
-                            map_name,
-                            "-p",
-                            str(population_file),
-                            "--controller",
-                            "mp",
-                            "--step-length",
-                            str(args.step_length),
-                        ]
-                        if args.max_steps > 0:
-                            cmd.extend(["--max-steps", str(args.max_steps)])
-                        cmd.extend(scenario.flags)
-
-                        run_dir = runs_dir / case_id
-                        run_dir.mkdir(parents=True, exist_ok=True)
-                        live_log_file = run_dir / "stdout_stderr.log"
-
-                        def on_runner_tick(step_value: float | None, _elapsed_seconds: float) -> None:
-                            nonlocal current_run_step
-                            current_run_step = step_value
+                    if args.jobs == 1:
+                        for scenario in selected_scenarios:
+                            current_run += 1
+                            case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
+                            current_run_id = case_id
+                            current_run_meta = (map_name, demand_name, pop_seed, scenario.name)
+                            current_run_started_at = time.time()
+                            current_run_step = None
+                            current_activity = f"esecuzione {current_run}/{total_runs}"
                             write_progress_files(status="running")
 
-                        wall_start = time.time()
-                        return_code, output_text = run_runner_command_with_live_progress(
-                            cmd=cmd,
-                            cwd=root,
-                            live_log_file=live_log_file,
-                            progress_interval=args.progress_interval,
-                            on_tick=on_runner_tick,
-                        )
-                        wall_seconds = time.time() - wall_start
-
-                        base_row = {
-                            "run_id": case_id,
-                            "map": map_name,
-                            "demand": demand_name,
-                            "pop_seed": pop_seed,
-                            "scenario": scenario.name,
-                            "flags": " ".join(scenario.flags),
-                            "population_file": str(population_file),
-                            "status": "ok" if return_code == 0 else "fail",
-                            "wall_seconds": round(wall_seconds, 3),
-                        }
-
-                        if return_code != 0:
-                            base_row.update(
-                                {
-                                    "log_file": "",
-                                    "vehicles_count": 0,
-                                    "mean_wait_s": 0.0,
-                                    "p95_wait_s": 0.0,
-                                    "mean_travel_s": 0.0,
-                                    "p95_travel_s": 0.0,
-                                    "mean_speed_mps": 0.0,
-                                    "mean_co2_g": 0.0,
-                                    "mean_fuel_g": 0.0,
-                                }
+                            print(f"[{current_run}/{total_runs}] {case_id}")
+                            _, row = execute_case(
+                                args=args,
+                                root=root,
+                                runs_dir=runs_dir,
+                                map_name=map_name,
+                                demand_name=demand_name,
+                                pop_seed=pop_seed,
+                                scenario=scenario,
+                                population_file=population_file,
                             )
-                            run_rows.append(base_row)
+                            run_rows.append(row)
+                            current_run_started_at = None
+                            current_run_step = None
                             write_progress_files(status="running")
-                            continue
-
-                        log_file = parse_runner_log_path(output_text)
-                        if not log_file.is_absolute():
-                            log_file = (root / log_file).resolve()
-                        if not log_file.exists():
-                            raise RuntimeError(f"Log file non trovato: {log_file}")
-
-                        copied_log_file = run_dir / "vehicle_metrics.csv"
-                        copied_log_file.write_text(log_file.read_text(encoding="utf-8"), encoding="utf-8")
-                        metrics = parse_vehicle_log(log_file)
-                        try:
-                            logs_root = (root / "logs").resolve()
-                            if log_file.resolve().is_relative_to(logs_root):
-                                log_file.unlink(missing_ok=True)
-                        except OSError:
-                            pass
-
-                        base_row.update(
-                            {
-                                "log_file": str(copied_log_file),
-                                "vehicles_count": int(metrics["vehicles_count"]),
-                                "mean_wait_s": round(metrics["mean_wait_s"], 6),
-                                "p95_wait_s": round(metrics["p95_wait_s"], 6),
-                                "mean_travel_s": round(metrics["mean_travel_s"], 6),
-                                "p95_travel_s": round(metrics["p95_travel_s"], 6),
-                                "mean_speed_mps": round(metrics["mean_speed_mps"], 6),
-                                "mean_co2_g": round(metrics["mean_co2_g"], 6),
-                                "mean_fuel_g": round(metrics["mean_fuel_g"], 6),
-                            }
+                    else:
+                        max_workers = max(1, min(args.jobs, len(selected_scenarios)))
+                        current_activity = (
+                            f"esecuzione parallela seed{pop_seed} ({max_workers} worker, {len(selected_scenarios)} scenari)"
                         )
-                        run_rows.append(base_row)
+                        current_run_meta = None
                         current_run_started_at = None
                         current_run_step = None
                         write_progress_files(status="running")
+
+                        futures = {}
+                        active_case_ids: set[str] = set()
+                        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                            for scenario in selected_scenarios:
+                                current_run += 1
+                                case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
+                                print(f"[{current_run}/{total_runs}] {case_id} (queued)")
+                                future = executor.submit(
+                                    execute_case,
+                                    args=args,
+                                    root=root,
+                                    runs_dir=runs_dir,
+                                    map_name=map_name,
+                                    demand_name=demand_name,
+                                    pop_seed=pop_seed,
+                                    scenario=scenario,
+                                    population_file=population_file,
+                                )
+                                futures[future] = (case_id, scenario)
+                                active_case_ids.add(case_id)
+
+                            current_run_id = ", ".join(sorted(active_case_ids)[:3])
+                            if len(active_case_ids) > 3:
+                                current_run_id += " ..."
+                            write_progress_files(status="running")
+
+                            pending = set(futures.keys())
+                            while pending:
+                                done, pending = wait(
+                                    pending,
+                                    timeout=args.progress_interval,
+                                    return_when=FIRST_COMPLETED,
+                                )
+                                if not done:
+                                    current_activity = (
+                                        f"esecuzione parallela seed{pop_seed} in corso "
+                                        f"(completati {len(run_rows)}/{total_runs})"
+                                    )
+                                    current_run_id = ", ".join(sorted(active_case_ids)[:3])
+                                    if len(active_case_ids) > 3:
+                                        current_run_id += " ..."
+                                    write_progress_files(status="running")
+                                    continue
+
+                                for future in done:
+                                    case_id, scenario = futures[future]
+                                    active_case_ids.discard(case_id)
+                                    try:
+                                        _, row = future.result()
+                                    except Exception:
+                                        base_row = {
+                                            "run_id": case_id,
+                                            "map": map_name,
+                                            "demand": demand_name,
+                                            "pop_seed": pop_seed,
+                                            "scenario": scenario.name,
+                                            "flags": " ".join(scenario.flags),
+                                            "population_file": str(population_file),
+                                            "status": "fail",
+                                            "wall_seconds": 0.0,
+                                        }
+                                        row = fill_failed_metrics(base_row)
+                                    run_rows.append(row)
+                                    current_activity = (
+                                        f"esecuzione parallela seed{pop_seed} completati {len(run_rows)}/{total_runs}"
+                                    )
+                                    current_run_id = ", ".join(sorted(active_case_ids)[:3])
+                                    if len(active_case_ids) > 3:
+                                        current_run_id += " ..."
+                                    write_progress_files(status="running")
     except KeyboardInterrupt:
         current_activity = "interrotto da utente"
         write_progress_files(status="stopped", error_message="interrotto da tastiera (CTRL+C)")
@@ -703,10 +1211,10 @@ def main() -> None:
         base_travel = float(baseline["avg_mean_travel_s"])
 
         for scenario_name, row in sorted(scenarios.items()):
-            wait = float(row["avg_mean_wait_s"])
-            travel = float(row["avg_mean_travel_s"])
-            wait_delta = ((wait - base_wait) / base_wait * 100.0) if base_wait > 0 else 0.0
-            travel_delta = ((travel - base_travel) / base_travel * 100.0) if base_travel > 0 else 0.0
+            mean_wait_value = float(row["avg_mean_wait_s"])
+            mean_travel_value = float(row["avg_mean_travel_s"])
+            wait_delta = ((mean_wait_value - base_wait) / base_wait * 100.0) if base_wait > 0 else 0.0
+            travel_delta = ((mean_travel_value - base_travel) / base_travel * 100.0) if base_travel > 0 else 0.0
             delta_rows.append(
                 {
                     "map": map_name,

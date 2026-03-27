@@ -1,0 +1,207 @@
+APPUNTI - ANALISI RUN 0007 E PIANO MIGLIORAMENTI
+=================================================
+
+Run analizzato:
+- run_id: run_0007_20260325_192047
+- comando batch:
+  nohup .venv/bin/python utils/run_ablation.py \
+    --maps manhattan6x6_100pc manhattan8x8_100pc \
+    --demands low medium high \
+    --num-seeds 5 \
+    --jobs 3 \
+    --max-steps 5400 \
+    --progress-interval 15 > ablation_nohup.log 2>&1 &
+
+Scenari testati:
+- mp_base
+- mp_fairness
+- mp_switch_aware (lost-time-aware + nmin-dynamic)
+- mp_downstream_aware (spillback + downstream-penalty)
+- mp_platoon_safe (platoon-extension + spillback + downstream-penalty)
+- mp_all_on (tutti i toggle ON)
+
+Parametri di default usati nel test:
+- generali MP: min_green=10, max_green=120, switch_epsilon=0
+- LTA: lost_time_sat_flow=0.5, lost_time_gain=1.0
+- fairness: mu=5.0, w_half=30.0
+- downstream: beta=5.0, alpha=0.5
+- spillback: on=0.90, off=0.75, min_halts=1, alpha=0.5
+- nmin: alpha=1.0, floor=2, empty_release_seconds=2.0
+- platoon: headway=2.0, gap_out=2.5, max_extra_green=8.0, guard_occ=0.85
+
+
+RISULTATI SINTETICI
+===================
+
+Vincitori per gruppo (6 gruppi totali):
+- mp_fairness: 5/6
+- mp_base: 1/6
+
+Pattern forte:
+- mp_fairness e mp_base sono sempre molto vicini e in testa.
+- mp_switch_aware e molto peggiorativo, soprattutto low/medium:
+  - fino a +167.60% wait vs base (8x8 low)
+  - fino a +114.98% wait vs base (6x6 low)
+- mp_downstream_aware e mp_platoon_safe peggiorano in modo stabile (~+5%..+14% wait).
+- mp_all_on peggiora quasi ovunque, in alcuni casi molto (+38.97% wait su 8x8 low).
+
+Media delta wait (6 gruppi, stima rapida):
+- fairness: ~ -0.33%
+- base: 0%
+- platoon_safe: ~ +8.66%
+- downstream_aware: ~ +9.26%
+- all_on: ~ +16.97%
+- switch_aware: ~ +69.25%
+
+
+INTERPRETAZIONE TECNICA (IPOTESI)
+=================================
+
+1) switch_aware troppo conservativo
+- combinare LTA + Nmin con questi default blocca/smorza troppo i cambi fase;
+- in domanda bassa/media il costo in reattivita supera il beneficio.
+
+2) downstream/spillback troppo aggressivi per queste mappe
+- beta=5.0 e soglie spillback relativamente strette possono "strozzare" movimenti utili;
+- risultato: piu attesa media anche senza reale rischio di gridlock severo.
+
+3) platoon extension non ripaga coi default
+- possibile over-hold del verde o attivazioni non allineate ai pattern reali degli arrivi;
+- combinata con downstream/spillback erode performance media.
+
+4) fairness e calibrata bene
+- piccolo bonus, funzione saturata, non domina la pressione;
+- riduce starvation senza penalizzare throughput in modo visibile.
+
+
+PIANO MIGLIORAMENTI (ORDINE CONSIGLIATO)
+========================================
+
+Fase A - mettere in sicurezza switch_aware (priorita alta)
+- separare test "LTA only" e "Nmin only" (oggi sono accoppiati nello stesso scenario).
+- target: capire chi dei due causa il grosso del degrado.
+
+Fase B - tuning LTA (se LTA aiuta ma e troppo forte)
+- provare: lost_time_gain in {0.2, 0.4, 0.6}
+- provare: lost_time_sat_flow in {0.30, 0.40, 0.50}
+
+Fase C - tuning Nmin (se Nmin blocca troppo)
+- provare: nmin_alpha in {0.2, 0.4, 0.6}
+- provare: nmin_floor in {1, 2}
+- provare: nmin_empty_release_seconds in {0.8, 1.2, 2.0}
+
+Fase D - rendere downstream meno punitivo
+- provare: downstream_beta in {1.5, 2.5, 3.5}
+- spillback meno aggressivo: on/off in {0.95/0.80, 0.93/0.78}
+
+Fase E - platoon conservative tuning
+- provare: platoon_max_extra_green in {3, 5}
+- provare: platoon_headway_threshold in {1.6, 2.0}
+
+
+NOTA OPERATIVA IMPORTANTE
+=========================
+
+Con lo script attuale run_ablation, gli scenari usano soprattutto toggle ON/OFF.
+Per un tuning serio dei parametri continui (gain, beta, soglie, ecc.) conviene:
+- aggiungere pass-through di questi parametri in run_ablation, oppure
+- creare scenari dedicati nel codice con parametri diversi.
+
+Obiettivo pratico:
+- mantenere fairness come baseline forte;
+- recuperare almeno una versione switch_aware/downstream_aware che batta mp_base
+  almeno su medium/high senza collasso su low.
+
+
+AGGIORNAMENTO CODICE (TUNING V1 APPLICATO - 2026-03-27)
+=======================================================
+
+File aggiornato:
+- utils/run_ablation.py
+
+Cosa e stato cambiato negli scenari predefiniti:
+
+1) mp_switch_aware
+- prima: --lost-time-aware + --nmin-dynamic (default molto aggressivi)
+- ora: LTA only, conservativo
+  - --lost-time-aware
+  - --lost-time-sat-flow 0.35
+  - --lost-time-gain 0.35
+
+2) mp_downstream_aware
+- spillback meno aggressivo:
+  - on/off 0.95/0.85
+  - min_halts 2
+  - alpha 0.30
+- penalita downstream ridotta:
+  - beta 1.50
+  - alpha 0.30
+
+3) mp_fairness
+- fairness resa piu dolce:
+  - mu 3.0
+  - w_half 45.0
+
+4) mp_platoon_safe
+- estensione platoon conservativa:
+  - headway 1.6
+  - gap_out 1.6
+  - max_extra_green 3.0
+  - guard_occ 0.80
+- con spillback/downstream soft (come sopra ma beta=1.00)
+
+5) mp_all_on
+- tutti i toggle ON ma con parametri conservativi:
+  - spillback soft (0.95/0.85, min_halts 2, alpha 0.30)
+  - LTA soft (sat_flow 0.35, gain 0.30)
+  - downstream soft (beta 1.00, alpha 0.30)
+  - fairness soft (mu 3.0, w_half 45.0)
+  - Nmin soft (alpha 0.60, floor 1, empty_release 1.2)
+  - platoon soft (1.6, 1.6, 3.0, guard 0.80)
+
+Ragione tecnica:
+- ridurre over-penalizzazione e over-hold emersi nel run_0007;
+- mantenere il comportamento "realistico/safe" ma recuperare reattivita.
+
+
+PROSSIMI PARAMETRI DA TESTARE (SECONDO GIRO)
+============================================
+
+Priorita alta:
+- LTA: lost_time_gain in {0.20, 0.30, 0.40}
+- downstream: beta in {0.8, 1.2, 1.6}
+- platoon: max_extra_green in {2.0, 3.0, 4.0}
+
+Priorita media:
+- fairness_mu in {2.0, 3.0, 4.0}
+- fairness_w_half in {30, 45, 60}
+- spillback_on/off in {0.96/0.86, 0.95/0.85, 0.94/0.84}
+
+Per isolare meglio le cause, adesso aggiunti nel pack tuning_matrix_v1:
+- scenario "mp_nmin_only"
+- scenario "mp_lta_plus_nmin" (separato da switch_aware puro)
+
+
+COMANDI OPERATIVI (DOPO GLI ULTIMI UPDATE)
+==========================================
+
+Batch standard (preset tuned_v1):
+
+  .venv/bin/python utils/run_ablation.py \
+    --maps manhattan6x6_100pc manhattan8x8_100pc \
+    --demands low medium high \
+    --num-seeds 5 \
+    --jobs 3 \
+    --max-steps 5400 \
+    --progress-interval 15
+
+Mini tuning matrix (scenario-pack dedicato):
+
+  .venv/bin/python utils/run_ablation.py \
+    --maps manhattan6x6_100pc \
+    --demands low medium high \
+    --num-seeds 3 \
+    --jobs 3 \
+    --max-steps 5400 \
+    --scenario-pack tuning_matrix_v1 \
+    --scenarios mp_base mp_lta_g020 mp_lta_g030 mp_lta_g040 mp_nmin_only mp_lta_plus_nmin mp_downstream_b08 mp_downstream_b12 mp_downstream_b16 mp_platoon_x2 mp_platoon_x3 mp_platoon_x4 mp_fair_mu2 mp_fair_mu3 mp_fair_mu4
