@@ -616,6 +616,27 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
             writer.writerow(row)
 
 
+def write_text_report_via_script(
+    *,
+    python_exe: str,
+    root: Path,
+    script_relpath: str,
+    run_dir: Path,
+    output_file: Path,
+) -> None:
+    cmd = [python_exe, script_relpath, "--run-dir", str(run_dir)]
+    code, output = run_command(cmd, root)
+    if code == 0:
+        output_file.write_text(output, encoding="utf-8")
+    else:
+        output_file.write_text(
+            "Errore generazione report.\n"
+            f"Comando: {' '.join(cmd)}\n\n"
+            f"Output:\n{output}",
+            encoding="utf-8",
+        )
+
+
 def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
     sep = ["---"] * len(headers)
     lines = [
@@ -1304,6 +1325,22 @@ def main() -> None:
 
     (batch_dir / "summary.md").write_text("\n".join(md_lines), encoding="utf-8")
 
+    # Extra human-readable reports saved inside each run directory.
+    write_text_report_via_script(
+        python_exe=args.python_exe,
+        root=root,
+        script_relpath="utils/show_ablation_table.py",
+        run_dir=batch_dir,
+        output_file=batch_dir / "table.txt",
+    )
+    write_text_report_via_script(
+        python_exe=args.python_exe,
+        root=root,
+        script_relpath="utils/show_ablation_winners.py",
+        run_dir=batch_dir,
+        output_file=batch_dir / "winners.txt",
+    )
+
     current_activity = "batch completato"
     current_run_id = ""
     current_run_meta = None
@@ -1325,6 +1362,8 @@ def main() -> None:
     print(f"- Summary by group: {summary_file}")
     print(f"- Summary vs base:  {delta_file}")
     print(f"- Markdown report:  {batch_dir / 'summary.md'}")
+    print(f"- Table report:     {batch_dir / 'table.txt'}")
+    print(f"- Winners report:   {batch_dir / 'winners.txt'}")
     print(f"- Progress (ultimo run): {ablation_root / 'progress.txt'}")
     print(f"- Puntatore latest:      {ablation_root / 'latest_run.txt'}")
 

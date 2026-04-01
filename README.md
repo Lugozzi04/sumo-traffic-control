@@ -257,3 +257,24 @@ Nota: `--lost-time-sat-flow` e' condiviso tra `--lost-time-aware` e `--nmin-dyna
 - `utils/list_maps.py`: elenca gli scenari disponibili
 - `utils/routes_editor.py`: riassegna ID progressivi alle route (`route1`, `route2`, ...)
 - `utils/adjust_routes.py`: filtra route con edge iniziale non idoneo (utile su mappe reali)
+- `utils/build_bologna_fixed.py`: rigenera una variante stabilizzata della mappa `bologna`
+
+## Bologna fixed
+
+Per rigenerare la mappa corretta:
+
+```bash
+.venv/bin/python utils/build_bologna_fixed.py
+```
+
+Questo crea `sumo_xml_files/bologna_fixed/` con:
+- `bologna_fixed.net.xml` (net rigenerata + patch semafori unsafe)
+- `bologna_fixed.rou.xml` (route base copiata)
+- `bologna_fixed.sumocfg`
+
+GUI con veicoli (debug visuale):
+
+```bash
+.venv/bin/python generate_population.py -n bologna_fixed -o data/populations/gui_bologna_fixed.yaml -N 3000 --start-time 0 --end-time 2400 --seed 42
+.venv/bin/python runner.py -n bologna_fixed -p data/populations/gui_bologna_fixed.yaml --controller mp --gui --step-length 0.2
+```

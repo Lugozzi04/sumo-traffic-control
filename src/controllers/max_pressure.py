@@ -18,6 +18,7 @@ class _TrafficLightData:
     active_hold_seconds: float = 0.0
     active_empty_seconds: float = 0.0
     active_platoon_extension_seconds: float = 0.0
+    non_main_seconds: float = 0.0
     pending_target: Optional[int] = None
 
 
@@ -34,6 +35,7 @@ class MaxPressureController(TrafficController):
     DEFAULT_SPILLBACK_OFF = 0.75
     DEFAULT_SPILLBACK_MIN_HALTS = 1
     DEFAULT_SPILLBACK_ALPHA = 0.5
+    TRANSITION_STALL_SECONDS = 20.0
     PLATOON_DETECTOR_DISTANCE = 8.0
     PLATOON_MAX_HEADWAY_SAMPLES = 4
 
@@ -106,13 +108,29 @@ class MaxPressureController(TrafficController):
             if not logics:
                 continue
 
-            # If available, use program 1 as dynamic baseline; otherwise fallback to the only logic.
-            logic = logics[1] if len(logics) > 1 else logics[0]
+            logic = self._select_logic(logics)
             traci.trafficlight.setProgram(tl_id, logic.programID)
 
             tl_data = self._build_traffic_light_data(tl_id, logic)
             if tl_data.main_phases:
+                current_phase = traci.trafficlight.getPhase(tl_id)
+                if current_phase not in tl_data.main_phases:
+                    traci.trafficlight.setPhase(tl_id, tl_data.main_phases[0])
+                    current_phase = tl_data.main_phases[0]
+                tl_data.active_phase = current_phase
                 self._data[tl_id] = tl_data
+
+    def _select_logic(self, logics) -> object:
+        def main_phase_count(logic) -> int:
+            return sum(1 for phase in logic.phases if self._is_main_phase_state(phase.state))
+
+        main_counts = [main_phase_count(logic) for logic in logics]
+        best_count = max(main_counts)
+        candidates = [logic for logic, count in zip(logics, main_counts) if count == best_count]
+        for logic in candidates:
+            if logic.programID == "1":
+                return logic
+        return candidates[0] if candidates else logics[0]
 
     def _build_traffic_light_data(self, tl_id: str, logic) -> _TrafficLightData:
         controlled_links = traci.trafficlight.getControlledLinks(tl_id)
@@ -492,14 +510,29 @@ class MaxPressureController(TrafficController):
             tl_data = self._data.get(tl_id)
             if tl_data is None:
                 continue
+            delta_seconds = self._delta_seconds()
 
             if tl_data.pending_target is not None:
                 self._handle_pending_target(tl_id, tl_data)
+                current_phase = traci.trafficlight.getPhase(tl_id)
+                if current_phase in tl_data.main_phases:
+                    tl_data.non_main_seconds = 0.0
+                else:
+                    tl_data.non_main_seconds += delta_seconds
+                    if tl_data.non_main_seconds >= self.TRANSITION_STALL_SECONDS:
+                        traci.trafficlight.setPhase(tl_id, tl_data.pending_target)
+                        tl_data.pending_target = None
+                        tl_data.non_main_seconds = 0.0
                 continue
 
             current_phase = traci.trafficlight.getPhase(tl_id)
             if current_phase not in tl_data.main_phases:
+                tl_data.non_main_seconds += delta_seconds
+                if tl_data.non_main_seconds >= self.TRANSITION_STALL_SECONDS and tl_data.main_phases:
+                    traci.trafficlight.setPhase(tl_id, tl_data.main_phases[0])
+                    tl_data.non_main_seconds = 0.0
                 continue
+            tl_data.non_main_seconds = 0.0
 
             pressures, phase_demand = self._phase_pressures(tl_data)
             self._update_wait_times(tl_data, current_phase, phase_demand)
