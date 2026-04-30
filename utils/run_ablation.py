@@ -27,6 +27,12 @@ class DemandPreset:
 class Scenario:
     name: str
     flags: tuple[str, ...]
+    controller: str = "mp"
+    map_suffix: str = ""
+
+
+FIXED_BASELINE_SCENARIO = Scenario("fixed_base", (), controller="fixed")
+RBL_BASELINE_SCENARIO = Scenario("rbl_base", (), controller="fixed", map_suffix="_rbl")
 
 
 DEMANDS: dict[str, DemandPreset] = {
@@ -433,6 +439,21 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Mostra gli scenari disponibili nel pack selezionato ed esce",
     )
+    parser.add_argument(
+        "--include-fixed-baseline",
+        action="store_true",
+        help="Aggiunge scenario fixed_base (semaforo statico SUMO) nel medesimo batch",
+    )
+    parser.add_argument(
+        "--include-rbl-baseline",
+        action="store_true",
+        help="Aggiunge scenario rbl_base su mappa '<map>_rbl' (precedenza a destra), se disponibile",
+    )
+    parser.add_argument(
+        "--delta-baseline-scenario",
+        default="",
+        help="Scenario usato come baseline delta (default: fixed_base se presente, altrimenti mp_base)",
+    )
     parser.add_argument("--jobs", type=int, default=1, help="Numero massimo di simulazioni in parallelo (1 = seriale)")
     parser.add_argument("--step-length", type=float, default=1.0, help="Step simulation in secondi")
     parser.add_argument("--max-steps", type=int, default=5400, help="Tetto massimo simulazione (0 = nessun limite)")
@@ -454,6 +475,7 @@ def parse_args() -> argparse.Namespace:
     if args.progress_interval <= 0:
         parser.error("--progress-interval deve essere > 0")
     valid_names = {scenario.name for scenario in SCENARIO_PACKS[args.scenario_pack]}
+    valid_names.update({FIXED_BASELINE_SCENARIO.name, RBL_BASELINE_SCENARIO.name})
     unknown = sorted({name for name in args.scenarios if name not in valid_names})
     if unknown:
         parser.error(
@@ -688,7 +710,17 @@ def write_atomic_text(path: Path, content: str) -> None:
     tmp.replace(path)
 
 
-def preflight_checks(args: argparse.Namespace, root: Path) -> None:
+def effective_map_name(map_name: str, scenario: Scenario) -> str:
+    return f"{map_name}{scenario.map_suffix}" if scenario.map_suffix else map_name
+
+
+def scenario_map_exists(root: Path, map_name: str, scenario: Scenario) -> bool:
+    emap = effective_map_name(map_name, scenario)
+    cfg = root / "sumo_xml_files" / emap / f"{emap}.sumocfg"
+    return cfg.exists()
+
+
+def preflight_checks(args: argparse.Namespace, root: Path, scenarios: tuple[Scenario, ...]) -> None:
     import_cmd = [args.python_exe, "-c", "import traci, sumolib, yaml; print('python deps ok')"]
     code, output = run_command(import_cmd, root)
     if code != 0:
@@ -709,9 +741,14 @@ def preflight_checks(args: argparse.Namespace, root: Path) -> None:
 
     missing_maps: list[str] = []
     for map_name in args.maps:
-        cfg = root / "sumo_xml_files" / map_name / f"{map_name}.sumocfg"
-        if not cfg.exists():
-            missing_maps.append(str(cfg))
+        for scenario in scenarios:
+            emap = effective_map_name(map_name, scenario)
+            cfg = root / "sumo_xml_files" / emap / f"{emap}.sumocfg"
+            if not cfg.exists():
+                if scenario.map_suffix:
+                    # Varianti opzionali (es. _rbl): non sono fatal in preflight.
+                    continue
+                missing_maps.append(str(cfg))
     if missing_maps:
         raise RuntimeError("Preflight fallito: mappe non trovate:\n" + "\n".join(missing_maps))
 
@@ -742,13 +779,14 @@ def execute_case(
     args: argparse.Namespace,
     root: Path,
     runs_dir: Path,
-    map_name: str,
+    source_map_name: str,
+    effective_map_name_value: str,
     demand_name: str,
     pop_seed: int,
     scenario: Scenario,
     population_file: Path,
 ) -> tuple[str, dict]:
-    case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
+    case_id = build_case_id(source_map_name, demand_name, pop_seed, scenario.name)
     run_dir = runs_dir / case_id
     run_dir.mkdir(parents=True, exist_ok=True)
     live_log_file = run_dir / "stdout_stderr.log"
@@ -758,11 +796,11 @@ def execute_case(
         args.python_exe,
         "runner.py",
         "-n",
-        map_name,
+        effective_map_name_value,
         "-p",
         str(population_file),
         "--controller",
-        "mp",
+        scenario.controller,
         "--step-length",
         str(args.step_length),
         "--output-log",
@@ -785,10 +823,12 @@ def execute_case(
         wall_seconds = time.time() - wall_start
         base_row = {
             "run_id": case_id,
-            "map": map_name,
+            "map": source_map_name,
+            "effective_map": effective_map_name_value,
             "demand": demand_name,
             "pop_seed": pop_seed,
             "scenario": scenario.name,
+            "controller": scenario.controller,
             "flags": " ".join(scenario.flags),
             "population_file": str(population_file),
             "status": "fail",
@@ -799,10 +839,12 @@ def execute_case(
     wall_seconds = time.time() - wall_start
     base_row = {
         "run_id": case_id,
-        "map": map_name,
+        "map": source_map_name,
+        "effective_map": effective_map_name_value,
         "demand": demand_name,
         "pop_seed": pop_seed,
         "scenario": scenario.name,
+        "controller": scenario.controller,
         "flags": " ".join(scenario.flags),
         "population_file": str(population_file),
         "status": "ok" if return_code == 0 else "fail",
@@ -849,16 +891,62 @@ def main() -> None:
         print(f"Scenario pack: {args.scenario_pack}")
         for scenario in scenario_pack:
             flags = " ".join(scenario.flags) if scenario.flags else "(none)"
-            print(f"- {scenario.name}: {flags}")
+            print(f"- {scenario.name}: controller={scenario.controller} flags={flags}")
+        print(f"- {FIXED_BASELINE_SCENARIO.name}: controller={FIXED_BASELINE_SCENARIO.controller} flags=(none)")
+        print(f"- {RBL_BASELINE_SCENARIO.name}: controller={RBL_BASELINE_SCENARIO.controller} flags=(none), map_suffix=_rbl")
         return
 
     if args.scenarios:
         selected_names = set(args.scenarios)
-        selected_scenarios = tuple(scenario for scenario in scenario_pack if scenario.name in selected_names)
+        selected_scenarios = list(scenario for scenario in scenario_pack if scenario.name in selected_names)
+        if FIXED_BASELINE_SCENARIO.name in selected_names:
+            selected_scenarios.append(FIXED_BASELINE_SCENARIO)
+        if RBL_BASELINE_SCENARIO.name in selected_names:
+            selected_scenarios.append(RBL_BASELINE_SCENARIO)
     else:
-        selected_scenarios = scenario_pack
+        selected_scenarios = list(scenario_pack)
+    if args.include_fixed_baseline:
+        selected_scenarios.append(FIXED_BASELINE_SCENARIO)
+    if args.include_rbl_baseline:
+        selected_scenarios.append(RBL_BASELINE_SCENARIO)
+
+    # Deduplica per nome preservando ordine.
+    deduped: list[Scenario] = []
+    seen_names: set[str] = set()
+    for scenario in selected_scenarios:
+        if scenario.name in seen_names:
+            continue
+        seen_names.add(scenario.name)
+        deduped.append(scenario)
+    selected_scenarios = tuple(deduped)
+
     if not selected_scenarios:
         raise RuntimeError("Nessuno scenario selezionato")
+
+    delta_baseline_scenario = args.delta_baseline_scenario.strip()
+    if not delta_baseline_scenario:
+        delta_baseline_scenario = "fixed_base" if any(s.name == "fixed_base" for s in selected_scenarios) else "mp_base"
+    selected_scenario_names = {s.name for s in selected_scenarios}
+    if delta_baseline_scenario not in selected_scenario_names:
+        raise RuntimeError(
+            "Baseline delta non valida: "
+            f"'{delta_baseline_scenario}' non e' tra gli scenari selezionati "
+            f"({', '.join(sorted(selected_scenario_names))})"
+        )
+
+    # Per ogni mappa base, abilita solo scenari realmente disponibili (es. rbl su <map>_rbl).
+    map_scenarios: dict[str, tuple[Scenario, ...]] = {}
+    for map_name in args.maps:
+        available: list[Scenario] = []
+        for scenario in selected_scenarios:
+            if scenario_map_exists(root, map_name, scenario):
+                available.append(scenario)
+            elif scenario.map_suffix:
+                print(
+                    f"[warn] scenario '{scenario.name}' saltato per mappa '{map_name}' "
+                    f"(mappa richiesta: '{effective_map_name(map_name, scenario)}')"
+                )
+        map_scenarios[map_name] = tuple(available)
 
     ablation_root = root / "logs" / "ablation"
     ablation_root.mkdir(parents=True, exist_ok=True)
@@ -880,6 +968,9 @@ def main() -> None:
         "jobs": args.jobs,
         "seed_start": args.seed_start,
         "scenario_pack": args.scenario_pack,
+        "include_fixed_baseline": args.include_fixed_baseline,
+        "include_rbl_baseline": args.include_rbl_baseline,
+        "delta_baseline_scenario": delta_baseline_scenario,
         "step_length": args.step_length,
         "max_steps": args.max_steps,
         "progress_interval": args.progress_interval,
@@ -892,13 +983,26 @@ def main() -> None:
             }
             for key in args.demands
         },
-        "scenarios": [{"name": scenario.name, "flags": list(scenario.flags)} for scenario in selected_scenarios],
+        "scenarios": [
+            {
+                "name": scenario.name,
+                "controller": scenario.controller,
+                "map_suffix": scenario.map_suffix,
+                "flags": list(scenario.flags),
+            }
+            for scenario in selected_scenarios
+        ],
     }
     with (batch_dir / "config_resolved.yaml").open("w", encoding="utf-8") as fd:
         yaml.safe_dump(config, fd, sort_keys=False)
 
     seed_values = [args.seed_start + offset for offset in range(args.num_seeds)]
-    total_runs = len(args.maps) * len(args.demands) * len(seed_values) * len(selected_scenarios)
+    total_runs = 0
+    for map_name in args.maps:
+        total_runs += len(map_scenarios.get(map_name, ())) * len(args.demands) * len(seed_values)
+    max_parallel_workers = max(1, min(args.jobs, max((len(v) for v in map_scenarios.values()), default=1)))
+    if total_runs == 0:
+        raise RuntimeError("Nessun run pianificato: verifica mappe/scenari selezionati")
     current_run = 0
 
     run_rows: list[dict] = []
@@ -927,7 +1031,7 @@ def main() -> None:
         runs_failed = sum(1 for row in run_rows if row["status"] != "ok")
         remaining_runs = max(0, total_runs - runs_done)
         avg_run_seconds = safe_mean([float(row["wall_seconds"]) for row in run_rows]) if run_rows else 0.0
-        parallel_factor = max(1, min(args.jobs, len(selected_scenarios)))
+        parallel_factor = max_parallel_workers
         eta_seconds = (avg_run_seconds * remaining_runs / parallel_factor) if avg_run_seconds > 0 else None
 
         run_elapsed = (now - current_run_started_at) if current_run_started_at is not None else None
@@ -975,7 +1079,7 @@ def main() -> None:
             f"ultimo aggiornamento: {payload['last_update']}",
             f"prossimo aggiornamento atteso entro: {payload['next_update_expected']} (ogni {args.progress_interval:.1f}s)",
             f"attivita corrente: {current_activity}",
-            f"parallelismo: x{max(1, min(args.jobs, len(selected_scenarios)))}",
+            f"parallelismo: x{max_parallel_workers}",
             f"run completati: {runs_done}/{total_runs} (ok={runs_success}, fail={runs_failed})",
             f"tempo batch trascorso: {format_eta(now - script_start)}",
             f"stima tempo rimanente: {payload['eta_remaining_hms']}",
@@ -992,9 +1096,16 @@ def main() -> None:
     try:
         current_activity = "preflight dipendenze/mappe"
         write_progress_files(status="running")
-        preflight_checks(args, root)
+        preflight_checks(args, root, selected_scenarios)
+
+        population_cache: dict[tuple[str, str, int], Path] = {}
 
         for map_name in args.maps:
+            scenarios_for_map = map_scenarios.get(map_name, ())
+            if not scenarios_for_map:
+                print(f"[warn] nessuno scenario disponibile per mappa '{map_name}', salto")
+                continue
+            effective_maps_for_base = sorted({effective_map_name(map_name, s) for s in scenarios_for_map})
             for demand_name in args.demands:
                 demand = DEMANDS[demand_name]
                 for pop_seed in seed_values:
@@ -1005,35 +1116,42 @@ def main() -> None:
                     current_run_step = None
                     write_progress_files(status="running")
 
-                    population_file = populations_dir / f"{map_name}_{demand_name}_seed{pop_seed}.yaml"
-                    generate_cmd = [
-                        args.python_exe,
-                        "generate_population.py",
-                        "-n",
-                        map_name,
-                        "-o",
-                        str(population_file),
-                        "-N",
-                        str(demand.vehicles),
-                        "--start-time",
-                        str(demand.start_time),
-                        "--end-time",
-                        str(demand.end_time),
-                        "--seed",
-                        str(pop_seed),
-                    ]
-                    generate_code, generate_output = run_command(generate_cmd, root)
-                    if generate_code != 0:
-                        raise RuntimeError(
-                            f"Errore generazione popolazione {population_file}\n{generate_output}"
-                        )
+                    for emap in effective_maps_for_base:
+                        cache_key = (emap, demand_name, pop_seed)
+                        if cache_key in population_cache:
+                            continue
+                        population_file = populations_dir / f"{emap}_{demand_name}_seed{pop_seed}.yaml"
+                        generate_cmd = [
+                            args.python_exe,
+                            "generate_population.py",
+                            "-n",
+                            emap,
+                            "-o",
+                            str(population_file),
+                            "-N",
+                            str(demand.vehicles),
+                            "--start-time",
+                            str(demand.start_time),
+                            "--end-time",
+                            str(demand.end_time),
+                            "--seed",
+                            str(pop_seed),
+                        ]
+                        generate_code, generate_output = run_command(generate_cmd, root)
+                        if generate_code != 0:
+                            raise RuntimeError(
+                                f"Errore generazione popolazione {population_file}\n{generate_output}"
+                            )
+                        population_cache[cache_key] = population_file
 
                     if args.jobs == 1:
-                        for scenario in selected_scenarios:
+                        for scenario in scenarios_for_map:
+                            emap = effective_map_name(map_name, scenario)
+                            population_file = population_cache[(emap, demand_name, pop_seed)]
                             current_run += 1
                             case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
                             current_run_id = case_id
-                            current_run_meta = (map_name, demand_name, pop_seed, scenario.name)
+                            current_run_meta = (map_name, demand_name, pop_seed, f"{scenario.name}@{emap}")
                             current_run_started_at = time.time()
                             current_run_step = None
                             current_activity = f"esecuzione {current_run}/{total_runs}"
@@ -1044,7 +1162,8 @@ def main() -> None:
                                 args=args,
                                 root=root,
                                 runs_dir=runs_dir,
-                                map_name=map_name,
+                                source_map_name=map_name,
+                                effective_map_name_value=emap,
                                 demand_name=demand_name,
                                 pop_seed=pop_seed,
                                 scenario=scenario,
@@ -1055,9 +1174,9 @@ def main() -> None:
                             current_run_step = None
                             write_progress_files(status="running")
                     else:
-                        max_workers = max(1, min(args.jobs, len(selected_scenarios)))
+                        max_workers = max(1, min(args.jobs, len(scenarios_for_map)))
                         current_activity = (
-                            f"esecuzione parallela seed{pop_seed} ({max_workers} worker, {len(selected_scenarios)} scenari)"
+                            f"esecuzione parallela seed{pop_seed} ({max_workers} worker, {len(scenarios_for_map)} scenari)"
                         )
                         current_run_meta = None
                         current_run_started_at = None
@@ -1067,7 +1186,9 @@ def main() -> None:
                         futures = {}
                         active_case_ids: set[str] = set()
                         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                            for scenario in selected_scenarios:
+                            for scenario in scenarios_for_map:
+                                emap = effective_map_name(map_name, scenario)
+                                population_file = population_cache[(emap, demand_name, pop_seed)]
                                 current_run += 1
                                 case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
                                 print(f"[{current_run}/{total_runs}] {case_id} (queued)")
@@ -1076,13 +1197,14 @@ def main() -> None:
                                     args=args,
                                     root=root,
                                     runs_dir=runs_dir,
-                                    map_name=map_name,
+                                    source_map_name=map_name,
+                                    effective_map_name_value=emap,
                                     demand_name=demand_name,
                                     pop_seed=pop_seed,
                                     scenario=scenario,
                                     population_file=population_file,
                                 )
-                                futures[future] = (case_id, scenario)
+                                futures[future] = (case_id, scenario, emap, population_file)
                                 active_case_ids.add(case_id)
 
                             current_run_id = ", ".join(sorted(active_case_ids)[:3])
@@ -1109,7 +1231,7 @@ def main() -> None:
                                     continue
 
                                 for future in done:
-                                    case_id, scenario = futures[future]
+                                    case_id, scenario, emap, population_file = futures[future]
                                     active_case_ids.discard(case_id)
                                     try:
                                         _, row = future.result()
@@ -1117,9 +1239,11 @@ def main() -> None:
                                         base_row = {
                                             "run_id": case_id,
                                             "map": map_name,
+                                            "effective_map": emap,
                                             "demand": demand_name,
                                             "pop_seed": pop_seed,
                                             "scenario": scenario.name,
+                                            "controller": scenario.controller,
                                             "flags": " ".join(scenario.flags),
                                             "population_file": str(population_file),
                                             "status": "fail",
@@ -1150,9 +1274,11 @@ def main() -> None:
     run_fields = [
         "run_id",
         "map",
+        "effective_map",
         "demand",
         "pop_seed",
         "scenario",
+        "controller",
         "flags",
         "population_file",
         "status",
@@ -1224,9 +1350,11 @@ def main() -> None:
         by_map_demand.setdefault(key, {})[str(row["scenario"])] = row
 
     delta_rows: list[dict] = []
+    missing_baseline_groups: list[str] = []
     for (map_name, demand_name), scenarios in sorted(by_map_demand.items()):
-        baseline = scenarios.get("mp_base")
+        baseline = scenarios.get(delta_baseline_scenario)
         if baseline is None:
+            missing_baseline_groups.append(f"{map_name}/{demand_name}")
             continue
         base_wait = float(baseline["avg_mean_wait_s"])
         base_travel = float(baseline["avg_mean_travel_s"])
@@ -1241,6 +1369,7 @@ def main() -> None:
                     "map": map_name,
                     "demand": demand_name,
                     "scenario": scenario_name,
+                    "delta_baseline_scenario": delta_baseline_scenario,
                     "avg_mean_wait_s": row["avg_mean_wait_s"],
                     "avg_mean_travel_s": row["avg_mean_travel_s"],
                     "wait_delta_vs_base_pct": round(wait_delta, 4),
@@ -1253,6 +1382,7 @@ def main() -> None:
         "map",
         "demand",
         "scenario",
+        "delta_baseline_scenario",
         "avg_mean_wait_s",
         "avg_mean_travel_s",
         "wait_delta_vs_base_pct",
@@ -1265,6 +1395,9 @@ def main() -> None:
     md_lines.append(f"- Total runs: {len(run_rows)}")
     md_lines.append(f"- Successful runs: {len(ok_rows)}")
     md_lines.append(f"- Failed runs: {len(failed_runs)}")
+    md_lines.append(f"- Delta baseline scenario: {delta_baseline_scenario}")
+    if missing_baseline_groups:
+        md_lines.append(f"- Gruppi senza baseline '{delta_baseline_scenario}': {', '.join(missing_baseline_groups)}")
     md_lines.append("")
 
     for (map_name, demand_name), scenarios in sorted(by_map_demand.items()):

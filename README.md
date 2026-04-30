@@ -183,6 +183,9 @@ Opzionale:
 - `--scenario-pack <name>`: set scenari da usare (`tuned_v1` default, `tuning_matrix_v1` per tuning).
 - `--scenarios <nome1 nome2 ...>`: subset scenari del pack (utile per mini-run veloci).
 - `--list-scenarios`: stampa gli scenari disponibili nel pack selezionato ed esce.
+- `--include-fixed-baseline`: aggiunge scenario `fixed_base` (semafori statici SUMO).
+- `--include-rbl-baseline`: aggiunge scenario `rbl_base` su mappa `<map>_rbl` (precedenza a destra), se presente.
+- `--delta-baseline-scenario <nome>`: scenario usato come baseline per `DeltaWait/DeltaTravel` (default: `fixed_base` se presente, altrimenti `mp_base`).
 
 Nota:
 - lo script fa preflight automatico (`traci/sumolib/yaml`, comando `sumo`, mappe presenti);
@@ -201,6 +204,21 @@ Esempio tuning mirato (mini-matrix):
   --max-steps 5400 \
   --scenario-pack tuning_matrix_v1 \
   --scenarios mp_base mp_lta_g020 mp_lta_g030 mp_lta_g040 mp_nmin_only mp_lta_plus_nmin mp_downstream_b08 mp_downstream_b12 mp_downstream_b16 mp_platoon_x2 mp_platoon_x3 mp_platoon_x4 mp_fair_mu2 mp_fair_mu3 mp_fair_mu4
+```
+
+Esempio completo (MP + semaforo classico + precedenza a destra, stessa batch):
+
+```bash
+.venv/bin/python utils/run_ablation.py \
+  --maps manhattan8x8_100pc \
+  --demands low medium high \
+  --num-seeds 4 \
+  --jobs 3 \
+  --max-steps 5400 \
+  --scenario-pack tuning_matrix_v1 \
+  --include-fixed-baseline \
+  --include-rbl-baseline \
+  --delta-baseline-scenario fixed_base
 ```
 
 Output in:
@@ -258,6 +276,30 @@ Nota: `--lost-time-sat-flow` e' condiviso tra `--lost-time-aware` e `--nmin-dyna
 - `utils/routes_editor.py`: riassegna ID progressivi alle route (`route1`, `route2`, ...)
 - `utils/adjust_routes.py`: filtra route con edge iniziale non idoneo (utile su mappe reali)
 - `utils/build_bologna_fixed.py`: rigenera una variante stabilizzata della mappa `bologna`
+- `utils/build_rbl_variant.py`: crea una variante `*_rbl` con precedenza a destra (`right_before_left`) e segnaletica grafica (supporta mappe grid e non-grid)
+
+## Variante right-before-left (RBL)
+
+Per creare una copia di una mappa con precedenza a destra:
+
+```bash
+.venv/bin/python utils/build_rbl_variant.py \
+  --src-map manhattan8x8_100pc \
+  --dst-map manhattan8x8_100pc_rbl \
+  --overwrite
+```
+
+
+Modalita:
+- `--mode auto` (default): usa `grid` quando possibile, altrimenti `patch` via `netconvert`
+- `--mode grid`: forza rigenerazione grid
+- `--mode patch`: forza patch nodi a `right_before_left`
+
+Questo crea `sumo_xml_files/<dst_map>/` con:
+- `<dst_map>.net.xml` (rete right-before-left)
+- `<dst_map>.rou.xml` (route copiate dalla mappa originale)
+- `<dst_map>.add.xml` (triangoli grafici \"dare precedenza\")
+- `<dst_map>.sumocfg` (config pronta all'uso)
 
 ## Bologna fixed
 

@@ -113,14 +113,15 @@ def main() -> None:
         table_rows: list[list[str]] = []
         for rank, row in enumerate(rows, start=1):
             delta = delta_map.get((row["map"], row["demand"], row["scenario"]), {})
+            has_delta = "wait_delta_vs_base_pct" in delta and "travel_delta_vs_base_pct" in delta
             table_rows.append(
                 [
                     str(rank),
                     row["scenario"],
                     f"{float(row['avg_mean_wait_s']):.2f}",
-                    f"{float(delta.get('wait_delta_vs_base_pct', '0')):+.2f}",
+                    f"{float(delta['wait_delta_vs_base_pct']):+.2f}" if has_delta else "n/a",
                     f"{float(row['avg_mean_travel_s']):.2f}",
-                    f"{float(delta.get('travel_delta_vs_base_pct', '0')):+.2f}",
+                    f"{float(delta['travel_delta_vs_base_pct']):+.2f}" if has_delta else "n/a",
                     f"{float(row['avg_p95_wait_s']):.2f}",
                     f"{float(row['avg_p95_travel_s']):.2f}",
                     f"{float(row['avg_mean_speed_mps']):.2f}",

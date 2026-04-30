@@ -75,14 +75,15 @@ def main() -> None:
     for (map_name, demand_name), rows in sorted(grouped.items()):
         best = min(rows, key=lambda r: float(r["avg_mean_wait_s"]))
         delta = delta_map.get((map_name, demand_name, best["scenario"]), {})
+        has_delta = "wait_delta_vs_base_pct" in delta and "travel_delta_vs_base_pct" in delta
         winner = {
             "map": map_name,
             "demand": demand_name,
             "scenario": best["scenario"],
             "wait": f"{float(best['avg_mean_wait_s']):.2f}",
             "travel": f"{float(best['avg_mean_travel_s']):.2f}",
-            "delta_wait": f"{float(delta.get('wait_delta_vs_base_pct', '0')):+.2f}",
-            "delta_travel": f"{float(delta.get('travel_delta_vs_base_pct', '0')):+.2f}",
+            "delta_wait": f"{float(delta['wait_delta_vs_base_pct']):+.2f}" if has_delta else "n/a",
+            "delta_travel": f"{float(delta['travel_delta_vs_base_pct']):+.2f}" if has_delta else "n/a",
         }
         winners.append(winner)
         wins_by_scenario[best["scenario"]] += 1

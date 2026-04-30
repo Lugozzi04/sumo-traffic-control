@@ -1,0 +1,351 @@
+FORMULE MATEMATICHE MP (MAX-PRESSURE) + MAPPA FLAG
+
+Obiettivo:
+- capire, guardando i flag delle simulazioni, quale termine della formula stai cambiando.
+- riferimento pratico: run_0012 (scenario_pack=tuning_matrix_v1).
+
+==================================================
+1) FORMULA BASE MP
+==================================================
+
+Per ogni movimento m = (in_lane, out_lane):
+  q(l) = halting_vehicles(l)
+  p_m = q_in - q_out
+
+Per ogni fase phi:
+  P_phi = sum_{m in phi} p_m
+
+Decisione di switch:
+  switch se score_best > score_current + switch_margin
+
+Nel base puro:
+  score_phi = P_phi
+  switch_margin = switch_epsilon
+
+Note:
+- q_in e q_out sono conteggi di veicoli fermi (non flussi continui veh/s).
+- la decisione e rivalutata a ogni simulation step (qui 1.0 s).
+
+
+==================================================
+2) MODULI AGGIUNTIVI E FORMULE
+==================================================
+
+2.1 Lost-Time-Aware (LTA)
+
+Lost time di transizione:
+  T_lost = somma durate fasi non-main tra fase corrente e prossima fase main
+
+Margine di switch:
+  switch_margin = switch_epsilon + lost_time_gain * lost_time_sat_flow * T_lost
+
+Effetto:
+- piu T_lost o gain e alti, piu difficile cambiare fase (meno switching nervoso).
+
+
+2.2 Fairness (impatience saturata)
+
+Aggiornamento attesa per fase:
+  se fase corrente: w_phi = 0
+  se fase non corrente e domanda>0: w_phi = w_phi + delta_t
+  se fase non corrente e domanda=0: w_phi = 0
+
+Bonus fairness:
+  bonus_phi = fairness_mu * (w_phi / (w_phi + fairness_w_half))
+  se fairness_w_half <= 0: bonus_phi = fairness_mu
+
+Score:
+  score_phi = P_phi + bonus_phi
+
+Effetto:
+- fasi in attesa con domanda reale prendono bonus e prima o poi passano.
+- bonus cresce rapido all inizio e poi satura.
+
+
+2.3 Downstream penalty (penalita continua)
+
+Occupazione filtrata (EMA):
+  occ_ema(t) = alpha * occ_raw(t) + (1-alpha) * occ_ema(t-1)
+  qui alpha = downstream_alpha
+
+Penalita movimento:
+  penalty_m = downstream_beta * occ_down_ema
+
+Pressione movimento:
+  p_m = q_in - q_out - penalty_m
+
+Effetto:
+- se valle e gia occupata, quel movimento perde punteggio.
+- downstream_beta alza/abbassa quanto forte e il freno.
+
+
+2.4 Spillback hard (vincolo binario con isteresi)
+
+Occ downstream per spillback (EMA separata):
+  occ_sb_ema(t) = spillback_alpha * occ_raw(t) + (1-spillback_alpha) * occ_sb_ema(t-1)
+
+Regola blocco lane:
+  se lane NON bloccata:
+    blocked = (occ_sb_ema >= spillback_on) AND (halts >= spillback_min_halts)
+  se lane GIA bloccata:
+    blocked = (occ_sb_ema >= spillback_off)
+
+Effetto a livello fase:
+  se un solo movimento punta a out_lane bloccata:
+    P_phi = -inf (fase esclusa)
+
+Effetto:
+- sicurezza anti-griglia: evita mandare traffico in valle quasi tappata.
+- on/off diversi introducono isteresi (evita ON/OFF continuo).
+
+
+2.5 Platoon extension
+
+Detector virtuale vicino stop-line:
+  detector_pos = lane_length - 8.0 m
+
+Headway medio recente:
+  headway = media(Delta t degli ultimi passaggi detector)
+
+Condizione platoon:
+  esiste almeno una in_lane con:
+    headway <= platoon_headway_threshold
+
+Guardia downstream:
+  estensione permessa solo se:
+    (nessun blocco spillback hard attivo) AND (occ_down_ema < platoon_guard_occ)
+
+Budget estensione:
+  active_platoon_extension_seconds < platoon_max_extra_green
+  e spent < max_green
+
+Effetto:
+- se arriva un gruppo compatto, tieni verde un po di piu per svuotarlo.
+
+
+2.6 Nmin dinamico (minimo servizio post-switch)
+
+Target veicoli equivalenti:
+  n_cost   = nmin_alpha * lost_time_sat_flow * T_lost
+  n_target = max(nmin_floor, n_cost)
+  se domanda corrente > 0:
+    n_target = min(n_target, demand_current_phase)
+
+Hold in secondi:
+  hold_seconds = max(min_green, n_target / lost_time_sat_flow)
+
+Rilascio anticipato fase vuota:
+  se domanda corrente = 0:
+    accumula active_empty_seconds
+    rilascia hold quando active_empty_seconds >= nmin_empty_release_seconds
+
+Effetto:
+- dopo ogni switch, evita cambio immediato e recupera il costo di transizione.
+
+
+2.7 Vincoli temporali base
+
+Minimo verde:
+  se spent < min_green -> niente switch
+
+Cap di sicurezza:
+  se spent >= max_green e c e fase alternativa valida -> forza uscita
+
+Nota:
+- nel codice attuale il cap max_green non e "cambio sempre comunque"; richiede alternativa valida.
+
+
+==================================================
+3) DIZIONARIO VARIABILI (UNITS)
+==================================================
+
+Code e pressioni:
+- q_in, q_out: numero veicoli fermi [veh]
+- p_m: pressione movimento [veh-equivalenti]
+- P_phi: pressione fase [veh-equivalenti]
+
+Tempi:
+- delta_t: passo simulazione [s]
+- spent: tempo trascorso nella fase corrente [s]
+- T_lost: tempo perso in transizione [s]
+- min_green, max_green: limiti tempo verde [s]
+
+Occupazioni:
+- occ_raw: occupazione lane da SUMO [0..1]
+- occ_ema: occupazione filtrata EMA [0..1]
+
+Fairness:
+- w_phi: attesa accumulata fase [s]
+- fairness_mu: tetto bonus fairness [veh-equivalenti]
+- fairness_w_half: secondi al 50% del bonus [s]
+
+LTA/Nmin:
+- lost_time_sat_flow: flusso saturazione equivalente [veh/s]
+- lost_time_gain: peso costo switch [-]
+- nmin_alpha: peso Nmin sul costo switch [-]
+- nmin_floor: minimo veicoli equivalenti [veh]
+
+Spillback:
+- spillback_on/off: soglie occupazione [0..1]
+- spillback_min_halts: minimo fermi per attivare blocco [veh]
+- spillback_alpha: smoothing EMA spillback [0..1]
+
+Downstream penalty:
+- downstream_beta: peso penalita downstream [veh-equivalenti]
+- downstream_alpha: smoothing EMA penalty [0..1]
+
+Platoon:
+- platoon_headway_threshold [s]
+- platoon_gap_out_seconds [s]
+- platoon_max_extra_green [s]
+- platoon_guard_occ [0..1]
+
+
+==================================================
+4) MAPPA DIRETTA FLAG -> TERMINE FORMULA
+==================================================
+
+Base:
+- --min-green              -> soglia spent < min_green
+- --max-green              -> cap spent >= max_green
+- --switch-epsilon         -> switch_margin base
+
+LTA:
+- --lost-time-aware        -> abilita termine + gain*sat_flow*T_lost
+- --lost-time-sat-flow     -> sat_flow in LTA/Nmin
+- --lost-time-gain         -> gain in LTA
+
+Fairness:
+- --fairness               -> abilita bonus fairness
+- --fairness-mu            -> fairness_mu nel bonus
+- --fairness-w-half        -> fairness_w_half nel bonus
+
+Downstream:
+- --downstream-penalty     -> abilita - beta*occ_down_ema in p_m
+- --downstream-beta        -> downstream_beta
+- --downstream-alpha       -> alpha EMA downstream
+
+Spillback:
+- --spillback              -> abilita vincolo hard blocked
+- --spillback-on           -> soglia ON
+- --spillback-off          -> soglia OFF (isteresi)
+- --spillback-min-halts    -> min halts ON
+- --spillback-alpha        -> alpha EMA spillback
+
+Platoon:
+- --platoon-extension      -> abilita estensione
+- --platoon-headway-threshold -> soglia headway
+- --platoon-gap-out-seconds -> soglia gap-out
+- --platoon-max-extra-green -> budget estensione
+- --platoon-guard-occ      -> guardia occupazione valle
+
+Nmin:
+- --nmin-dynamic           -> abilita hold dinamico post-switch
+- --nmin-alpha             -> peso n_cost
+- --nmin-floor             -> floor n_target
+- --nmin-empty-release-seconds -> rilascio anticipato fase vuota
+
+
+==================================================
+5) PARAMETRI IMPLICITI (ATTIVI ANCHE SE NON NEI FLAG)
+==================================================
+
+Nell output "Scenari e flag" vedi solo la parte variabile.
+Questi parametri base restano attivi in tutti i 15 scenari:
+- min_green = 10.0 s
+- max_green = 120.0 s
+- switch_epsilon = 0.0
+- step_length = 1.0 s
+- max_steps = 5400 s
+
+Quindi anche "mp_base: (none)" in realta significa:
+- nessun modulo extra, ma con i vincoli base sopra.
+
+
+==================================================
+6) RUN_0012: SCENARIO -> FORMULA ISTANZIATA
+==================================================
+
+6.1 mp_base
+- score_phi = P_phi
+- switch_margin = 0.0
+- p_m = q_in - q_out
+
+6.2 mp_lta_g020 / mp_lta_g030 / mp_lta_g040
+- score_phi = P_phi
+- switch_margin = 0.0 + gain * 0.35 * T_lost
+  con gain = 0.20 / 0.30 / 0.40
+- p_m = q_in - q_out
+
+6.3 mp_nmin_only
+- score_phi = P_phi
+- switch_margin = 0.0   (LTA non attivo)
+- n_cost   = 0.60 * 0.35 * T_lost
+- n_target = max(1, n_cost), poi clamp a demand corrente se >0
+- hold     = max(10.0, n_target / 0.35)
+- empty release: 1.2 s
+
+6.4 mp_lta_plus_nmin
+- score_phi = P_phi
+- switch_margin = 0.0 + 0.30 * 0.35 * T_lost
+- n_cost   = 0.60 * 0.35 * T_lost
+- n_target = max(1, n_cost), poi clamp a demand corrente se >0
+- hold     = max(10.0, n_target / 0.35)
+- empty release: 1.2 s
+
+6.5 mp_downstream_b08 / b12 / b16
+- spillback hard attivo:
+  blocked ON  se (occ_sb_ema >= 0.95) AND (halts >= 2)
+  blocked OFF se (occ_sb_ema <  0.85)
+  occ_sb_ema(t) = 0.30*occ_raw + 0.70*occ_sb_ema(t-1)
+- downstream penalty attiva:
+  occ_down_ema(t) = 0.30*occ_raw + 0.70*occ_down_ema(t-1)
+  p_m = q_in - q_out - beta*occ_down_ema
+  beta = 0.8 / 1.2 / 1.6
+- se un movimento della fase ha out_lane bloccata -> P_phi = -inf
+
+6.6 mp_fair_mu2 / mu3 / mu4
+- bonus_phi = mu * (w_phi / (w_phi + 45.0))
+  con mu = 2.0 / 3.0 / 4.0
+- score_phi = P_phi + bonus_phi
+- switch_margin resta 0.0 (LTA non attivo)
+
+6.7 mp_platoon_x2 / x3 / x4
+- condizione platoon:
+  headway <= 1.6 s
+  gap-out  <= 1.6 s
+- guardia downstream:
+  occ_down_ema < 0.80
+  e nessun blocco spillback hard attivo
+- budget estensione:
+  extra_green_max = 2.0 / 3.0 / 4.0 s
+  e spent < 120.0 s
+- in questi scenari sono anche attivi spillback+downstream:
+  spillback on/off/min_halts/alpha = 0.95/0.85/2/0.30
+  downstream beta/alpha = 1.00/0.30
+
+
+==================================================
+7) CHECK RAPIDO (MENTALE) QUANDO LEGGI UN OUTPUT FLAG
+==================================================
+
+1) Se vedi solo --lost-time-*:
+   stai agendo sul margine di switch (prima del cambio).
+
+2) Se vedi --nmin-*:
+   stai agendo sulla durata minima post-switch (dopo il cambio).
+
+3) Se vedi --downstream-*:
+   stai cambiando il termine di penalita continua nella pressione.
+
+4) Se vedi --spillback-*:
+   stai cambiando il blocco hard di sicurezza verso valle.
+
+5) Se vedi --platoon-*:
+   stai cambiando la logica di estensione verde per arrivi ravvicinati.
+
+6) Se vedi --fairness-*:
+   stai cambiando il bonus anti-starvation nel punteggio fase.
+
+7) Se un parametro NON compare nei flag:
+   di solito resta al valore base del runner (non e "disattivato").

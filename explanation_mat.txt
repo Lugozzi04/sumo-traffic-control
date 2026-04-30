@@ -1,0 +1,358 @@
+SPIEGAZIONE MATEMATICA E CODICE - MP (MAX PRESSURE)
+=====================================================
+
+Progetto: sumo-traffic-control
+Data: 2026-04-28
+
+Indice
+------
+1) Dove entrano i flag MP
+2) MP base: formule e logica
+3) Tutti i flag MP: formule + righe codice
+4) Ordine reale di applicazione a ogni step
+5) MP disponibili nel progetto (controller e scenari)
+
+
+1) DOVE ENTRANO I FLAG MP
+-------------------------
+
+1.1 Definizione CLI flag
+- File: runner.py:46
+- Tutti i flag MP sono definiti in parse_args().
+
+1.2 Validazione flag
+- File: runner.py:83
+- Controlli principali:
+  - spillback_off <= spillback_on in [0,1]
+  - spillback_min_halts >= 0
+  - spillback_alpha in [0,1]
+  - lost_time_sat_flow >= 0
+  - se lost_time_aware o nmin_dynamic: lost_time_sat_flow > 0
+  - fairness_mu >= 0, fairness_w_half >= 0
+  - downstream_beta >= 0, downstream_alpha in [0,1]
+  - platoon_* non negativi e platoon_guard_occ in [0,1]
+  - nmin_alpha >= 0, nmin_floor >= 0, nmin_empty_release_seconds >= 0
+
+1.3 Passaggio dei flag al controller
+- File: runner.py:139
+- build_controller() costruisce MaxPressureController(...) passando tutti i parametri.
+
+1.4 Attach semafori
+- File: runner.py:181
+- File: src/controllers/base.py:10
+- attach_to_all_traffic_lights() prende tutti gli ID semaforici da TraCI.
+
+
+2) MP BASE: FORMULE E LOGICA
+----------------------------
+
+2.1 Costruzione movimenti lane->lane per fase verde
+- File: src/controllers/max_pressure.py:135
+- Si prendono solo "main phases" (green e senza yellow): max_pressure.py:176.
+
+2.2 Coda su lane
+- Formula:
+  q(l) = halting_vehicles(l)
+- Codice: max_pressure.py:356-359
+
+2.3 Pressione movimento (base)
+- Formula:
+  p_m = q_in - q_out
+- Codice: max_pressure.py:383-387
+  (senza downstream penalty, il termine penalty e' 0)
+
+2.4 Pressione fase
+- Formula:
+  P_phi = sum_{m in phi}(p_m)
+- Codice: max_pressure.py:373-395
+
+2.5 Score fase nel base
+- Senza fairness: score_phi = P_phi
+- Con fairness: score_phi = P_phi + bonus_phi (vedi sezione fairness)
+- Codice: max_pressure.py:418-426
+
+2.6 Regola di switch
+- Formula:
+  switch if score_best > score_current + switch_margin
+- Codice: max_pressure.py:560
+
+2.7 Vincoli temporali sempre presenti
+- Non decide prima di min_green:
+  - Codice: max_pressure.py:543-544
+- Safety cap max_green:
+  - Codice: max_pressure.py:565-568
+
+
+3) TUTTI I FLAG MP: FORMULE + RIGHE CODICE
+-------------------------------------------
+
+3.1 --min-green, --max-green
+- Effetto:
+  - min_green: tempo minimo prima di rivalutare switch.
+  - max_green: cap di sicurezza per non tenere troppo una fase.
+- Codice:
+  - check min_green: max_pressure.py:543-544
+  - check max_green: max_pressure.py:565-568
+
+
+3.2 --switch-epsilon
+- Margine base:
+  switch_margin = switch_epsilon
+- Codice: max_pressure.py:199
+
+
+3.3 --lost-time-aware, --lost-time-sat-flow, --lost-time-gain
+
+3.3.1 Lost time di transizione
+- Formula:
+  T_lost = somma durate fasi non-main dopo current_phase fino alla prossima main
+- Codice: max_pressure.py:187-196
+
+3.3.2 Margine LTA
+- Formula:
+  switch_margin = switch_epsilon + lost_time_gain * lost_time_sat_flow * T_lost
+- Codice: max_pressure.py:198-205
+
+3.3.3 Validazione sat_flow
+- Regola:
+  se lost_time_aware o nmin_dynamic allora lost_time_sat_flow > 0
+- Codice: runner.py:92-93
+
+
+3.4 --fairness, --fairness-mu, --fairness-w-half
+
+3.4.1 Update wait per fase
+- Regole:
+  - fase corrente: w_phi = 0
+  - fase non corrente con domanda > 0: w_phi += delta_t
+  - fase senza domanda: w_phi = 0
+- Codice: max_pressure.py:397-410
+
+3.4.2 Bonus fairness saturato
+- Formula:
+  bonus_phi = mu * (w_phi / (w_phi + w_half))
+- Caso limite:
+  se w_half <= 0 allora bonus_phi = mu
+- Codice: max_pressure.py:411-416
+
+3.4.3 Score finale
+- Formula:
+  score_phi = P_phi + bonus_phi
+- Codice: max_pressure.py:424-425
+
+
+3.5 --downstream-penalty, --downstream-beta, --downstream-alpha
+
+3.5.1 Occupazione EMA
+- Formula:
+  occ_ema(t) = alpha * occ_raw(t) + (1-alpha) * occ_ema(t-1)
+- Codice: max_pressure.py:212-220
+
+3.5.2 Penalita movimento
+- Formula:
+  penalty_m = downstream_beta * occ_down_ema
+- Codice: max_pressure.py:245-249
+
+3.5.3 Pressione movimento penalizzata
+- Formula:
+  p_m = q_in - q_out - penalty_m
+- Codice: max_pressure.py:385-387
+
+
+3.6 --spillback, --spillback-on, --spillback-off, --spillback-min-halts, --spillback-alpha
+
+3.6.1 Occupazione EMA spillback
+- Stessa formula EMA, ma cache dedicata spillback.
+- Codice: max_pressure.py:222-224
+
+3.6.2 Regola hard con isteresi
+- Se lane non bloccata:
+  blocked = (occ_ema >= spillback_on) and (halts >= spillback_min_halts)
+- Se lane gia bloccata:
+  blocked = (occ_ema >= spillback_off)
+- Codice: max_pressure.py:236-241
+
+3.6.3 Effetto sulla fase
+- Se anche un solo movimento punta a out_lane bloccata:
+  phase_blocked = True, quindi P_phi = -inf
+- Codice: max_pressure.py:379-391
+
+
+3.7 --platoon-extension, --platoon-headway-threshold,
+    --platoon-gap-out-seconds, --platoon-max-extra-green, --platoon-guard-occ
+
+3.7.1 Detector virtuale near stop-line
+- Posizione detector:
+  detector_pos = lane_length - 8.0m
+- Codice: max_pressure.py:39, 251-253
+
+3.7.2 Headway stimato
+- Si registrano tempi passaggio lane.
+- Headway medio recente:
+  headway = mean(Delta t ultimi passaggi)
+- Codice: max_pressure.py:255-300
+
+3.7.3 Condizione platoon
+- Almeno una in_lane della fase con:
+  headway <= platoon_headway_threshold
+- Codice: max_pressure.py:337-343
+
+3.7.4 Guardia downstream
+- Estensione consentita solo se:
+  - non blocked da spillback hard (se attivo)
+  - occ_down_ema < platoon_guard_occ
+- Codice: max_pressure.py:302-308
+
+3.7.5 Budget estensione
+- Non estende oltre:
+  active_platoon_extension_seconds < platoon_max_extra_green
+  e spent < max_green
+- Codice: max_pressure.py:324-327, 348-349
+
+
+3.8 --nmin-dynamic, --nmin-alpha, --nmin-floor, --nmin-empty-release-seconds
+
+3.8.1 Target servizio post-switch
+- Formula:
+  n_cost   = nmin_alpha * lost_time_sat_flow * T_lost
+  n_target = max(nmin_floor, n_cost)
+- Codice: max_pressure.py:435-438
+
+3.8.2 Clamp alla domanda fase
+- Formula:
+  n_target = min(n_target, demand_current_phase) se demand > 0
+- Codice: max_pressure.py:440-443
+
+3.8.3 Hold dinamico in secondi
+- Formula:
+  hold_seconds = max(min_green, n_target / lost_time_sat_flow)
+- Codice: max_pressure.py:444-445
+
+3.8.4 Rilascio anticipato fase vuota
+- Se fase vuota, accumula active_empty_seconds e rilascia quando:
+  active_empty_seconds >= nmin_empty_release_seconds
+- Codice: max_pressure.py:469-475
+
+
+4) ORDINE REALE DI APPLICAZIONE A OGNI STEP
+-------------------------------------------
+
+Nel loop controller.step() (max_pressure.py:508):
+
+1) Gestione pending_target / transizioni
+- max_pressure.py:515-527
+- Include anti-stallo transizione dopo 20s non-main:
+  max_pressure.py:38, 521-525
+
+2) Se fase corrente non-main, recovery
+- max_pressure.py:528-535
+
+3) Calcolo pressioni e domanda
+- max_pressure.py:537
+
+4) Update fairness wait
+- max_pressure.py:538
+
+5) Refresh stato fase attiva + hold Nmin
+- max_pressure.py:539
+
+6) Tracking arrivi platoon
+- max_pressure.py:540
+
+7) Gate temporali
+- min_green: max_pressure.py:543-544
+- nmin hold: max_pressure.py:545-546
+- platoon extension: max_pressure.py:547-548
+
+8) Scelta best phase e switch condition
+- scores: max_pressure.py:555
+- confronto con margin: max_pressure.py:560
+
+9) Safety cap max_green
+- max_pressure.py:565-568
+
+Nota importante:
+- L'ordine e': min_green -> nmin_dynamic -> platoon_extension -> decisione MP.
+
+
+5) MP DISPONIBILI NEL PROGETTO
+------------------------------
+
+5.1 Controller disponibili (runner)
+- fixed: usa cicli statici SUMO, nessuna logica custom
+  - src/controllers/fixed_time.py:4-7
+- mp: MaxPressureController con tutti i toggle
+  - runner.py:50, 139-169
+
+5.2 Scenario pack ablation: tuned_v1
+- File: utils/run_ablation.py:38
+- Scenari:
+  - mp_base
+  - mp_switch_aware
+  - mp_downstream_aware
+  - mp_fairness
+  - mp_platoon_safe
+  - mp_all_on
+
+5.3 Scenario pack ablation: tuning_matrix_v1
+- File: utils/run_ablation.py:157
+- Scenari:
+  - mp_base
+  - mp_lta_g020
+  - mp_lta_g030
+  - mp_lta_g040
+  - mp_nmin_only
+  - mp_lta_plus_nmin
+  - mp_downstream_b08
+  - mp_downstream_b12
+  - mp_downstream_b16
+  - mp_platoon_x2
+  - mp_platoon_x3
+  - mp_platoon_x4
+  - mp_fair_mu2
+  - mp_fair_mu3
+  - mp_fair_mu4
+
+5.4 Registrazione pack disponibili
+- File: utils/run_ablation.py:393-396
+- SCENARIO_PACKS = {"tuned_v1", "tuning_matrix_v1"}
+
+
+APPENDICE: FORMULE CHIAVE (RIASSUNTO RAPIDO)
+--------------------------------------------
+
+A) Base movement pressure:
+   p_m = q_in - q_out
+
+B) Downstream-penalized movement pressure:
+   p_m = q_in - q_out - beta * occ_down_ema
+
+C) Phase pressure:
+   P_phi = sum_{m in phi}(p_m)
+
+D) Fairness bonus:
+   bonus_phi = mu * (w_phi / (w_phi + w_half))
+
+E) Phase score:
+   score_phi = P_phi + bonus_phi
+
+F) Lost-time-aware switch margin:
+   margin = switch_epsilon + lost_time_gain * sat_flow * T_lost
+
+G) Switch condition:
+   switch if score_best > score_current + margin
+
+H) Nmin dynamic target:
+   n_cost   = nmin_alpha * sat_flow * T_lost
+   n_target = max(nmin_floor, n_cost)
+   hold_sec = max(min_green, n_target / sat_flow)
+
+I) EMA occupancy:
+   occ_ema(t) = alpha * occ_raw(t) + (1-alpha) * occ_ema(t-1)
+
+J) Spillback hard hysteresis:
+   if not blocked:
+      blocked = (occ_ema >= on) and (halts >= min_halts)
+   else:
+      blocked = (occ_ema >= off)
+
