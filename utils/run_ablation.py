@@ -32,6 +32,12 @@ class Scenario:
 
 
 FIXED_BASELINE_SCENARIO = Scenario("fixed_base", (), controller="fixed")
+FIXED_PROGRAM0_SCENARIO = Scenario("fixed_program0", ("--fixed-program-id", "0"), controller="fixed")
+FIXED_TUNED_SCENARIO = Scenario(
+    "fixed_tuned",
+    ("--fixed-program-id", "0", "--fixed-main-green-seconds", "30"),
+    controller="fixed",
+)
 RBL_BASELINE_SCENARIO = Scenario("rbl_base", (), controller="fixed", map_suffix="_rbl")
 
 
@@ -442,7 +448,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--include-fixed-baseline",
         action="store_true",
-        help="Aggiunge scenario fixed_base (semaforo statico SUMO) nel medesimo batch",
+        help="Aggiunge scenario fixed_base legacy (semaforo statico default della mappa) nel medesimo batch",
+    )
+    parser.add_argument(
+        "--include-fixed-program0",
+        action="store_true",
+        help="Aggiunge scenario fixed_program0 (semaforo statico con programID=0) nel medesimo batch",
+    )
+    parser.add_argument(
+        "--include-fixed-tuned",
+        action="store_true",
+        help="Aggiunge scenario fixed_tuned (programID=0 con verde principale fissato) nel medesimo batch",
     )
     parser.add_argument(
         "--include-rbl-baseline",
@@ -452,11 +468,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--delta-baseline-scenario",
         default="",
-        help="Scenario usato come baseline delta (default: fixed_base se presente, altrimenti mp_base)",
+        help=(
+            "Scenario usato come baseline delta "
+            "(default: fixed_program0 se presente, poi fixed_tuned, poi fixed_base, altrimenti mp_base)"
+        ),
     )
     parser.add_argument("--jobs", type=int, default=1, help="Numero massimo di simulazioni in parallelo (1 = seriale)")
     parser.add_argument("--step-length", type=float, default=1.0, help="Step simulation in secondi")
     parser.add_argument("--max-steps", type=int, default=5400, help="Tetto massimo simulazione (0 = nessun limite)")
+    parser.add_argument(
+        "--driver-profile",
+        choices=["default", "human_light"],
+        default="default",
+        help="Profilo guidatore globale inoltrato a runner.py",
+    )
+    parser.add_argument(
+        "--human-light",
+        action="store_true",
+        help="Scorciatoia per --driver-profile human_light",
+    )
     parser.add_argument(
         "--progress-interval",
         type=float,
@@ -470,12 +500,21 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--python-exe", default=sys.executable, help="Interprete python da usare per subprocess")
     args = parser.parse_args()
+    if args.human_light:
+        args.driver_profile = "human_light"
     if args.jobs <= 0:
         parser.error("--jobs deve essere >= 1")
     if args.progress_interval <= 0:
         parser.error("--progress-interval deve essere > 0")
     valid_names = {scenario.name for scenario in SCENARIO_PACKS[args.scenario_pack]}
-    valid_names.update({FIXED_BASELINE_SCENARIO.name, RBL_BASELINE_SCENARIO.name})
+    valid_names.update(
+        {
+            FIXED_BASELINE_SCENARIO.name,
+            FIXED_PROGRAM0_SCENARIO.name,
+            FIXED_TUNED_SCENARIO.name,
+            RBL_BASELINE_SCENARIO.name,
+        }
+    )
     unknown = sorted({name for name in args.scenarios if name not in valid_names})
     if unknown:
         parser.error(
@@ -801,6 +840,8 @@ def execute_case(
         str(population_file),
         "--controller",
         scenario.controller,
+        "--driver-profile",
+        args.driver_profile,
         "--step-length",
         str(args.step_length),
         "--output-log",
@@ -830,6 +871,7 @@ def execute_case(
             "scenario": scenario.name,
             "controller": scenario.controller,
             "flags": " ".join(scenario.flags),
+            "driver_profile": args.driver_profile,
             "population_file": str(population_file),
             "status": "fail",
             "wall_seconds": round(wall_seconds, 3),
@@ -846,6 +888,7 @@ def execute_case(
         "scenario": scenario.name,
         "controller": scenario.controller,
         "flags": " ".join(scenario.flags),
+        "driver_profile": args.driver_profile,
         "population_file": str(population_file),
         "status": "ok" if return_code == 0 else "fail",
         "wall_seconds": round(wall_seconds, 3),
@@ -893,6 +936,14 @@ def main() -> None:
             flags = " ".join(scenario.flags) if scenario.flags else "(none)"
             print(f"- {scenario.name}: controller={scenario.controller} flags={flags}")
         print(f"- {FIXED_BASELINE_SCENARIO.name}: controller={FIXED_BASELINE_SCENARIO.controller} flags=(none)")
+        print(
+            f"- {FIXED_PROGRAM0_SCENARIO.name}: controller={FIXED_PROGRAM0_SCENARIO.controller} "
+            "flags=--fixed-program-id 0"
+        )
+        print(
+            f"- {FIXED_TUNED_SCENARIO.name}: controller={FIXED_TUNED_SCENARIO.controller} "
+            "flags=--fixed-program-id 0 --fixed-main-green-seconds 30"
+        )
         print(f"- {RBL_BASELINE_SCENARIO.name}: controller={RBL_BASELINE_SCENARIO.controller} flags=(none), map_suffix=_rbl")
         return
 
@@ -901,12 +952,20 @@ def main() -> None:
         selected_scenarios = list(scenario for scenario in scenario_pack if scenario.name in selected_names)
         if FIXED_BASELINE_SCENARIO.name in selected_names:
             selected_scenarios.append(FIXED_BASELINE_SCENARIO)
+        if FIXED_PROGRAM0_SCENARIO.name in selected_names:
+            selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
+        if FIXED_TUNED_SCENARIO.name in selected_names:
+            selected_scenarios.append(FIXED_TUNED_SCENARIO)
         if RBL_BASELINE_SCENARIO.name in selected_names:
             selected_scenarios.append(RBL_BASELINE_SCENARIO)
     else:
         selected_scenarios = list(scenario_pack)
     if args.include_fixed_baseline:
         selected_scenarios.append(FIXED_BASELINE_SCENARIO)
+    if args.include_fixed_program0:
+        selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
+    if args.include_fixed_tuned:
+        selected_scenarios.append(FIXED_TUNED_SCENARIO)
     if args.include_rbl_baseline:
         selected_scenarios.append(RBL_BASELINE_SCENARIO)
 
@@ -925,7 +984,15 @@ def main() -> None:
 
     delta_baseline_scenario = args.delta_baseline_scenario.strip()
     if not delta_baseline_scenario:
-        delta_baseline_scenario = "fixed_base" if any(s.name == "fixed_base" for s in selected_scenarios) else "mp_base"
+        names = {s.name for s in selected_scenarios}
+        if "fixed_program0" in names:
+            delta_baseline_scenario = "fixed_program0"
+        elif "fixed_tuned" in names:
+            delta_baseline_scenario = "fixed_tuned"
+        elif "fixed_base" in names:
+            delta_baseline_scenario = "fixed_base"
+        else:
+            delta_baseline_scenario = "mp_base"
     selected_scenario_names = {s.name for s in selected_scenarios}
     if delta_baseline_scenario not in selected_scenario_names:
         raise RuntimeError(
@@ -969,12 +1036,16 @@ def main() -> None:
         "seed_start": args.seed_start,
         "scenario_pack": args.scenario_pack,
         "include_fixed_baseline": args.include_fixed_baseline,
+        "include_fixed_program0": args.include_fixed_program0,
+        "include_fixed_tuned": args.include_fixed_tuned,
         "include_rbl_baseline": args.include_rbl_baseline,
         "delta_baseline_scenario": delta_baseline_scenario,
         "step_length": args.step_length,
         "max_steps": args.max_steps,
         "progress_interval": args.progress_interval,
         "python_exe": args.python_exe,
+        "driver_profile": args.driver_profile,
+        "runner_global_flags": ["--driver-profile", args.driver_profile],
         "demand_presets": {
             key: {
                 "vehicles": DEMANDS[key].vehicles,
@@ -1245,6 +1316,7 @@ def main() -> None:
                                             "scenario": scenario.name,
                                             "controller": scenario.controller,
                                             "flags": " ".join(scenario.flags),
+                                            "driver_profile": args.driver_profile,
                                             "population_file": str(population_file),
                                             "status": "fail",
                                             "wall_seconds": 0.0,
@@ -1280,6 +1352,7 @@ def main() -> None:
         "scenario",
         "controller",
         "flags",
+        "driver_profile",
         "population_file",
         "status",
         "wall_seconds",

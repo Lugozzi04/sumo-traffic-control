@@ -13,6 +13,7 @@ from src.metrics import aggregate_runs, write_metrics_csv, MetricsCollector
 from src.paths import logs_dir, sumocfg_path, vehicletypes_path
 from src.population import (
     add_vehicles_to_simulation,
+    depart_speed_mode_for_profile,
     generate_vehicle_types_file,
     load_population,
     validate_population_routes,
@@ -53,6 +54,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repeat", type=int, default=1, help="Ripeti l'esperimento e media i risultati")
     parser.add_argument("--max-steps", type=int, default=0, help="Stop anticipato (0 = nessun limite)")
     parser.add_argument("--output-log", default="", help="Path CSV di output (opzionale)")
+    parser.add_argument(
+        "--driver-profile",
+        choices=["default", "human_light"],
+        default="default",
+        help="Profilo guidatore globale applicato ai vType (default o human_light)",
+    )
+    parser.add_argument(
+        "--human-light",
+        action="store_true",
+        help="Scorciatoia per --driver-profile human_light",
+    )
     parser.add_argument("--min-green", type=float, default=10.0, help="Minimo tempo di verde per phase hold")
     parser.add_argument("--max-green", type=float, default=120.0, help="Massimo tempo di verde prima di forzare rivalutazione")
     parser.add_argument("--switch-epsilon", type=float, default=0.0, help="Margine minimo di pressione per cambiare fase")
@@ -79,8 +91,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--spillback-off", type=float, default=0.75, help="Soglia OFF occupazione downstream [0-1]")
     parser.add_argument("--spillback-min-halts", type=int, default=1, help="Min veicoli fermi richiesti per attivare blocco")
     parser.add_argument("--spillback-alpha", type=float, default=0.5, help="Fattore EMA occupazione downstream [0-1]")
+    parser.add_argument(
+        "--fixed-program-id",
+        default="",
+        help="Con controller fixed, forza questo programID TLS (es. 0). Vuoto = programma di default mappa",
+    )
+    parser.add_argument(
+        "--fixed-main-green-seconds",
+        type=float,
+        default=0.0,
+        help="Con controller fixed, forza durata [s] delle fasi principali verdi (0 = off)",
+    )
+    parser.add_argument(
+        "--fixed-main-green-scale",
+        type=float,
+        default=1.0,
+        help="Con controller fixed, scala durata fasi principali verdi (1.0 = off)",
+    )
 
     args = parser.parse_args()
+    if args.human_light:
+        args.driver_profile = "human_light"
     if not 0.0 <= args.spillback_off <= args.spillback_on <= 1.0:
         parser.error("Richiesto: 0 <= --spillback-off <= --spillback-on <= 1")
     if args.spillback_min_halts < 0:
@@ -115,6 +146,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--nmin-floor deve essere >= 0")
     if args.nmin_empty_release_seconds < 0:
         parser.error("--nmin-empty-release-seconds deve essere >= 0")
+    if args.fixed_main_green_seconds < 0:
+        parser.error("--fixed-main-green-seconds deve essere >= 0")
+    if args.fixed_main_green_scale <= 0:
+        parser.error("--fixed-main-green-scale deve essere > 0")
     return args
 
 
@@ -166,16 +201,27 @@ def build_controller(name: str, args: argparse.Namespace):
             spillback_min_halts=args.spillback_min_halts,
             spillback_alpha=args.spillback_alpha,
         )
-    return FixedTimeController()
+    return FixedTimeController(
+        program_id=args.fixed_program_id,
+        main_green_seconds=args.fixed_main_green_seconds,
+        main_green_scale=args.fixed_main_green_scale,
+    )
 
 
 def run_once(args: argparse.Namespace, population_file: Path) -> dict:
     population = load_population(population_file)
     validate_population_routes(args.map_name, population)
-    generate_vehicle_types_file(vehicletypes_path(), population)
+    generate_vehicle_types_file(
+        vehicletypes_path(),
+        population,
+        driver_profile=args.driver_profile,
+    )
 
     start_sumo(args.map_name, args.gui, args.step_length)
-    add_vehicles_to_simulation(population)
+    add_vehicles_to_simulation(
+        population,
+        depart_speed_mode=depart_speed_mode_for_profile(args.driver_profile),
+    )
 
     controller = build_controller(args.controller, args)
     controller.attach_to_all_traffic_lights()
@@ -228,6 +274,7 @@ def main() -> None:
             "step_length": args.step_length,
             "max_steps": args.max_steps,
             "gui": args.gui,
+            "driver_profile": args.driver_profile,
             "output_metrics_file": str(output),
         }
         (run_dir / "run_info.json").write_text(json.dumps(run_info, indent=2), encoding="utf-8")

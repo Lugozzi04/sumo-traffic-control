@@ -44,6 +44,16 @@ python3 runner.py \
   --controller fixed
 ```
 
+Profilo guidatori "human light" (globale su tutto il run):
+
+```bash
+python3 runner.py \
+  -n manhattan3x3_100pc \
+  -p data/populations/manhattan3x3_demo.yaml \
+  --controller mp \
+  --driver-profile human_light
+```
+
 Output (default runner):
 - viene creata una cartella nuova per ogni run in `logs/simulations/`
 - formato: `sim_XXXX_YYYYMMDD_HHMMSS/`
@@ -183,9 +193,13 @@ Opzionale:
 - `--scenario-pack <name>`: set scenari da usare (`tuned_v1` default, `tuning_matrix_v1` per tuning).
 - `--scenarios <nome1 nome2 ...>`: subset scenari del pack (utile per mini-run veloci).
 - `--list-scenarios`: stampa gli scenari disponibili nel pack selezionato ed esce.
-- `--include-fixed-baseline`: aggiunge scenario `fixed_base` (semafori statici SUMO).
+- `--driver-profile {default,human_light}`: profilo guidatori globale (vale per tutti gli scenari nel batch).
+- `--human-light`: scorciatoia per `--driver-profile human_light`.
+- `--include-fixed-baseline`: aggiunge scenario `fixed_base` legacy (semafori statici default della mappa).
+- `--include-fixed-program0`: aggiunge scenario `fixed_program0` (semafori statici con `programID=0`).
+- `--include-fixed-tuned`: aggiunge scenario `fixed_tuned` (semafori statici `programID=0` con verde principale fissato).
 - `--include-rbl-baseline`: aggiunge scenario `rbl_base` su mappa `<map>_rbl` (precedenza a destra), se presente.
-- `--delta-baseline-scenario <nome>`: scenario usato come baseline per `DeltaWait/DeltaTravel` (default: `fixed_base` se presente, altrimenti `mp_base`).
+- `--delta-baseline-scenario <nome>`: scenario usato come baseline per `DeltaWait/DeltaTravel` (default: `fixed_program0` se presente, poi `fixed_tuned`, poi `fixed_base`, altrimenti `mp_base`).
 
 Nota:
 - lo script fa preflight automatico (`traci/sumolib/yaml`, comando `sumo`, mappe presenti);
@@ -216,9 +230,10 @@ Esempio completo (MP + semaforo classico + precedenza a destra, stessa batch):
   --jobs 3 \
   --max-steps 5400 \
   --scenario-pack tuning_matrix_v1 \
-  --include-fixed-baseline \
+  --include-fixed-program0 \
+  --include-fixed-tuned \
   --include-rbl-baseline \
-  --delta-baseline-scenario fixed_base
+  --delta-baseline-scenario fixed_program0
 ```
 
 Output in:

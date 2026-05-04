@@ -86,8 +86,10 @@ def build_full_command(
     step_length: str,
     output_log: Path,
     max_steps: int,
+    global_flags_text: str,
     flags_text: str,
 ) -> list[str]:
+    global_flags = shlex.split(global_flags_text) if global_flags_text else []
     flags = shlex.split(flags_text) if flags_text else []
     cmd = [
         python_exe,
@@ -105,6 +107,7 @@ def build_full_command(
     ]
     if max_steps > 0:
         cmd.extend(["--max-steps", str(max_steps)])
+    cmd.extend(global_flags)
     cmd.extend(flags)
     return cmd
 
@@ -119,6 +122,10 @@ def main() -> None:
     max_steps = int(config.get("max_steps", 0) or 0)
     python_exe = str(config.get("python_exe", "python3"))
     scenario_pack = str(config.get("scenario_pack", "n/a"))
+    global_flags_text = ""
+    if isinstance(config.get("runner_global_flags"), list):
+        global_flags_text = " ".join(str(x) for x in config["runner_global_flags"])
+    driver_profile = str(config.get("driver_profile", ""))
 
     filtered_rows = rows
     if args.only_scenario:
@@ -144,6 +151,8 @@ def main() -> None:
     print(f"Scenario pack: {scenario_pack}")
     print(f"python={python_exe}")
     print(f"step_length={step_length}  max_steps={max_steps}")
+    if driver_profile:
+        print(f"driver_profile={driver_profile}")
     print(f"maps={', '.join(maps)}")
     print(f"demands={', '.join(demands)}")
     print(f"seeds={', '.join(seeds)}")
@@ -151,6 +160,8 @@ def main() -> None:
     print("")
 
     print("Scenari e flag:")
+    if global_flags_text:
+        print(f"- global: {global_flags_text}")
     for scenario_name in scenarios:
         flags_text = scenario_to_flags.get(scenario_name, "")
         controller_name = scenario_to_controller.get(scenario_name, "mp")
@@ -164,6 +175,8 @@ def main() -> None:
     )
     if max_steps > 0:
         base_template += f" --max-steps {max_steps}"
+    if global_flags_text:
+        base_template += f" {global_flags_text}"
 
     print("Template comando (parte comune):")
     print(base_template)
@@ -185,6 +198,7 @@ def main() -> None:
             step_length=step_length,
             output_log=run_dir / "runs" / run_id / "vehicle_metrics.csv",
             max_steps=max_steps,
+            global_flags_text=global_flags_text,
             flags_text=str(row.get("flags", "")).strip(),
         )
         print(f"- {run_id} ({row['scenario']}):")

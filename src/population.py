@@ -7,6 +7,16 @@ import yaml
 
 from .paths import route_file_path
 
+DRIVER_PROFILE_DEFAULT = "default"
+DRIVER_PROFILE_HUMAN_LIGHT = "human_light"
+
+SUPPORTED_DRIVER_PROFILES = {DRIVER_PROFILE_DEFAULT, DRIVER_PROFILE_HUMAN_LIGHT}
+
+DEPART_SPEED_BY_PROFILE = {
+    DRIVER_PROFILE_DEFAULT: "max",
+    DRIVER_PROFILE_HUMAN_LIGHT: "desired",
+}
+
 
 DEFAULT_VTYPES = {
     "passenger": {
@@ -66,6 +76,44 @@ DEFAULT_VTYPES = {
     },
 }
 
+HUMAN_LIGHT_TYPE_OVERRIDES = {
+    "passenger": {
+        "tau": "1.4",
+        "sigma": "0.6",
+        "actionStepLength": "1.0",
+        "jmTimegapMinor": "1.3",
+        "startupDelay": "0.7",
+    },
+    "delivery": {
+        "tau": "1.5",
+        "sigma": "0.5",
+        "actionStepLength": "1.0",
+        "jmTimegapMinor": "1.4",
+        "startupDelay": "0.9",
+    },
+    "truck": {
+        "tau": "1.6",
+        "sigma": "0.4",
+        "actionStepLength": "1.0",
+        "jmTimegapMinor": "1.5",
+        "startupDelay": "1.1",
+    },
+    "bus": {
+        "tau": "1.6",
+        "sigma": "0.4",
+        "actionStepLength": "1.0",
+        "jmTimegapMinor": "1.5",
+        "startupDelay": "1.1",
+    },
+    "motorcycle": {
+        "tau": "1.2",
+        "sigma": "0.7",
+        "actionStepLength": "1.0",
+        "jmTimegapMinor": "1.2",
+        "startupDelay": "0.4",
+    },
+}
+
 
 @dataclass
 class VehicleInput:
@@ -114,18 +162,36 @@ def validate_population_routes(map_name: str, population: list[VehicleInput]) ->
         raise ValueError(f"Route non valide nella popolazione: {sample}")
 
 
-def generate_vehicle_types_file(filename: Path, population: list[VehicleInput]) -> None:
+def _build_type_attributes(type_id: str, driver_profile: str) -> dict[str, str]:
+    attrs = dict(DEFAULT_VTYPES[type_id])
+    if driver_profile == DRIVER_PROFILE_HUMAN_LIGHT:
+        attrs.update(HUMAN_LIGHT_TYPE_OVERRIDES[type_id])
+    return attrs
+
+
+def depart_speed_mode_for_profile(driver_profile: str) -> str:
+    if driver_profile not in SUPPORTED_DRIVER_PROFILES:
+        raise ValueError(f"driver_profile non supportato: {driver_profile}")
+    return DEPART_SPEED_BY_PROFILE[driver_profile]
+
+
+def generate_vehicle_types_file(
+    filename: Path, population: list[VehicleInput], driver_profile: str = DRIVER_PROFILE_DEFAULT
+) -> None:
+    if driver_profile not in SUPPORTED_DRIVER_PROFILES:
+        raise ValueError(f"driver_profile non supportato: {driver_profile}")
+
     root = ET.Element("routes")
     for type_id in sorted({vehicle.type_id for vehicle in population}):
         attrs = {"id": type_id}
-        attrs.update(DEFAULT_VTYPES[type_id])
+        attrs.update(_build_type_attributes(type_id, driver_profile))
         ET.SubElement(root, "vType", attrs)
 
     tree = ET.ElementTree(root)
     tree.write(filename, encoding="utf-8", xml_declaration=True)
 
 
-def add_vehicles_to_simulation(population: list[VehicleInput]) -> None:
+def add_vehicles_to_simulation(population: list[VehicleInput], *, depart_speed_mode: str = "max") -> None:
     for vehicle in population:
         depart = f"{vehicle.depart:.2f}".rstrip("0").rstrip(".")
         traci.vehicle.add(
@@ -134,5 +200,5 @@ def add_vehicles_to_simulation(population: list[VehicleInput]) -> None:
             typeID=vehicle.type_id,
             depart=depart,
             departLane="best",
-            departSpeed="max",
+            departSpeed=depart_speed_mode,
         )

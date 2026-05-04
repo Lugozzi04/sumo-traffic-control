@@ -8,6 +8,35 @@ sumo-traffic-control, con formule matematiche e impatto pratico.
 File/riga: runner.py:46, runner.py:139, src/controllers/max_pressure.py:25
 
 
+0) Flag globali profilo guidatori (NUOVO)
+-----------------------------------------
+Questi flag NON cambiano la formula MP, ma cambiano il comportamento dei veicoli
+in tutta la simulazione (quindi impattano tutti gli scenari: mp/fixed/rbl).
+
+Flag disponibili:
+- `--driver-profile default|human_light`
+- `--human-light` (shortcut di `--driver-profile human_light`)
+File/riga: runner.py:57, runner.py:64, utils/run_ablation.py:479, utils/run_ablation.py:486
+
+Effetto `human_light`:
+- applica override ai `vType`:
+  - `tau`, `sigma`, `actionStepLength`, `jmTimegapMinor`, `startupDelay`
+- usa inserimento veicoli con `departSpeed="desired"` (invece di `max`)
+File/riga: src/population.py:79, src/population.py:173, src/population.py:198
+
+Nel batch ablation:
+- il profilo e inoltrato automaticamente a ogni `runner.py` case;
+- viene salvato in output per tracciabilita (`run_results.csv` e `config_resolved.yaml`).
+File/riga: utils/run_ablation.py:834, utils/run_ablation.py:1047, utils/run_ablation.py:1355
+
+Valori correnti human_light:
+- passenger: `tau=1.4`, `sigma=0.6`, `actionStepLength=1.0`, `jmTimegapMinor=1.3`, `startupDelay=0.7`
+- delivery:  `tau=1.5`, `sigma=0.5`, `actionStepLength=1.0`, `jmTimegapMinor=1.4`, `startupDelay=0.9`
+- truck:     `tau=1.6`, `sigma=0.4`, `actionStepLength=1.0`, `jmTimegapMinor=1.5`, `startupDelay=1.1`
+- bus:       `tau=1.6`, `sigma=0.4`, `actionStepLength=1.0`, `jmTimegapMinor=1.5`, `startupDelay=1.1`
+- motorcycle:`tau=1.2`, `sigma=0.7`, `actionStepLength=1.0`, `jmTimegapMinor=1.2`, `startupDelay=0.4`
+
+
 1) Dove entrano i flag MP nel flusso del codice
 -----------------------------------------------
 - I flag CLI vengono definiti in runner.py e validati (range, valori minimi,
