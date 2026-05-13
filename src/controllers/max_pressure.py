@@ -1,5 +1,6 @@
 from collections import deque
 from dataclasses import dataclass
+import math
 from typing import Optional
 
 import traci
@@ -44,6 +45,7 @@ class MaxPressureController(TrafficController):
         min_green: float = 10.0,
         max_green: float = 120.0,
         switch_epsilon: float = 0.0,
+        switch_epsilon_rel: float = 0.0,
         lost_time_aware: bool = False,
         lost_time_sat_flow: float = 0.5,
         lost_time_gain: float = 1.0,
@@ -61,6 +63,8 @@ class MaxPressureController(TrafficController):
         nmin_dynamic: bool = False,
         nmin_alpha: float = 1.0,
         nmin_floor: int = 2,
+        nmin_min_green: float = -1.0,
+        nmin_demand_gain: float = 0.0,
         nmin_empty_release_seconds: float = 2.0,
         hard_spillback: bool = False,
         spillback_on: float = DEFAULT_SPILLBACK_ON,
@@ -72,6 +76,7 @@ class MaxPressureController(TrafficController):
         self.min_green = min_green
         self.max_green = max_green
         self.switch_epsilon = switch_epsilon
+        self.switch_epsilon_rel = switch_epsilon_rel
         self.lost_time_aware = lost_time_aware
         self.lost_time_sat_flow = lost_time_sat_flow
         self.lost_time_gain = lost_time_gain
@@ -89,6 +94,8 @@ class MaxPressureController(TrafficController):
         self.nmin_dynamic = nmin_dynamic
         self.nmin_alpha = nmin_alpha
         self.nmin_floor = nmin_floor
+        self.nmin_min_green = nmin_min_green
+        self.nmin_demand_gain = nmin_demand_gain
         self.nmin_empty_release_seconds = nmin_empty_release_seconds
         self.hard_spillback = hard_spillback
         self.spillback_on = spillback_on
@@ -101,6 +108,22 @@ class MaxPressureController(TrafficController):
         self._downstream_blocked: dict[str, bool] = {}
         self._lane_prev_positions: dict[str, dict[str, float]] = {}
         self._lane_passage_times: dict[str, deque[float]] = {}
+        self._runtime_stats: dict[str, float] = {
+            "switch_margin_count": 0.0,
+            "switch_max_green_count": 0.0,
+            "nmin_hold_step_count": 0.0,
+            "spillback_block_event_count": 0.0,
+            "spillback_release_event_count": 0.0,
+            "platoon_extend_step_count": 0.0,
+            "fairness_positive_bonus_count": 0.0,
+            "fairness_bonus_sum": 0.0,
+        }
+
+    def _incr_stat(self, key: str, amount: float = 1.0) -> None:
+        self._runtime_stats[key] = self._runtime_stats.get(key, 0.0) + amount
+
+    def get_runtime_stats(self) -> dict[str, float]:
+        return dict(self._runtime_stats)
 
     def on_attach(self) -> None:
         for tl_id in self.traffic_lights:
@@ -108,8 +131,10 @@ class MaxPressureController(TrafficController):
             if not logics:
                 continue
 
-            logic = self._select_logic(logics)
-            traci.trafficlight.setProgram(tl_id, logic.programID)
+            current_program_id = traci.trafficlight.getProgram(tl_id)
+            logic = self._select_logic(logics, preferred_program_id=current_program_id)
+            if logic.programID != current_program_id:
+                traci.trafficlight.setProgram(tl_id, logic.programID)
 
             tl_data = self._build_traffic_light_data(tl_id, logic)
             if tl_data.main_phases:
@@ -120,16 +145,19 @@ class MaxPressureController(TrafficController):
                 tl_data.active_phase = current_phase
                 self._data[tl_id] = tl_data
 
-    def _select_logic(self, logics) -> object:
+    def _select_logic(self, logics, preferred_program_id: str = "") -> object:
         def main_phase_count(logic) -> int:
             return sum(1 for phase in logic.phases if self._is_main_phase_state(phase.state))
 
         main_counts = [main_phase_count(logic) for logic in logics]
         best_count = max(main_counts)
         candidates = [logic for logic, count in zip(logics, main_counts) if count == best_count]
-        for logic in candidates:
-            if logic.programID == "1":
-                return logic
+        # Prefer the currently active program when it is among the best candidates.
+        # This avoids forcing a specific program id (e.g. "1") on maps with custom TLS plans.
+        if preferred_program_id:
+            for logic in candidates:
+                if logic.programID == preferred_program_id:
+                    return logic
         return candidates[0] if candidates else logics[0]
 
     def _build_traffic_light_data(self, tl_id: str, logic) -> _TrafficLightData:
@@ -195,8 +223,10 @@ class MaxPressureController(TrafficController):
             phase_idx = (phase_idx + 1) % tl_data.phase_count
         return lost_time
 
-    def _switch_margin(self, tl_data: _TrafficLightData, current_phase: int) -> float:
+    def _switch_margin(self, tl_data: _TrafficLightData, current_phase: int, current_score: float) -> float:
         margin = self.switch_epsilon
+        if self.switch_epsilon_rel > 0.0 and math.isfinite(current_score):
+            margin += self.switch_epsilon_rel * abs(current_score)
         if not self.lost_time_aware:
             return margin
 
@@ -239,6 +269,10 @@ class MaxPressureController(TrafficController):
         else:
             blocked = occ >= self.spillback_on and halts >= self.spillback_min_halts
 
+        if not self._downstream_blocked.get(out_lane, False) and blocked:
+            self._incr_stat("spillback_block_event_count")
+        if self._downstream_blocked.get(out_lane, False) and not blocked:
+            self._incr_stat("spillback_release_event_count")
         self._downstream_blocked[out_lane] = blocked
         return blocked
 
@@ -346,6 +380,7 @@ class MaxPressureController(TrafficController):
             return False
 
         tl_data.active_platoon_extension_seconds += self._delta_seconds()
+        self._incr_stat("platoon_extend_step_count")
         return True
 
     def _phase_pressures(self, tl_data: _TrafficLightData) -> tuple[dict[int, float], dict[int, float]]:
@@ -422,6 +457,9 @@ class MaxPressureController(TrafficController):
                 scores[phase] = pressure
                 continue
             bonus = self._fairness_bonus(tl_data.wait_time_by_phase.get(phase, 0.0))
+            if bonus > 0.0:
+                self._incr_stat("fairness_positive_bonus_count")
+                self._incr_stat("fairness_bonus_sum", bonus)
             scores[phase] = pressure + bonus
         return scores
 
@@ -438,11 +476,14 @@ class MaxPressureController(TrafficController):
 
         # If current demand is small, avoid overholding a phase that is already almost drained.
         demand = max(0.0, phase_demand.get(current_phase, 0.0))
+        if self.nmin_demand_gain > 0.0:
+            n_target = max(n_target, self.nmin_demand_gain * demand)
         if demand > 0.0:
             n_target = min(n_target, demand)
 
         service_seconds = n_target / self.lost_time_sat_flow
-        return max(self.min_green, service_seconds)
+        nmin_floor_seconds = self.min_green if self.nmin_min_green < 0.0 else self.nmin_min_green
+        return max(nmin_floor_seconds, service_seconds)
 
     def _refresh_active_phase_state(self, tl_data: _TrafficLightData, current_phase: int, phase_demand: dict[int, float]) -> None:
         if tl_data.active_phase == current_phase:
@@ -540,9 +581,14 @@ class MaxPressureController(TrafficController):
             self._track_phase_platoon_arrivals(tl_data, current_phase, float(traci.simulation.getTime()))
 
             spent = traci.trafficlight.getSpentDuration(tl_id)
-            if spent < self.min_green:
+            if self.nmin_dynamic and self.nmin_min_green >= 0.0:
+                active_min_green = self.nmin_min_green
+            else:
+                active_min_green = self.min_green
+            if spent < active_min_green:
                 continue
             if self._must_hold_current_phase(tl_data, current_phase, spent, phase_demand):
+                self._incr_stat("nmin_hold_step_count")
                 continue
             if self._should_extend_for_platoon(tl_data, current_phase, spent):
                 continue
@@ -555,14 +601,16 @@ class MaxPressureController(TrafficController):
             scores = self._phase_scores(tl_data, pressures)
             best_phase, best_score = max(scores.items(), key=lambda item: item[1])
             current_score = scores[current_phase]
-            switch_margin = self._switch_margin(tl_data, current_phase)
+            switch_margin = self._switch_margin(tl_data, current_phase, current_score)
 
             if best_phase != current_phase and best_score > current_score + switch_margin:
+                self._incr_stat("switch_margin_count")
                 tl_data.pending_target = best_phase
                 self._advance_to_next_phase(tl_id, tl_data.phase_count)
                 continue
 
             # Safety cap to avoid overextending one phase in pathological cases.
             if spent >= self.max_green and best_phase != current_phase and best_score > float("-inf"):
+                self._incr_stat("switch_max_green_count")
                 tl_data.pending_target = best_phase
                 self._advance_to_next_phase(tl_id, tl_data.phase_count)

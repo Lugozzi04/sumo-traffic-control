@@ -1,6 +1,7 @@
 import argparse
 import csv
 import datetime as dt
+import json
 import math
 import os
 import re
@@ -45,6 +46,33 @@ DEMANDS: dict[str, DemandPreset] = {
     "low": DemandPreset(vehicles=2000, start_time=0.0, end_time=3600.0),
     "medium": DemandPreset(vehicles=4000, start_time=0.0, end_time=3600.0),
     "high": DemandPreset(vehicles=7000, start_time=0.0, end_time=3600.0),
+}
+
+# Map-specific demand presets calibrated to keep low/medium/high comparable
+# across different network geometries and route concentration.
+MAP_DEMAND_OVERRIDES: dict[str, dict[str, DemandPreset]] = {
+    "masa_100pc": {
+        "low": DemandPreset(vehicles=1400, start_time=0.0, end_time=3600.0),
+        "medium": DemandPreset(vehicles=2200, start_time=0.0, end_time=3600.0),
+        "high": DemandPreset(vehicles=2700, start_time=0.0, end_time=3600.0),
+    },
+    # Keep _rbl aligned with base map when available.
+    "masa_100pc_rbl": {
+        "low": DemandPreset(vehicles=1400, start_time=0.0, end_time=3600.0),
+        "medium": DemandPreset(vehicles=2200, start_time=0.0, end_time=3600.0),
+        "high": DemandPreset(vehicles=2700, start_time=0.0, end_time=3600.0),
+    },
+    "bologna": {
+        "low": DemandPreset(vehicles=1500, start_time=0.0, end_time=3600.0),
+        "medium": DemandPreset(vehicles=3000, start_time=0.0, end_time=3600.0),
+        "high": DemandPreset(vehicles=5000, start_time=0.0, end_time=3600.0),
+    },
+    # Keep fixed variant aligned for direct baseline comparisons on Bologna.
+    "bologna_fixed": {
+        "low": DemandPreset(vehicles=1500, start_time=0.0, end_time=3600.0),
+        "medium": DemandPreset(vehicles=3000, start_time=0.0, end_time=3600.0),
+        "high": DemandPreset(vehicles=5000, start_time=0.0, end_time=3600.0),
+    },
 }
 
 TUNED_V1_SCENARIOS: tuple[Scenario, ...] = (
@@ -402,9 +430,169 @@ TUNING_MATRIX_V1_SCENARIOS: tuple[Scenario, ...] = (
     ),
 )
 
+TUNING_MATRIX_V2_SCENARIOS: tuple[Scenario, ...] = (
+    Scenario("mp_base", ()),
+    Scenario(
+        "mp_lta_g040_sf050",
+        (
+            "--lost-time-aware",
+            "--lost-time-sat-flow",
+            "0.50",
+            "--lost-time-gain",
+            "0.40",
+        ),
+    ),
+    Scenario(
+        "mp_lta_g060_sf050",
+        (
+            "--lost-time-aware",
+            "--lost-time-sat-flow",
+            "0.50",
+            "--lost-time-gain",
+            "0.60",
+        ),
+    ),
+    Scenario(
+        "mp_nmin_a080_f2",
+        (
+            "--nmin-dynamic",
+            "--lost-time-sat-flow",
+            "0.50",
+            "--nmin-alpha",
+            "0.80",
+            "--nmin-floor",
+            "2",
+            "--nmin-min-green",
+            "4.0",
+            "--nmin-demand-gain",
+            "0.25",
+            "--nmin-empty-release-seconds",
+            "1.0",
+        ),
+    ),
+    Scenario(
+        "mp_nmin_a120_f4",
+        (
+            "--nmin-dynamic",
+            "--lost-time-sat-flow",
+            "0.50",
+            "--nmin-alpha",
+            "1.20",
+            "--nmin-floor",
+            "4",
+            "--nmin-min-green",
+            "4.0",
+            "--nmin-demand-gain",
+            "0.40",
+            "--nmin-empty-release-seconds",
+            "1.5",
+        ),
+    ),
+    Scenario(
+        "mp_downstream_b04",
+        (
+            "--downstream-penalty",
+            "--downstream-beta",
+            "0.4",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_downstream_b08",
+        (
+            "--downstream-penalty",
+            "--downstream-beta",
+            "0.8",
+            "--downstream-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_spillback_on90_off80",
+        (
+            "--spillback",
+            "--spillback-on",
+            "0.90",
+            "--spillback-off",
+            "0.80",
+            "--spillback-min-halts",
+            "1",
+            "--spillback-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_spillback_on97_off90",
+        (
+            "--spillback",
+            "--spillback-on",
+            "0.97",
+            "--spillback-off",
+            "0.90",
+            "--spillback-min-halts",
+            "3",
+            "--spillback-alpha",
+            "0.30",
+        ),
+    ),
+    Scenario(
+        "mp_fair_mu3_w30",
+        (
+            "--fairness",
+            "--fairness-mu",
+            "3.0",
+            "--fairness-w-half",
+            "30.0",
+        ),
+    ),
+    Scenario(
+        "mp_fair_mu5_w20",
+        (
+            "--fairness",
+            "--fairness-mu",
+            "5.0",
+            "--fairness-w-half",
+            "20.0",
+        ),
+    ),
+    Scenario(
+        "mp_platoon_x2",
+        (
+            "--platoon-extension",
+            "--platoon-headway-threshold",
+            "2.1",
+            "--platoon-gap-out-seconds",
+            "2.1",
+            "--platoon-max-extra-green",
+            "2.0",
+            "--platoon-guard-occ",
+            "0.90",
+        ),
+    ),
+    Scenario(
+        "mp_platoon_x4",
+        (
+            "--platoon-extension",
+            "--platoon-headway-threshold",
+            "2.1",
+            "--platoon-gap-out-seconds",
+            "2.1",
+            "--platoon-max-extra-green",
+            "4.0",
+            "--platoon-guard-occ",
+            "0.90",
+        ),
+    ),
+    Scenario("mp_switch_eps1", ("--switch-epsilon", "1.0")),
+    Scenario("mp_switch_rel005", ("--switch-epsilon-rel", "0.05")),
+    Scenario("mp_switch_rel010", ("--switch-epsilon-rel", "0.10")),
+)
+
 SCENARIO_PACKS: dict[str, tuple[Scenario, ...]] = {
     "tuned_v1": TUNED_V1_SCENARIOS,
     "tuning_matrix_v1": TUNING_MATRIX_V1_SCENARIOS,
+    "tuning_matrix_v2": TUNING_MATRIX_V2_SCENARIOS,
 }
 
 STEP_PATTERN = re.compile(r"Step #([0-9]+(?:\.[0-9]+)?)")
@@ -466,6 +654,11 @@ def parse_args() -> argparse.Namespace:
         help="Aggiunge scenario rbl_base su mappa '<map>_rbl' (precedenza a destra), se disponibile",
     )
     parser.add_argument(
+        "--include-classic-baselines",
+        action="store_true",
+        help="Aggiunge insieme fixed_base + fixed_program0 + fixed_tuned",
+    )
+    parser.add_argument(
         "--delta-baseline-scenario",
         default="",
         help=(
@@ -476,6 +669,30 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--jobs", type=int, default=1, help="Numero massimo di simulazioni in parallelo (1 = seriale)")
     parser.add_argument("--step-length", type=float, default=1.0, help="Step simulation in secondi")
     parser.add_argument("--max-steps", type=int, default=5400, help="Tetto massimo simulazione (0 = nessun limite)")
+    parser.add_argument(
+        "--population-route-sampling",
+        choices=["uniform", "edge_weighted"],
+        default="edge_weighted",
+        help="Strategia scelta route durante generazione popolazione",
+    )
+    parser.add_argument(
+        "--population-route-weight-exponent",
+        type=float,
+        default=1.2,
+        help="Esponente peso route per sampling edge_weighted",
+    )
+    parser.add_argument(
+        "--population-depart-profile",
+        choices=["uniform", "peaked"],
+        default="peaked",
+        help="Profilo temporale partenze veicoli",
+    )
+    parser.add_argument(
+        "--population-peak-factor",
+        type=float,
+        default=0.75,
+        help="Intensita picchi partenza [0-1] usata con profilo peaked",
+    )
     parser.add_argument(
         "--driver-profile",
         choices=["default", "human_light"],
@@ -506,6 +723,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--jobs deve essere >= 1")
     if args.progress_interval <= 0:
         parser.error("--progress-interval deve essere > 0")
+    if args.population_route_weight_exponent < 0:
+        parser.error("--population-route-weight-exponent deve essere >= 0")
+    if not 0.0 <= args.population_peak_factor <= 1.0:
+        parser.error("--population-peak-factor deve essere nel range [0, 1]")
     valid_names = {scenario.name for scenario in SCENARIO_PACKS[args.scenario_pack]}
     valid_names.update(
         {
@@ -759,6 +980,17 @@ def scenario_map_exists(root: Path, map_name: str, scenario: Scenario) -> bool:
     return cfg.exists()
 
 
+def demand_map_key(map_name: str) -> str:
+    # Reuse base-map demand override for suffix variants like *_rbl.
+    return map_name[:-4] if map_name.endswith("_rbl") else map_name
+
+
+def resolve_demand_preset(map_name: str, demand_name: str) -> DemandPreset:
+    override_key = map_name if map_name in MAP_DEMAND_OVERRIDES else demand_map_key(map_name)
+    per_map = MAP_DEMAND_OVERRIDES.get(override_key, {})
+    return per_map.get(demand_name, DEMANDS[demand_name])
+
+
 def preflight_checks(args: argparse.Namespace, root: Path, scenarios: tuple[Scenario, ...]) -> None:
     import_cmd = [args.python_exe, "-c", "import traci, sumolib, yaml; print('python deps ok')"]
     code, output = run_command(import_cmd, root)
@@ -804,6 +1036,14 @@ def fill_failed_metrics(base_row: dict) -> dict:
             "mean_speed_mps": 0.0,
             "mean_co2_g": 0.0,
             "mean_fuel_g": 0.0,
+            "mp_switch_margin_count": 0.0,
+            "mp_switch_max_green_count": 0.0,
+            "mp_nmin_hold_step_count": 0.0,
+            "mp_spillback_block_event_count": 0.0,
+            "mp_spillback_release_event_count": 0.0,
+            "mp_platoon_extend_step_count": 0.0,
+            "mp_fairness_positive_bonus_count": 0.0,
+            "mp_fairness_bonus_sum": 0.0,
         }
     )
     return base_row
@@ -821,6 +1061,7 @@ def execute_case(
     source_map_name: str,
     effective_map_name_value: str,
     demand_name: str,
+    demand_preset: DemandPreset,
     pop_seed: int,
     scenario: Scenario,
     population_file: Path,
@@ -867,6 +1108,9 @@ def execute_case(
             "map": source_map_name,
             "effective_map": effective_map_name_value,
             "demand": demand_name,
+            "demand_vehicles": int(demand_preset.vehicles),
+            "demand_start_time": float(demand_preset.start_time),
+            "demand_end_time": float(demand_preset.end_time),
             "pop_seed": pop_seed,
             "scenario": scenario.name,
             "controller": scenario.controller,
@@ -884,6 +1128,9 @@ def execute_case(
         "map": source_map_name,
         "effective_map": effective_map_name_value,
         "demand": demand_name,
+        "demand_vehicles": int(demand_preset.vehicles),
+        "demand_start_time": float(demand_preset.start_time),
+        "demand_end_time": float(demand_preset.end_time),
         "pop_seed": pop_seed,
         "scenario": scenario.name,
         "controller": scenario.controller,
@@ -917,6 +1164,31 @@ def execute_case(
                 "mean_speed_mps": round(metrics["mean_speed_mps"], 6),
                 "mean_co2_g": round(metrics["mean_co2_g"], 6),
                 "mean_fuel_g": round(metrics["mean_fuel_g"], 6),
+            }
+        )
+
+        stats_file = log_file.with_suffix(".controller_stats.json")
+        stats_mean: dict[str, float] = {}
+        if stats_file.exists():
+            try:
+                payload = json.loads(stats_file.read_text(encoding="utf-8"))
+                raw = payload.get("stats_mean", {})
+                if isinstance(raw, dict):
+                    stats_mean = {str(k): float(v) for k, v in raw.items()}
+            except Exception:
+                stats_mean = {}
+        base_row.update(
+            {
+                "mp_switch_margin_count": round(float(stats_mean.get("switch_margin_count", 0.0)), 6),
+                "mp_switch_max_green_count": round(float(stats_mean.get("switch_max_green_count", 0.0)), 6),
+                "mp_nmin_hold_step_count": round(float(stats_mean.get("nmin_hold_step_count", 0.0)), 6),
+                "mp_spillback_block_event_count": round(float(stats_mean.get("spillback_block_event_count", 0.0)), 6),
+                "mp_spillback_release_event_count": round(float(stats_mean.get("spillback_release_event_count", 0.0)), 6),
+                "mp_platoon_extend_step_count": round(float(stats_mean.get("platoon_extend_step_count", 0.0)), 6),
+                "mp_fairness_positive_bonus_count": round(
+                    float(stats_mean.get("fairness_positive_bonus_count", 0.0)), 6
+                ),
+                "mp_fairness_bonus_sum": round(float(stats_mean.get("fairness_bonus_sum", 0.0)), 6),
             }
         )
     except Exception:
@@ -960,6 +1232,10 @@ def main() -> None:
             selected_scenarios.append(RBL_BASELINE_SCENARIO)
     else:
         selected_scenarios = list(scenario_pack)
+    if args.include_classic_baselines:
+        selected_scenarios.append(FIXED_BASELINE_SCENARIO)
+        selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
+        selected_scenarios.append(FIXED_TUNED_SCENARIO)
     if args.include_fixed_baseline:
         selected_scenarios.append(FIXED_BASELINE_SCENARIO)
     if args.include_fixed_program0:
@@ -1026,6 +1302,18 @@ def main() -> None:
         print("[info] --batch-name ignorato: ora il nome run e' sempre progressivo+timestamp")
     write_atomic_text(ablation_root / "latest_run.txt", f"{run_id}\n{batch_dir}\n")
 
+    resolved_demand_presets_by_map: dict[str, dict[str, dict[str, float | int]]] = {}
+    for map_name in args.maps:
+        for emap in sorted({effective_map_name(map_name, s) for s in map_scenarios.get(map_name, ())}):
+            resolved_demand_presets_by_map[emap] = {}
+            for demand_name in args.demands:
+                preset = resolve_demand_preset(emap, demand_name)
+                resolved_demand_presets_by_map[emap][demand_name] = {
+                    "vehicles": int(preset.vehicles),
+                    "start_time": float(preset.start_time),
+                    "end_time": float(preset.end_time),
+                }
+
     config = {
         "run_id": run_id,
         "run_dir": str(batch_dir),
@@ -1038,6 +1326,7 @@ def main() -> None:
         "include_fixed_baseline": args.include_fixed_baseline,
         "include_fixed_program0": args.include_fixed_program0,
         "include_fixed_tuned": args.include_fixed_tuned,
+        "include_classic_baselines": args.include_classic_baselines,
         "include_rbl_baseline": args.include_rbl_baseline,
         "delta_baseline_scenario": delta_baseline_scenario,
         "step_length": args.step_length,
@@ -1046,6 +1335,12 @@ def main() -> None:
         "python_exe": args.python_exe,
         "driver_profile": args.driver_profile,
         "runner_global_flags": ["--driver-profile", args.driver_profile],
+        "population_generation": {
+            "route_sampling": args.population_route_sampling,
+            "route_weight_exponent": args.population_route_weight_exponent,
+            "depart_profile": args.population_depart_profile,
+            "peak_factor": args.population_peak_factor,
+        },
         "demand_presets": {
             key: {
                 "vehicles": DEMANDS[key].vehicles,
@@ -1054,6 +1349,7 @@ def main() -> None:
             }
             for key in args.demands
         },
+        "demand_presets_effective_map": resolved_demand_presets_by_map,
         "scenarios": [
             {
                 "name": scenario.name,
@@ -1178,7 +1474,6 @@ def main() -> None:
                 continue
             effective_maps_for_base = sorted({effective_map_name(map_name, s) for s in scenarios_for_map})
             for demand_name in args.demands:
-                demand = DEMANDS[demand_name]
                 for pop_seed in seed_values:
                     current_activity = f"generazione popolazione {map_name}/{demand_name}/seed{pop_seed}"
                     current_run_id = ""
@@ -1191,6 +1486,7 @@ def main() -> None:
                         cache_key = (emap, demand_name, pop_seed)
                         if cache_key in population_cache:
                             continue
+                        demand = resolve_demand_preset(emap, demand_name)
                         population_file = populations_dir / f"{emap}_{demand_name}_seed{pop_seed}.yaml"
                         generate_cmd = [
                             args.python_exe,
@@ -1207,6 +1503,14 @@ def main() -> None:
                             str(demand.end_time),
                             "--seed",
                             str(pop_seed),
+                            "--route-sampling",
+                            args.population_route_sampling,
+                            "--route-weight-exponent",
+                            str(args.population_route_weight_exponent),
+                            "--depart-profile",
+                            args.population_depart_profile,
+                            "--peak-factor",
+                            str(args.population_peak_factor),
                         ]
                         generate_code, generate_output = run_command(generate_cmd, root)
                         if generate_code != 0:
@@ -1218,6 +1522,7 @@ def main() -> None:
                     if args.jobs == 1:
                         for scenario in scenarios_for_map:
                             emap = effective_map_name(map_name, scenario)
+                            demand = resolve_demand_preset(emap, demand_name)
                             population_file = population_cache[(emap, demand_name, pop_seed)]
                             current_run += 1
                             case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
@@ -1236,6 +1541,7 @@ def main() -> None:
                                 source_map_name=map_name,
                                 effective_map_name_value=emap,
                                 demand_name=demand_name,
+                                demand_preset=demand,
                                 pop_seed=pop_seed,
                                 scenario=scenario,
                                 population_file=population_file,
@@ -1259,6 +1565,7 @@ def main() -> None:
                         with ThreadPoolExecutor(max_workers=max_workers) as executor:
                             for scenario in scenarios_for_map:
                                 emap = effective_map_name(map_name, scenario)
+                                demand = resolve_demand_preset(emap, demand_name)
                                 population_file = population_cache[(emap, demand_name, pop_seed)]
                                 current_run += 1
                                 case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
@@ -1271,11 +1578,12 @@ def main() -> None:
                                     source_map_name=map_name,
                                     effective_map_name_value=emap,
                                     demand_name=demand_name,
+                                    demand_preset=demand,
                                     pop_seed=pop_seed,
                                     scenario=scenario,
                                     population_file=population_file,
                                 )
-                                futures[future] = (case_id, scenario, emap, population_file)
+                                futures[future] = (case_id, scenario, emap, population_file, demand)
                                 active_case_ids.add(case_id)
 
                             current_run_id = ", ".join(sorted(active_case_ids)[:3])
@@ -1302,7 +1610,7 @@ def main() -> None:
                                     continue
 
                                 for future in done:
-                                    case_id, scenario, emap, population_file = futures[future]
+                                    case_id, scenario, emap, population_file, demand = futures[future]
                                     active_case_ids.discard(case_id)
                                     try:
                                         _, row = future.result()
@@ -1312,6 +1620,9 @@ def main() -> None:
                                             "map": map_name,
                                             "effective_map": emap,
                                             "demand": demand_name,
+                                            "demand_vehicles": int(demand.vehicles),
+                                            "demand_start_time": float(demand.start_time),
+                                            "demand_end_time": float(demand.end_time),
                                             "pop_seed": pop_seed,
                                             "scenario": scenario.name,
                                             "controller": scenario.controller,
@@ -1348,6 +1659,9 @@ def main() -> None:
         "map",
         "effective_map",
         "demand",
+        "demand_vehicles",
+        "demand_start_time",
+        "demand_end_time",
         "pop_seed",
         "scenario",
         "controller",
@@ -1365,6 +1679,14 @@ def main() -> None:
         "mean_speed_mps",
         "mean_co2_g",
         "mean_fuel_g",
+        "mp_switch_margin_count",
+        "mp_switch_max_green_count",
+        "mp_nmin_hold_step_count",
+        "mp_spillback_block_event_count",
+        "mp_spillback_release_event_count",
+        "mp_platoon_extend_step_count",
+        "mp_fairness_positive_bonus_count",
+        "mp_fairness_bonus_sum",
     ]
     write_csv(run_results_file, run_rows, run_fields)
 
@@ -1382,6 +1704,14 @@ def main() -> None:
         travel_p95 = [float(row["p95_travel_s"]) for row in rows]
         speed_means = [float(row["mean_speed_mps"]) for row in rows]
         completion_counts = [float(row["vehicles_count"]) for row in rows]
+        switch_margin_counts = [float(row["mp_switch_margin_count"]) for row in rows]
+        switch_max_green_counts = [float(row["mp_switch_max_green_count"]) for row in rows]
+        nmin_hold_counts = [float(row["mp_nmin_hold_step_count"]) for row in rows]
+        spill_block_counts = [float(row["mp_spillback_block_event_count"]) for row in rows]
+        spill_release_counts = [float(row["mp_spillback_release_event_count"]) for row in rows]
+        platoon_extend_counts = [float(row["mp_platoon_extend_step_count"]) for row in rows]
+        fairness_bonus_counts = [float(row["mp_fairness_positive_bonus_count"]) for row in rows]
+        fairness_bonus_sums = [float(row["mp_fairness_bonus_sum"]) for row in rows]
 
         summary_rows.append(
             {
@@ -1397,6 +1727,14 @@ def main() -> None:
                 "avg_p95_travel_s": round(safe_mean(travel_p95), 6),
                 "avg_mean_speed_mps": round(safe_mean(speed_means), 6),
                 "avg_vehicles_count": round(safe_mean(completion_counts), 2),
+                "avg_switch_margin_count": round(safe_mean(switch_margin_counts), 6),
+                "avg_switch_max_green_count": round(safe_mean(switch_max_green_counts), 6),
+                "avg_nmin_hold_step_count": round(safe_mean(nmin_hold_counts), 6),
+                "avg_spillback_block_event_count": round(safe_mean(spill_block_counts), 6),
+                "avg_spillback_release_event_count": round(safe_mean(spill_release_counts), 6),
+                "avg_platoon_extend_step_count": round(safe_mean(platoon_extend_counts), 6),
+                "avg_fairness_positive_bonus_count": round(safe_mean(fairness_bonus_counts), 6),
+                "avg_fairness_bonus_sum": round(safe_mean(fairness_bonus_sums), 6),
             }
         )
 
@@ -1414,6 +1752,14 @@ def main() -> None:
         "avg_p95_travel_s",
         "avg_mean_speed_mps",
         "avg_vehicles_count",
+        "avg_switch_margin_count",
+        "avg_switch_max_green_count",
+        "avg_nmin_hold_step_count",
+        "avg_spillback_block_event_count",
+        "avg_spillback_release_event_count",
+        "avg_platoon_extend_step_count",
+        "avg_fairness_positive_bonus_count",
+        "avg_fairness_bonus_sum",
     ]
     write_csv(summary_file, summary_rows, summary_fields)
 

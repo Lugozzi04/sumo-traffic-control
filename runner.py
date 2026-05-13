@@ -68,6 +68,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-green", type=float, default=10.0, help="Minimo tempo di verde per phase hold")
     parser.add_argument("--max-green", type=float, default=120.0, help="Massimo tempo di verde prima di forzare rivalutazione")
     parser.add_argument("--switch-epsilon", type=float, default=0.0, help="Margine minimo di pressione per cambiare fase")
+    parser.add_argument(
+        "--switch-epsilon-rel",
+        type=float,
+        default=0.0,
+        help="Margine relativo additivo: eps_rel * |score_fase_corrente|",
+    )
     parser.add_argument("--lost-time-aware", action="store_true", help="Abilita isteresi proporzionale al costo di switch (yellow+all-red)")
     parser.add_argument("--lost-time-sat-flow", type=float, default=0.5, help="Flusso di saturazione equivalente in veicoli/s (riusato da LTA e Nmin dinamico)")
     parser.add_argument("--lost-time-gain", type=float, default=1.0, help="Guadagno del margine di isteresi lost-time-aware")
@@ -85,6 +91,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--nmin-dynamic", action="store_true", help="Abilita minimo servizio dinamico dopo ogni switch fase")
     parser.add_argument("--nmin-alpha", type=float, default=1.0, help="Guadagno Nmin dinamico rispetto al costo di switch")
     parser.add_argument("--nmin-floor", type=int, default=2, help="Numero minimo di veicoli equivalenti da servire per attivazione")
+    parser.add_argument(
+        "--nmin-min-green",
+        type=float,
+        default=-1.0,
+        help="Minimo verde usato dal blocco Nmin (negativo = usa --min-green)",
+    )
+    parser.add_argument(
+        "--nmin-demand-gain",
+        type=float,
+        default=0.0,
+        help="Quota di domanda corrente inclusa in Nmin target (0 = off)",
+    )
     parser.add_argument("--nmin-empty-release-seconds", type=float, default=2.0, help="Rilascio anticipato se la fase resta vuota per questo tempo")
     parser.add_argument("--spillback", action="store_true", help="Abilita vincolo hard anti-spillback sui rami a valle (solo controller MP)")
     parser.add_argument("--spillback-on", type=float, default=0.90, help="Soglia ON occupazione downstream [0-1]")
@@ -124,6 +142,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--lost-time-sat-flow deve essere > 0 se abiliti --lost-time-aware e/o --nmin-dynamic")
     if args.lost_time_gain < 0:
         parser.error("--lost-time-gain deve essere >= 0")
+    if args.switch_epsilon_rel < 0:
+        parser.error("--switch-epsilon-rel deve essere >= 0")
     if args.fairness_mu < 0:
         parser.error("--fairness-mu deve essere >= 0")
     if args.fairness_w_half < 0:
@@ -144,6 +164,10 @@ def parse_args() -> argparse.Namespace:
         parser.error("--nmin-alpha deve essere >= 0")
     if args.nmin_floor < 0:
         parser.error("--nmin-floor deve essere >= 0")
+    if args.nmin_min_green < 0 and args.nmin_min_green != -1.0:
+        parser.error("--nmin-min-green deve essere >= 0 oppure -1")
+    if args.nmin_demand_gain < 0:
+        parser.error("--nmin-demand-gain deve essere >= 0")
     if args.nmin_empty_release_seconds < 0:
         parser.error("--nmin-empty-release-seconds deve essere >= 0")
     if args.fixed_main_green_seconds < 0:
@@ -177,6 +201,7 @@ def build_controller(name: str, args: argparse.Namespace):
             min_green=args.min_green,
             max_green=args.max_green,
             switch_epsilon=args.switch_epsilon,
+            switch_epsilon_rel=args.switch_epsilon_rel,
             lost_time_aware=args.lost_time_aware,
             lost_time_sat_flow=args.lost_time_sat_flow,
             lost_time_gain=args.lost_time_gain,
@@ -194,6 +219,8 @@ def build_controller(name: str, args: argparse.Namespace):
             nmin_dynamic=args.nmin_dynamic,
             nmin_alpha=args.nmin_alpha,
             nmin_floor=args.nmin_floor,
+            nmin_min_green=args.nmin_min_green,
+            nmin_demand_gain=args.nmin_demand_gain,
             nmin_empty_release_seconds=args.nmin_empty_release_seconds,
             hard_spillback=args.spillback,
             spillback_on=args.spillback_on,
@@ -208,7 +235,7 @@ def build_controller(name: str, args: argparse.Namespace):
     )
 
 
-def run_once(args: argparse.Namespace, population_file: Path) -> dict:
+def run_once(args: argparse.Namespace, population_file: Path) -> tuple[dict, dict]:
     population = load_population(population_file)
     validate_population_routes(args.map_name, population)
     generate_vehicle_types_file(
@@ -241,18 +268,28 @@ def run_once(args: argparse.Namespace, population_file: Path) -> dict:
         if args.max_steps > 0 and traci.simulation.getTime() >= args.max_steps:
             break
 
+    controller_stats: dict = {}
+    if hasattr(controller, "get_runtime_stats"):
+        try:
+            controller_stats = controller.get_runtime_stats()
+        except Exception:
+            controller_stats = {}
+
     traci.close()
-    return metrics.snapshot()
+    return metrics.snapshot(), controller_stats
 
 
 def main() -> None:
     args = parse_args()
     population_file = Path(args.population_file)
     all_runs = []
+    all_controller_stats = []
 
     for index in range(args.repeat):
         print(f"[run {index + 1}/{args.repeat}] Avvio simulazione...")
-        all_runs.append(run_once(args, population_file))
+        run_metrics, run_stats = run_once(args, population_file)
+        all_runs.append(run_metrics)
+        all_controller_stats.append(run_stats)
 
     merged = aggregate_runs(all_runs)
     if args.output_log:
@@ -264,6 +301,21 @@ def main() -> None:
         output = run_dir / "vehicle_metrics.csv"
 
     write_metrics_csv(output, merged)
+    controller_stats_output = output.with_suffix(".controller_stats.json")
+    if all_controller_stats:
+        mean_stats: dict[str, float] = {}
+        keys = sorted({key for stats in all_controller_stats for key in stats.keys()})
+        for key in keys:
+            values = [float(stats.get(key, 0.0)) for stats in all_controller_stats]
+            mean_stats[key] = sum(values) / float(len(values))
+        controller_stats_payload = {
+            "repeat": args.repeat,
+            "controller": args.controller,
+            "stats_mean": mean_stats,
+            "stats_per_run": all_controller_stats,
+        }
+        controller_stats_output.write_text(json.dumps(controller_stats_payload, indent=2), encoding="utf-8")
+
     if run_dir is not None:
         run_info = {
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -276,6 +328,7 @@ def main() -> None:
             "gui": args.gui,
             "driver_profile": args.driver_profile,
             "output_metrics_file": str(output),
+            "controller_stats_file": str(controller_stats_output),
         }
         (run_dir / "run_info.json").write_text(json.dumps(run_info, indent=2), encoding="utf-8")
         print(f"Simulazione salvata in: {run_dir}")
