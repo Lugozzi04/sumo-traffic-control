@@ -61,7 +61,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-dir", default="", help="Path run specifico (default: ultimo run)")
     parser.add_argument(
         "--sort-by",
-        choices=["wait", "travel", "p95_wait", "p95_travel", "speed"],
+        choices=["wait", "travel", "time_loss", "p95_wait", "p95_travel", "speed"],
         default="wait",
         help="Metrica usata per ordinare gli scenari in ogni gruppo",
     )
@@ -82,38 +82,43 @@ def main() -> None:
 
     summary_rows = load_csv(summary_file)
     delta_rows = load_csv(delta_file)
-    delta_map: dict[tuple[str, str, str], dict[str, str]] = {
-        (row["map"], row["demand"], row["scenario"]): row for row in delta_rows
+    delta_map: dict[tuple[str, str, str, str], dict[str, str]] = {
+        (row["map"], row.get("population_set", "custom"), row["demand"], row["scenario"]): row for row in delta_rows
     }
 
     sort_key = {
         "wait": "avg_mean_wait_s",
         "travel": "avg_mean_travel_s",
+        "time_loss": "avg_mean_time_loss_s",
         "p95_wait": "avg_p95_wait_s",
         "p95_travel": "avg_p95_travel_s",
         "speed": "avg_mean_speed_mps",
     }[args.sort_by]
     reverse = args.sort_by == "speed"
 
-    grouped: dict[tuple[str, str], list[dict[str, str]]] = {}
+    grouped: dict[tuple[str, str, str], list[dict[str, str]]] = {}
     for row in summary_rows:
-        grouped.setdefault((row["map"], row["demand"]), []).append(row)
+        grouped.setdefault((row["map"], row.get("population_set", "custom"), row["demand"]), []).append(row)
 
     print(f"Run dir: {run_dir}")
     print(f"Gruppi: {len(grouped)}")
     print(f"Ordinamento: {args.sort_by} ({'desc' if reverse else 'asc'})")
     print("")
 
-    for map_name, demand_name in sorted(grouped.keys()):
-        rows = grouped[(map_name, demand_name)]
+    for map_name, population_set_name, demand_name in sorted(grouped.keys()):
+        rows = grouped[(map_name, population_set_name, demand_name)]
         rows = sorted(rows, key=lambda r: float(r[sort_key]), reverse=reverse)
         if args.top > 0:
             rows = rows[: args.top]
 
         table_rows: list[list[str]] = []
         for rank, row in enumerate(rows, start=1):
-            delta = delta_map.get((row["map"], row["demand"], row["scenario"]), {})
+            delta = delta_map.get((row["map"], row.get("population_set", "custom"), row["demand"], row["scenario"]), {})
             has_delta = "wait_delta_vs_base_pct" in delta and "travel_delta_vs_base_pct" in delta
+            has_time_loss_delta = "time_loss_delta_vs_base_s" in delta
+            completed_value = float(row.get("avg_completed_trips", row.get("avg_vehicles_count", 0.0)))
+            censoring_value = float(row.get("avg_censoring_rate", 0.0))
+            time_loss_value = float(row.get("avg_mean_time_loss_s", 0.0))
             table_rows.append(
                 [
                     str(rank),
@@ -122,14 +127,21 @@ def main() -> None:
                     f"{float(delta['wait_delta_vs_base_pct']):+.2f}" if has_delta else "n/a",
                     f"{float(row['avg_mean_travel_s']):.2f}",
                     f"{float(delta['travel_delta_vs_base_pct']):+.2f}" if has_delta else "n/a",
+                    f"{time_loss_value:.2f}",
+                    f"{float(delta['time_loss_delta_vs_base_s']):+.2f}" if has_time_loss_delta else "n/a",
+                    f"{censoring_value:.2f}%",
                     f"{float(row['avg_p95_wait_s']):.2f}",
                     f"{float(row['avg_p95_travel_s']):.2f}",
                     f"{float(row['avg_mean_speed_mps']):.2f}",
+                    f"{completed_value:.0f}",
                     row["runs"],
                 ]
             )
 
-        print(f"=== {map_name} / {demand_name} ===")
+        if population_set_name and population_set_name != "custom":
+            print(f"=== {map_name} / {population_set_name} / {demand_name} ===")
+        else:
+            print(f"=== {map_name} / {demand_name} ===")
         print(
             format_table(
                 [
@@ -139,9 +151,13 @@ def main() -> None:
                     "DeltaWait[%]",
                     "MeanTravel[s]",
                     "DeltaTravel[%]",
+                    "MeanTimeLoss[s]",
+                    "DeltaTimeLoss[s]",
+                    "Censoring[%]",
                     "P95Wait[s]",
                     "P95Travel[s]",
                     "MeanSpeed[m/s]",
+                    "Completed",
                     "Runs",
                 ],
                 table_rows,

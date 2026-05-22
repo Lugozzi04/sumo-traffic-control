@@ -154,9 +154,9 @@ python3 runner.py \
   -p data/populations/manhattan3x3_demo.yaml \
   --controller mp \
   --spillback \
-  --spillback-on 0.90 \
-  --spillback-off 0.75 \
-  --spillback-min-halts 1 \
+  --spillback-on 0.85 \
+  --spillback-off 0.70 \
+  --spillback-min-halts 2 \
   --spillback-alpha 0.5
 ```
 
@@ -190,16 +190,18 @@ python3 utils/run_ablation.py \
 Opzionale:
 - `--progress-interval <s>`: frequenza aggiornamento `progress.txt/.yaml` (default 15s).
 - `--jobs <N>`: parallelismo semplice tra scenari per ogni seed (default 1, es. 2/3/4).
-- `--scenario-pack <name>`: set scenari da usare (`tuned_v1` default, `tuning_matrix_v1` per tuning).
+- `--scenario-pack <name>`: set scenari da usare (`tuned_v1` default, `tuning_matrix_v1` e `tuning_matrix_v2` per tuning; `tuning_matrix_v2` include anche `mp_program0`, alias retrocompatibile di `mp_base_v2`).
 - `--scenarios <nome1 nome2 ...>`: subset scenari del pack (utile per mini-run veloci).
 - `--list-scenarios`: stampa gli scenari disponibili nel pack selezionato ed esce.
 - `--driver-profile {default,human_light}`: profilo guidatori globale (vale per tutti gli scenari nel batch).
 - `--human-light`: scorciatoia per `--driver-profile human_light`.
-- `--include-fixed-baseline`: aggiunge scenario `fixed_base` legacy (semafori statici default della mappa).
+- `--include-fixed-baseline`: aggiunge scenario `fixed_base` legacy (deprecato, solo se richiesto esplicitamente).
 - `--include-fixed-program0`: aggiunge scenario `fixed_program0` (semafori statici con `programID=0`).
 - `--include-fixed-tuned`: aggiunge scenario `fixed_tuned` (semafori statici `programID=0` con verde principale fissato).
 - `--include-rbl-baseline`: aggiunge scenario `rbl_base` su mappa `<map>_rbl` (precedenza a destra), se presente.
-- `--delta-baseline-scenario <nome>`: scenario usato come baseline per `DeltaWait/DeltaTravel` (default: `fixed_program0` se presente, poi `fixed_tuned`, poi `fixed_base`, altrimenti `mp_base`).
+- `--include-classic-baselines`: aggiunge `fixed_program0 + fixed_tuned`; `fixed_base` resta legacy esplicito.
+- `--delta-baseline-scenario <nome>`: scenario usato come baseline per `DeltaWait/DeltaTravel` (default: `fixed_program0` se presente, poi `fixed_tuned`, altrimenti `mp_base`).
+- `--max-steps`: per Bologna, 5400 e' il minimo ragionevole per leggere bene i controller; 7200 riduce di piu' la censura.
 
 Nota:
 - lo script fa preflight automatico (`traci/sumolib/yaml`, comando `sumo`, mappe presenti);
@@ -277,10 +279,10 @@ Output in:
 - `--nmin-floor`: minimo veicoli equivalenti per attivazione (default 2)
 - `--nmin-empty-release-seconds`: rilascio anticipato se fase vuota (default 2.0s)
 - `--spillback`: abilita/disabilita il vincolo hard anti-spillback
-- `--spillback-on`: soglia ON occupazione downstream [0-1] (default 0.90)
-- `--spillback-off`: soglia OFF occupazione downstream [0-1] (default 0.75)
-- `--spillback-min-halts`: min veicoli fermi richiesti per attivare blocco (default 1)
-- `--spillback-alpha`: fattore EMA [0-1] (default 0.5)
+- `--spillback-on`: soglia ON dello score downstream [0-1] (default 0.85)
+- `--spillback-off`: soglia OFF dello score downstream [0-1] (default 0.70)
+- `--spillback-min-halts`: min veicoli fermi richiesti per attivare blocco (default 2)
+- `--spillback-alpha`: fattore EMA della occupazione downstream [0-1] (default 0.5)
 
 Nota: `--lost-time-sat-flow` e' condiviso tra `--lost-time-aware` e `--nmin-dynamic`; se attivi una delle due feature, deve essere > 0.
 

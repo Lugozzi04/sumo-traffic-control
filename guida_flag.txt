@@ -120,16 +120,20 @@ File/riga: src/controllers/max_pressure.py:543, src/controllers/max_pressure.py:
 Scopo: non alimentare una fase che ha downstream quasi saturo.
 File/riga: runner.py:77, src/controllers/max_pressure.py:228
 
-Occupazione downstream con smoothing EMA:
+Score downstream usato per il blocco:
 
     occ_ema(t) = alpha * occ_raw(t) + (1-alpha) * occ_ema(t-1)
+    fill(l) = min(1, halts(l) / storage_capacity(l))
+    storage_capacity(l) = max(1, lane_length(l) / 7.5)
+    spillback_score = max(occ_ema, fill)
 
-(occ_raw arriva da SUMO in percentuale, poi normalizzata [0,1]).
+(occ_raw arriva da SUMO in percentuale, poi normalizzata [0,1]; fill
+approssima quanto si sta riempiendo il downstream in termini di veicoli fermi).
 File/riga: src/controllers/max_pressure.py:212, src/controllers/max_pressure.py:213, src/controllers/max_pressure.py:218
 
 Isteresi ON/OFF del blocco:
-- se lane non bloccata: blocca quando occ >= spillback_on AND halts >= spillback_min_halts
-- se lane gia bloccata: resta bloccata finche occ >= spillback_off
+- se lane non bloccata: blocca quando spillback_score >= spillback_on AND halts >= spillback_min_halts
+- se lane gia bloccata: resta bloccata finche spillback_score >= spillback_off
 File/riga: src/controllers/max_pressure.py:236, src/controllers/max_pressure.py:238, src/controllers/max_pressure.py:240
 
 Effetto di controllo (hard): se una fase contiene anche un solo movimento verso
@@ -138,6 +142,10 @@ una lane bloccata, quella fase viene marcata non selezionabile:
     P_p = -inf
 
 File/riga: src/controllers/max_pressure.py:379, src/controllers/max_pressure.py:381, src/controllers/max_pressure.py:390
+
+Conta anche:
+- `spillback_block_event_count` per le transizioni di blocco sblocco
+- `spillback_block_step_count` per gli step in cui almeno una fase viene esclusa per spillback
 
 Validazioni argomenti spillback (range e coerenza):
 File/riga: runner.py:84, runner.py:85, runner.py:88
@@ -329,6 +337,12 @@ Pack tuning_matrix_v1 (analisi sensibilita):
 - sweep fairness mu (2/3/4).
 File/riga: utils/run_ablation.py:157, utils/run_ablation.py:160, utils/run_ablation.py:190, utils/run_ablation.py:204, utils/run_ablation.py:221, utils/run_ablation.py:278, utils/run_ablation.py:362
 
+Pack tuning_matrix_v2 (base piu' prudente + varianti principali):
+- mp_base
+- mp_program0 (alias vecchio: mp_base_v2) = base ibrido: in low segue program0, in high torna a fare MP
+- LTA, Nmin, downstream, spillback, fairness, platoon e sweep switch-epsilon
+File/riga: utils/run_ablation.py:476, utils/run_ablation.py:480, utils/run_ablation.py:638
+
 
 11) Frase breve "da esame" (riassunto tecnico)
 -----------------------------------------------
@@ -345,7 +359,8 @@ File/riga: src/controllers/max_pressure.py:351, src/controllers/max_pressure.py:
 ---------------------------------------
 - Se vuoi includere sempre i semafori classici nel confronto:
   - usa `--include-classic-baselines`
-  - equivale a includere `fixed_base`, `fixed_program0`, `fixed_tuned`.
+  - equivale a includere `fixed_program0`, `fixed_tuned`
+  - `fixed_base` resta solo legacy esplicito e non entra piu' nei bundle standard.
 
 - Se vuoi vedere differenze MP piu marcate:
   - usa `--scenario-pack tuning_matrix_v2`
@@ -373,6 +388,14 @@ File/riga: src/controllers/max_pressure.py:351, src/controllers/max_pressure.py:
     `platoon_extend_step_count`, `fairness_bonus_sum`.
   - in ablation questi contatori entrano anche in `run_results.csv` e `summary_by_group.csv`.
 
+- `--program0-hybrid` (runner.py, usato solo da `mp_program0`):
+  - rende il base MP ibrido: sotto una soglia di carico lascia lavorare direttamente `program0`, sopra la soglia torna a comportarsi come MP.
+  - flag collegati:
+    - `--program0-load-ref`
+    - `--program0-enter-mp-load`
+    - `--program0-exit-fixed-load`
+    - `--program0-mode-streak`
+
 
 14) Popolazione meno uniforme (nuovo)
 -------------------------------------
@@ -387,3 +410,23 @@ File/riga: src/controllers/max_pressure.py:351, src/controllers/max_pressure.py:
   - `--population-route-weight-exponent`
   - `--population-depart-profile`
   - `--population-peak-factor`
+
+- Preset popolazione piu' leggibili:
+  - `--population-set balanced`
+    - route uniformi, partenze uniformi.
+  - `--population-set skewed`
+    - rotte sbilanciate, partenze uniformi.
+  - `--population-set peak`
+    - rotte sbilanciate + partenze concentrate.
+  - se usi `--population-set`, questo sovrascrive i quattro flag sopra.
+
+
+15) Scelte consigliate per i prossimi test
+-----------------------------------------
+- `fixed_base` non va piu' usato nei batch futuri: non aggiunge informazione e confonde il confronto.
+- Per i confronti standard usa `fixed_program0` come baseline principale, `fixed_tuned` come controllo secondario.
+- Bologna e Masa sono gia' calibrate con domanda map-specific:
+  - Bologna: `low=1500`, `medium=3000`, `high=5000`
+  - Masa: `low=1400`, `medium=2200`, `high=2700`
+- Per vedere davvero la differenza tra i metodi, `--max-steps 5400` e' il minimo sensato; `7200` e' meglio se vuoi meno censura e piu' lettura del comportamento finale.
+- Per far emergere gli MP usa `--population-set skewed peak` + `--human-light`.

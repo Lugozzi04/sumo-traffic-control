@@ -61,27 +61,32 @@ def main() -> None:
 
     summary_rows = load_csv(summary_file)
     delta_rows = load_csv(delta_file)
-    delta_map: dict[tuple[str, str, str], dict[str, str]] = {
-        (row["map"], row["demand"], row["scenario"]): row for row in delta_rows
+    delta_map: dict[tuple[str, str, str, str], dict[str, str]] = {
+        (row["map"], row.get("population_set", "custom"), row["demand"], row["scenario"]): row for row in delta_rows
     }
 
-    grouped: dict[tuple[str, str], list[dict[str, str]]] = defaultdict(list)
+    grouped: dict[tuple[str, str, str], list[dict[str, str]]] = defaultdict(list)
     for row in summary_rows:
-        grouped[(row["map"], row["demand"])].append(row)
+        grouped[(row["map"], row.get("population_set", "custom"), row["demand"])].append(row)
 
     winners: list[dict[str, str]] = []
     wins_by_scenario: dict[str, int] = defaultdict(int)
 
-    for (map_name, demand_name), rows in sorted(grouped.items()):
+    for (map_name, population_set_name, demand_name), rows in sorted(grouped.items()):
         best = min(rows, key=lambda r: float(r["avg_mean_wait_s"]))
-        delta = delta_map.get((map_name, demand_name, best["scenario"]), {})
+        delta = delta_map.get((map_name, population_set_name, demand_name, best["scenario"]), {})
         has_delta = "wait_delta_vs_base_pct" in delta and "travel_delta_vs_base_pct" in delta
+        time_loss_value = float(best.get("avg_mean_time_loss_s", 0.0))
+        censoring_value = float(best.get("avg_censoring_rate", 0.0))
         winner = {
             "map": map_name,
+            "population_set": population_set_name,
             "demand": demand_name,
             "scenario": best["scenario"],
             "wait": f"{float(best['avg_mean_wait_s']):.2f}",
             "travel": f"{float(best['avg_mean_travel_s']):.2f}",
+            "time_loss": f"{time_loss_value:.2f}",
+            "censoring": f"{censoring_value:.2f}%",
             "delta_wait": f"{float(delta['wait_delta_vs_base_pct']):+.2f}" if has_delta else "n/a",
             "delta_travel": f"{float(delta['travel_delta_vs_base_pct']):+.2f}" if has_delta else "n/a",
         }
@@ -91,11 +96,15 @@ def main() -> None:
     print(f"Run dir: {run_dir}")
     print("")
     print("Vincitore per gruppo (criterio: wait medio minimo)")
-    print("MAP                    DEMAND   SCENARIO             WAIT[s]  DELTA_WAIT[%]  TRAVEL[s]  DELTA_TRAVEL[%]")
+    print(
+        "MAP                    SET      DEMAND   SCENARIO             WAIT[s]  DELTA_WAIT[%]  "
+        "TRAVEL[s]  DELTA_TRAVEL[%]  TIMELOSS[s]  CENSORING[%]"
+    )
     for w in winners:
         print(
-            f"{w['map'][:22]:22} {w['demand'][:7]:7} {w['scenario'][:20]:20} "
-            f"{w['wait']:>7} {w['delta_wait']:>14} {w['travel']:>10} {w['delta_travel']:>16}"
+            f"{w['map'][:22]:22} {w['population_set'][:7]:7} {w['demand'][:7]:7} {w['scenario'][:20]:20} "
+            f"{w['wait']:>7} {w['delta_wait']:>14} {w['travel']:>10} {w['delta_travel']:>16} "
+            f"{w['time_loss']:>11} {w['censoring']:>12}"
         )
 
     print("")

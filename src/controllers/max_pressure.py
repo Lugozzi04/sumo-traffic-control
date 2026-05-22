@@ -21,6 +21,9 @@ class _TrafficLightData:
     active_platoon_extension_seconds: float = 0.0
     non_main_seconds: float = 0.0
     pending_target: Optional[int] = None
+    program0_fixed_mode: bool = True
+    program0_enter_streak: int = 0
+    program0_exit_streak: int = 0
 
 
 class MaxPressureController(TrafficController):
@@ -29,13 +32,16 @@ class MaxPressureController(TrafficController):
 
     Pressure for a phase is the sum of (upstream queue - downstream queue)
     over all lane->lane movements with green in that phase.
-    Optional hard spillback excludes movements whose downstream lane is near saturation.
+    Optional hard spillback excludes movements whose downstream lane is near
+    saturation, using a downstream saturation score that blends lane occupancy
+    and halted-vehicle storage fill.
     """
 
-    DEFAULT_SPILLBACK_ON = 0.90
-    DEFAULT_SPILLBACK_OFF = 0.75
-    DEFAULT_SPILLBACK_MIN_HALTS = 1
+    DEFAULT_SPILLBACK_ON = 0.85
+    DEFAULT_SPILLBACK_OFF = 0.70
+    DEFAULT_SPILLBACK_MIN_HALTS = 2
     DEFAULT_SPILLBACK_ALPHA = 0.5
+    SPILLBACK_JAM_SPACING_METERS = 7.5
     TRANSITION_STALL_SECONDS = 20.0
     PLATOON_DETECTOR_DISTANCE = 8.0
     PLATOON_MAX_HEADWAY_SAMPLES = 4
@@ -49,6 +55,11 @@ class MaxPressureController(TrafficController):
         lost_time_aware: bool = False,
         lost_time_sat_flow: float = 0.5,
         lost_time_gain: float = 1.0,
+        program0_hybrid: bool = False,
+        program0_load_ref: float = 3.0,
+        program0_enter_mp_load: float = 0.55,
+        program0_exit_fixed_load: float = 0.35,
+        program0_mode_streak: int = 3,
         fairness: bool = False,
         fairness_mu: float = 5.0,
         fairness_w_half: float = 30.0,
@@ -80,6 +91,11 @@ class MaxPressureController(TrafficController):
         self.lost_time_aware = lost_time_aware
         self.lost_time_sat_flow = lost_time_sat_flow
         self.lost_time_gain = lost_time_gain
+        self.program0_hybrid = program0_hybrid
+        self.program0_load_ref = program0_load_ref
+        self.program0_enter_mp_load = program0_enter_mp_load
+        self.program0_exit_fixed_load = program0_exit_fixed_load
+        self.program0_mode_streak = program0_mode_streak
         self.fairness = fairness
         self.fairness_mu = fairness_mu
         self.fairness_w_half = fairness_w_half
@@ -112,8 +128,11 @@ class MaxPressureController(TrafficController):
             "switch_margin_count": 0.0,
             "switch_max_green_count": 0.0,
             "nmin_hold_step_count": 0.0,
+            "program0_to_mp_count": 0.0,
+            "mp_to_program0_count": 0.0,
             "spillback_block_event_count": 0.0,
             "spillback_release_event_count": 0.0,
+            "spillback_block_step_count": 0.0,
             "platoon_extend_step_count": 0.0,
             "fairness_positive_bonus_count": 0.0,
             "fairness_bonus_sum": 0.0,
@@ -132,7 +151,9 @@ class MaxPressureController(TrafficController):
                 continue
 
             current_program_id = traci.trafficlight.getProgram(tl_id)
-            logic = self._select_logic(logics, preferred_program_id=current_program_id)
+            logic = self._select_program0_logic(logics) if self.program0_hybrid else self._select_logic(logics, preferred_program_id=current_program_id)
+            if logic is None:
+                logic = self._select_logic(logics, preferred_program_id=current_program_id)
             if logic.programID != current_program_id:
                 traci.trafficlight.setProgram(tl_id, logic.programID)
 
@@ -143,7 +164,16 @@ class MaxPressureController(TrafficController):
                     traci.trafficlight.setPhase(tl_id, tl_data.main_phases[0])
                     current_phase = tl_data.main_phases[0]
                 tl_data.active_phase = current_phase
+                tl_data.program0_fixed_mode = self.program0_hybrid
+                tl_data.program0_enter_streak = 0
+                tl_data.program0_exit_streak = 0
                 self._data[tl_id] = tl_data
+
+    def _select_program0_logic(self, logics) -> object | None:
+        for logic in logics:
+            if str(logic.programID) == "0":
+                return logic
+        return None
 
     def _select_logic(self, logics, preferred_program_id: str = "") -> object:
         def main_phase_count(logic) -> int:
@@ -233,6 +263,29 @@ class MaxPressureController(TrafficController):
         lost_time = self._lost_time_seconds(tl_data, current_phase)
         return margin + self.lost_time_gain * self.lost_time_sat_flow * lost_time
 
+    def _program0_load(self, tl_data: _TrafficLightData, phase_demand: dict[int, float]) -> float:
+        if not self.program0_hybrid:
+            return 1.0
+        if self.program0_load_ref <= 1e-6:
+            return 1.0
+
+        movement_count = sum(len(movements) for movements in tl_data.movements_by_phase.values())
+        if movement_count <= 0:
+            return 1.0
+
+        total_demand = sum(max(0.0, demand) for demand in phase_demand.values())
+        demand_density = total_demand / float(movement_count)
+        return max(0.0, min(1.0, demand_density / self.program0_load_ref))
+
+    def _reset_mp_state(self, tl_data: _TrafficLightData, current_phase: int) -> None:
+        tl_data.pending_target = None
+        tl_data.active_phase = current_phase if current_phase in tl_data.main_phases else None
+        tl_data.active_hold_seconds = 0.0
+        tl_data.active_empty_seconds = 0.0
+        tl_data.active_platoon_extension_seconds = 0.0
+        for phase in tl_data.main_phases:
+            tl_data.wait_time_by_phase[phase] = 0.0
+
     @staticmethod
     def _delta_seconds() -> float:
         delta_t = float(traci.simulation.getDeltaT())
@@ -252,6 +305,12 @@ class MaxPressureController(TrafficController):
     def _spillback_downstream_occupancy(self, lane_id: str) -> float:
         return self._ema_occupancy(lane_id, self.spillback_alpha, self._spillback_occ_ema)
 
+    def _spillback_lane_fill(self, lane_id: str) -> float:
+        lane_length = max(1.0, float(traci.lane.getLength(lane_id)))
+        storage_capacity = max(1.0, lane_length / self.SPILLBACK_JAM_SPACING_METERS)
+        halted = float(traci.lane.getLastStepHaltingNumber(lane_id))
+        return min(1.0, halted / storage_capacity)
+
     def _penalty_downstream_occupancy(self, lane_id: str) -> float:
         return self._ema_occupancy(lane_id, self.downstream_alpha, self._penalty_occ_ema)
 
@@ -261,13 +320,15 @@ class MaxPressureController(TrafficController):
 
         occ = self._spillback_downstream_occupancy(out_lane)
         halts = int(traci.lane.getLastStepHaltingNumber(out_lane))
+        lane_fill = self._spillback_lane_fill(out_lane)
+        spillback_score = max(occ, lane_fill)
         blocked = self._downstream_blocked.get(out_lane, False)
 
         if blocked:
-            # Hysteresis release: keep blocked until occupancy goes below the "off" threshold.
-            blocked = occ >= self.spillback_off
+            # Hysteresis release: keep blocked until the downstream saturation score goes below OFF.
+            blocked = spillback_score >= self.spillback_off
         else:
-            blocked = occ >= self.spillback_on and halts >= self.spillback_min_halts
+            blocked = spillback_score >= self.spillback_on and halts >= self.spillback_min_halts
 
         if not self._downstream_blocked.get(out_lane, False) and blocked:
             self._incr_stat("spillback_block_event_count")
@@ -405,6 +466,7 @@ class MaxPressureController(TrafficController):
 
         pressures: dict[int, float] = {}
         phase_demand: dict[int, float] = {}
+        any_spillback_blocked = False
         for phase_index, movements in tl_data.movements_by_phase.items():
             pressure = 0.0
             available_movements = 0
@@ -414,6 +476,7 @@ class MaxPressureController(TrafficController):
                 if downstream_blocked(out_lane):
                     # Hard constraint at phase level: if one movement spills back, skip the whole phase.
                     phase_blocked = True
+                    any_spillback_blocked = True
                     break
                 in_queue = queue_on_lane(in_lane)
                 out_queue = queue_on_lane(out_lane)
@@ -427,6 +490,8 @@ class MaxPressureController(TrafficController):
             else:
                 pressures[phase_index] = pressure
                 phase_demand[phase_index] = demand_sum
+        if any_spillback_blocked:
+            self._incr_stat("spillback_block_step_count")
         return pressures, phase_demand
 
     def _update_wait_times(self, tl_data: _TrafficLightData, current_phase: int, phase_demand: dict[int, float]) -> None:
@@ -579,6 +644,34 @@ class MaxPressureController(TrafficController):
             self._update_wait_times(tl_data, current_phase, phase_demand)
             self._refresh_active_phase_state(tl_data, current_phase, phase_demand)
             self._track_phase_platoon_arrivals(tl_data, current_phase, float(traci.simulation.getTime()))
+
+            if self.program0_hybrid:
+                load = self._program0_load(tl_data, phase_demand)
+                if tl_data.program0_fixed_mode:
+                    if load >= self.program0_enter_mp_load:
+                        tl_data.program0_enter_streak += 1
+                        tl_data.program0_exit_streak = 0
+                        if tl_data.program0_enter_streak >= self.program0_mode_streak:
+                            tl_data.program0_fixed_mode = False
+                            tl_data.program0_enter_streak = 0
+                            self._reset_mp_state(tl_data, current_phase)
+                            self._incr_stat("program0_to_mp_count")
+                            continue
+                    else:
+                        tl_data.program0_enter_streak = 0
+                    continue
+
+                if load <= self.program0_exit_fixed_load:
+                    tl_data.program0_exit_streak += 1
+                    tl_data.program0_enter_streak = 0
+                    if tl_data.program0_exit_streak >= self.program0_mode_streak:
+                        tl_data.program0_fixed_mode = True
+                        tl_data.program0_exit_streak = 0
+                        self._reset_mp_state(tl_data, current_phase)
+                        self._incr_stat("mp_to_program0_count")
+                        continue
+                else:
+                    tl_data.program0_exit_streak = 0
 
             spent = traci.trafficlight.getSpentDuration(tl_id)
             if self.nmin_dynamic and self.nmin_min_green >= 0.0:

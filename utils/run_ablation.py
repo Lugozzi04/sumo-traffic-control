@@ -12,9 +12,16 @@ import sys
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
+import xml.etree.ElementTree as ET
+
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import yaml
+
+from src.paths import route_file_path
 
 
 @dataclass(frozen=True)
@@ -30,6 +37,14 @@ class Scenario:
     flags: tuple[str, ...]
     controller: str = "mp"
     map_suffix: str = ""
+
+
+@dataclass(frozen=True)
+class PopulationPreset:
+    route_sampling: str
+    route_weight_exponent: float
+    depart_profile: str
+    peak_factor: float
 
 
 FIXED_BASELINE_SCENARIO = Scenario("fixed_base", (), controller="fixed")
@@ -48,8 +63,35 @@ DEMANDS: dict[str, DemandPreset] = {
     "high": DemandPreset(vehicles=7000, start_time=0.0, end_time=3600.0),
 }
 
-# Map-specific demand presets calibrated to keep low/medium/high comparable
-# across different network geometries and route concentration.
+# Preset popolazione per tenere il test leggibile e riproducibile.
+# balanced = distribuzione uniforme
+# skewed = rotte sbilanciate
+# peak = rotte sbilanciate + partenze concentrate nel tempo
+POPULATION_SET_PRESETS: dict[str, PopulationPreset] = {
+    "balanced": PopulationPreset(
+        route_sampling="uniform",
+        route_weight_exponent=1.0,
+        depart_profile="uniform",
+        peak_factor=0.0,
+    ),
+    "skewed": PopulationPreset(
+        route_sampling="edge_weighted",
+        route_weight_exponent=1.4,
+        depart_profile="uniform",
+        peak_factor=0.0,
+    ),
+    "peak": PopulationPreset(
+        route_sampling="edge_weighted",
+        route_weight_exponent=1.4,
+        depart_profile="peaked",
+        peak_factor=0.80,
+    ),
+}
+
+# Map-specific demand presets calibrated to keep low/medium/high comparable.
+# Bologna: 1500/3000/5000. Masa: 1400/2200/2700.
+# For meaningful comparisons, keep max_steps >= 5400 (7200 is better if you want
+# less censoring on the final metrics).
 MAP_DEMAND_OVERRIDES: dict[str, dict[str, DemandPreset]] = {
     "masa_100pc": {
         "low": DemandPreset(vehicles=1400, start_time=0.0, end_time=3600.0),
@@ -433,6 +475,20 @@ TUNING_MATRIX_V1_SCENARIOS: tuple[Scenario, ...] = (
 TUNING_MATRIX_V2_SCENARIOS: tuple[Scenario, ...] = (
     Scenario("mp_base", ()),
     Scenario(
+        "mp_program0",
+        (
+            "--program0-hybrid",
+            "--program0-load-ref",
+            "3.0",
+            "--program0-enter-mp-load",
+            "0.55",
+            "--program0-exit-fixed-load",
+            "0.35",
+            "--program0-mode-streak",
+            "3",
+        ),
+    ),
+    Scenario(
         "mp_lta_g040_sf050",
         (
             "--lost-time-aware",
@@ -508,6 +564,21 @@ TUNING_MATRIX_V2_SCENARIOS: tuple[Scenario, ...] = (
             "0.30",
         ),
     ),
+    # Spillback: softer and conservative variants based on downstream saturation.
+    Scenario(
+        "mp_spillback_on85_off70",
+        (
+            "--spillback",
+            "--spillback-on",
+            "0.85",
+            "--spillback-off",
+            "0.70",
+            "--spillback-min-halts",
+            "2",
+            "--spillback-alpha",
+            "0.30",
+        ),
+    ),
     Scenario(
         "mp_spillback_on90_off80",
         (
@@ -516,20 +587,6 @@ TUNING_MATRIX_V2_SCENARIOS: tuple[Scenario, ...] = (
             "0.90",
             "--spillback-off",
             "0.80",
-            "--spillback-min-halts",
-            "1",
-            "--spillback-alpha",
-            "0.30",
-        ),
-    ),
-    Scenario(
-        "mp_spillback_on97_off90",
-        (
-            "--spillback",
-            "--spillback-on",
-            "0.97",
-            "--spillback-off",
-            "0.90",
             "--spillback-min-halts",
             "3",
             "--spillback-alpha",
@@ -595,6 +652,17 @@ SCENARIO_PACKS: dict[str, tuple[Scenario, ...]] = {
     "tuning_matrix_v2": TUNING_MATRIX_V2_SCENARIOS,
 }
 
+SCENARIO_ALIASES: dict[str, str] = {
+    # Backward-compatible spillback names from the earlier, too-strict tuning.
+    "mp_spillback_on97_off90": "mp_spillback_on90_off80",
+    # Backward-compatible name for the hybrid base variant.
+    "mp_base_v2": "mp_program0",
+}
+
+
+def canonical_scenario_name(name: str) -> str:
+    return SCENARIO_ALIASES.get(name, name)
+
 STEP_PATTERN = re.compile(r"Step #([0-9]+(?:\.[0-9]+)?)")
 RUN_DIR_PATTERN = re.compile(r"^run_(\d+)_")
 
@@ -636,7 +704,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--include-fixed-baseline",
         action="store_true",
-        help="Aggiunge scenario fixed_base legacy (semaforo statico default della mappa) nel medesimo batch",
+        help="Aggiunge scenario fixed_base legacy (deprecato, solo se richiesto esplicitamente)",
     )
     parser.add_argument(
         "--include-fixed-program0",
@@ -656,14 +724,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--include-classic-baselines",
         action="store_true",
-        help="Aggiunge insieme fixed_base + fixed_program0 + fixed_tuned",
+        help="Aggiunge insieme fixed_program0 + fixed_tuned (fixed_base resta legacy esplicito)",
     )
     parser.add_argument(
         "--delta-baseline-scenario",
         default="",
         help=(
             "Scenario usato come baseline delta "
-            "(default: fixed_program0 se presente, poi fixed_tuned, poi fixed_base, altrimenti mp_base)"
+            "(default: fixed_program0 se presente, poi fixed_tuned, altrimenti mp_base)"
         ),
     )
     parser.add_argument("--jobs", type=int, default=1, help="Numero massimo di simulazioni in parallelo (1 = seriale)")
@@ -692,6 +760,16 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.75,
         help="Intensita picchi partenza [0-1] usata con profilo peaked",
+    )
+    parser.add_argument(
+        "--population-set",
+        nargs="+",
+        choices=sorted(POPULATION_SET_PRESETS.keys()),
+        default=[],
+        help=(
+            "Uno o piu' preset popolazione: balanced, skewed, peak. "
+            "Se presente, sovrascrive route-sampling/depart-profile/peak-factor."
+        ),
     )
     parser.add_argument(
         "--driver-profile",
@@ -736,7 +814,8 @@ def parse_args() -> argparse.Namespace:
             RBL_BASELINE_SCENARIO.name,
         }
     )
-    unknown = sorted({name for name in args.scenarios if name not in valid_names})
+    normalized_selected_names = [canonical_scenario_name(name) for name in args.scenarios]
+    unknown = sorted({name for name in normalized_selected_names if name not in valid_names})
     if unknown:
         parser.error(
             f"--scenarios contiene nomi non validi per pack '{args.scenario_pack}': {', '.join(unknown)}"
@@ -865,6 +944,7 @@ def parse_runner_log_path(output_text: str) -> Path:
 def parse_vehicle_log(log_file: Path) -> dict[str, float]:
     wait_values: list[float] = []
     travel_values: list[float] = []
+    time_loss_values: list[float] = []
     speed_values: list[float] = []
     co2_values: list[float] = []
     fuel_values: list[float] = []
@@ -874,6 +954,7 @@ def parse_vehicle_log(log_file: Path) -> dict[str, float]:
         for row in reader:
             wait_values.append(float(row["waiting_time_s"]))
             travel_values.append(float(row["travel_time_s"]))
+            time_loss_values.append(float(row.get("time_loss_s", 0.0)))
             speed_values.append(float(row["mean_speed_mps"]))
             co2_values.append(float(row["co2_g"]))
             fuel_values.append(float(row["fuel_g"]))
@@ -884,10 +965,27 @@ def parse_vehicle_log(log_file: Path) -> dict[str, float]:
         "p95_wait_s": percentile(wait_values, 95.0),
         "mean_travel_s": safe_mean(travel_values),
         "p95_travel_s": percentile(travel_values, 95.0),
+        "mean_time_loss_s": safe_mean(time_loss_values),
         "mean_speed_mps": safe_mean(speed_values),
         "mean_co2_g": safe_mean(co2_values),
         "mean_fuel_g": safe_mean(fuel_values),
     }
+
+
+def parse_run_summary(summary_file: Path) -> dict[str, float]:
+    if not summary_file.exists():
+        raise FileNotFoundError(f"Run summary non trovata: {summary_file}")
+
+    payload = json.loads(summary_file.read_text(encoding="utf-8"))
+    raw = payload.get("summary_mean", payload)
+    if not isinstance(raw, dict):
+        raise RuntimeError(f"Formato summary non valido: {summary_file}")
+
+    numeric: dict[str, float] = {}
+    for key, value in raw.items():
+        if isinstance(value, (int, float)):
+            numeric[str(key)] = float(value)
+    return numeric
 
 
 def write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
@@ -988,7 +1086,133 @@ def demand_map_key(map_name: str) -> str:
 def resolve_demand_preset(map_name: str, demand_name: str) -> DemandPreset:
     override_key = map_name if map_name in MAP_DEMAND_OVERRIDES else demand_map_key(map_name)
     per_map = MAP_DEMAND_OVERRIDES.get(override_key, {})
-    return per_map.get(demand_name, DEMANDS[demand_name])
+    if demand_name in per_map:
+        return per_map[demand_name]
+    return heuristic_demand_preset(override_key, demand_name)
+
+
+def resolve_population_preset(population_set: str) -> PopulationPreset:
+    try:
+        return POPULATION_SET_PRESETS[population_set]
+    except KeyError as exc:  # pragma: no cover - argparse already validates choices
+        raise KeyError(f"Preset popolazione non valido: {population_set}") from exc
+
+
+def resolve_population_variants(args: argparse.Namespace) -> list[tuple[str, PopulationPreset]]:
+    if args.population_set:
+        return [(population_set, resolve_population_preset(population_set)) for population_set in args.population_set]
+
+    return [
+        (
+            "",
+            PopulationPreset(
+                route_sampling=args.population_route_sampling,
+                route_weight_exponent=args.population_route_weight_exponent,
+                depart_profile=args.population_depart_profile,
+                peak_factor=args.population_peak_factor,
+            ),
+        )
+    ]
+
+
+def build_selected_scenarios(
+    scenario_pack: tuple[Scenario, ...],
+    selected_names: list[str],
+    include_classic_baselines: bool,
+    include_fixed_baseline: bool,
+    include_fixed_program0: bool,
+    include_fixed_tuned: bool,
+    include_rbl_baseline: bool,
+) -> tuple[Scenario, ...]:
+    if selected_names:
+        selected_name_set = {canonical_scenario_name(name) for name in selected_names}
+        selected_scenarios = [scenario for scenario in scenario_pack if scenario.name in selected_name_set]
+        if FIXED_BASELINE_SCENARIO.name in selected_name_set:
+            selected_scenarios.append(FIXED_BASELINE_SCENARIO)
+        if FIXED_PROGRAM0_SCENARIO.name in selected_name_set:
+            selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
+        if FIXED_TUNED_SCENARIO.name in selected_name_set:
+            selected_scenarios.append(FIXED_TUNED_SCENARIO)
+        if RBL_BASELINE_SCENARIO.name in selected_name_set:
+            selected_scenarios.append(RBL_BASELINE_SCENARIO)
+    else:
+        selected_scenarios = list(scenario_pack)
+
+    if include_classic_baselines:
+        selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
+        selected_scenarios.append(FIXED_TUNED_SCENARIO)
+    if include_fixed_baseline:
+        selected_scenarios.append(FIXED_BASELINE_SCENARIO)
+    if include_fixed_program0:
+        selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
+    if include_fixed_tuned:
+        selected_scenarios.append(FIXED_TUNED_SCENARIO)
+    if include_rbl_baseline:
+        selected_scenarios.append(RBL_BASELINE_SCENARIO)
+
+    # Deduplica per nome preservando ordine.
+    deduped: list[Scenario] = []
+    seen_names: set[str] = set()
+    for scenario in selected_scenarios:
+        if scenario.name in seen_names:
+            continue
+        seen_names.add(scenario.name)
+        deduped.append(scenario)
+    return tuple(deduped)
+
+
+def resolve_delta_baseline_scenario(selected_scenarios: tuple[Scenario, ...], explicit_name: str = "") -> str:
+    explicit_name = explicit_name.strip()
+    if explicit_name:
+        return explicit_name
+
+    names = {s.name for s in selected_scenarios}
+    if "fixed_program0" in names:
+        return "fixed_program0"
+    if "fixed_tuned" in names:
+        return "fixed_tuned"
+    return "mp_base"
+
+
+def build_population_file_name(map_name: str, population_set: str, demand_name: str, pop_seed: int) -> str:
+    if population_set:
+        return f"{map_name}_{population_set}_{demand_name}_seed{pop_seed}.yaml"
+    return f"{map_name}_{demand_name}_seed{pop_seed}.yaml"
+
+
+@lru_cache(maxsize=64)
+def _route_count_for_map(map_name: str) -> int:
+    route_path = route_file_path(map_name)
+    root = ET.parse(route_path).getroot()
+    return sum(1 for _ in root.findall("route"))
+
+
+def heuristic_demand_preset(map_name: str, demand_name: str) -> DemandPreset:
+    route_count = _route_count_for_map(map_name)
+
+    if route_count <= 12:
+        medium = 300
+    elif route_count <= 40:
+        medium = 600
+    elif route_count <= 120:
+        medium = 1200
+    elif route_count <= 300:
+        medium = 2200
+    elif route_count <= 650:
+        medium = 3000
+    else:
+        medium = 4000
+
+    if demand_name == "low":
+        vehicles = max(100, int(round(medium * 0.6)))
+    elif demand_name == "medium":
+        vehicles = medium
+    elif demand_name == "high":
+        vehicles = int(round(medium * 1.4))
+    else:
+        vehicles = DEMANDS[demand_name].vehicles
+
+    return DemandPreset(vehicles=vehicles, start_time=0.0, end_time=3600.0)
 
 
 def preflight_checks(args: argparse.Namespace, root: Path, scenarios: tuple[Scenario, ...]) -> None:
@@ -1033,14 +1257,20 @@ def fill_failed_metrics(base_row: dict) -> dict:
             "p95_wait_s": 0.0,
             "mean_travel_s": 0.0,
             "p95_travel_s": 0.0,
+            "mean_time_loss_s": 0.0,
             "mean_speed_mps": 0.0,
             "mean_co2_g": 0.0,
             "mean_fuel_g": 0.0,
+            "planned_trips": 0,
+            "completed_trips": 0,
+            "unfinished_trips": 0,
+            "censoring_rate": 0.0,
             "mp_switch_margin_count": 0.0,
             "mp_switch_max_green_count": 0.0,
             "mp_nmin_hold_step_count": 0.0,
             "mp_spillback_block_event_count": 0.0,
             "mp_spillback_release_event_count": 0.0,
+            "mp_spillback_block_step_count": 0.0,
             "mp_platoon_extend_step_count": 0.0,
             "mp_fairness_positive_bonus_count": 0.0,
             "mp_fairness_bonus_sum": 0.0,
@@ -1049,7 +1279,9 @@ def fill_failed_metrics(base_row: dict) -> dict:
     return base_row
 
 
-def build_case_id(map_name: str, demand_name: str, pop_seed: int, scenario_name: str) -> str:
+def build_case_id(map_name: str, demand_name: str, pop_seed: int, scenario_name: str, population_set: str = "") -> str:
+    if population_set:
+        return f"{map_name}__{population_set}__{demand_name}__seed{pop_seed}__{scenario_name}"
     return f"{map_name}__{demand_name}__seed{pop_seed}__{scenario_name}"
 
 
@@ -1063,14 +1295,16 @@ def execute_case(
     demand_name: str,
     demand_preset: DemandPreset,
     pop_seed: int,
+    population_set: str,
     scenario: Scenario,
     population_file: Path,
 ) -> tuple[str, dict]:
-    case_id = build_case_id(source_map_name, demand_name, pop_seed, scenario.name)
+    case_id = build_case_id(source_map_name, demand_name, pop_seed, scenario.name, population_set)
     run_dir = runs_dir / case_id
     run_dir.mkdir(parents=True, exist_ok=True)
     live_log_file = run_dir / "stdout_stderr.log"
     case_metrics_file = run_dir / "vehicle_metrics.csv"
+    case_summary_file = case_metrics_file.with_suffix(".run_summary.json")
 
     cmd = [
         args.python_exe,
@@ -1111,6 +1345,7 @@ def execute_case(
             "demand_vehicles": int(demand_preset.vehicles),
             "demand_start_time": float(demand_preset.start_time),
             "demand_end_time": float(demand_preset.end_time),
+            "population_set": population_set or "custom",
             "pop_seed": pop_seed,
             "scenario": scenario.name,
             "controller": scenario.controller,
@@ -1131,6 +1366,7 @@ def execute_case(
         "demand_vehicles": int(demand_preset.vehicles),
         "demand_start_time": float(demand_preset.start_time),
         "demand_end_time": float(demand_preset.end_time),
+        "population_set": population_set or "custom",
         "pop_seed": pop_seed,
         "scenario": scenario.name,
         "controller": scenario.controller,
@@ -1150,8 +1386,11 @@ def execute_case(
             log_file = (root / log_file).resolve()
         if not log_file.exists():
             raise FileNotFoundError(f"Log file non trovato: {log_file}")
+        if not case_summary_file.exists():
+            raise FileNotFoundError(f"Run summary non trovata: {case_summary_file}")
 
         metrics = parse_vehicle_log(log_file)
+        run_summary = parse_run_summary(case_summary_file)
 
         base_row.update(
             {
@@ -1161,9 +1400,14 @@ def execute_case(
                 "p95_wait_s": round(metrics["p95_wait_s"], 6),
                 "mean_travel_s": round(metrics["mean_travel_s"], 6),
                 "p95_travel_s": round(metrics["p95_travel_s"], 6),
+                "mean_time_loss_s": round(metrics["mean_time_loss_s"], 6),
                 "mean_speed_mps": round(metrics["mean_speed_mps"], 6),
                 "mean_co2_g": round(metrics["mean_co2_g"], 6),
                 "mean_fuel_g": round(metrics["mean_fuel_g"], 6),
+                "planned_trips": int(round(run_summary.get("planned_trips", float(demand_preset.vehicles)))),
+                "completed_trips": int(round(run_summary.get("completed_trips", metrics["vehicles_count"]))),
+                "unfinished_trips": int(round(run_summary.get("unfinished_trips", 0.0))),
+                "censoring_rate": round(float(run_summary.get("censoring_rate", 0.0)) * 100.0, 6),
             }
         )
 
@@ -1184,6 +1428,7 @@ def execute_case(
                 "mp_nmin_hold_step_count": round(float(stats_mean.get("nmin_hold_step_count", 0.0)), 6),
                 "mp_spillback_block_event_count": round(float(stats_mean.get("spillback_block_event_count", 0.0)), 6),
                 "mp_spillback_release_event_count": round(float(stats_mean.get("spillback_release_event_count", 0.0)), 6),
+                "mp_spillback_block_step_count": round(float(stats_mean.get("spillback_block_step_count", 0.0)), 6),
                 "mp_platoon_extend_step_count": round(float(stats_mean.get("platoon_extend_step_count", 0.0)), 6),
                 "mp_fairness_positive_bonus_count": round(
                     float(stats_mean.get("fairness_positive_bonus_count", 0.0)), 6
@@ -1207,7 +1452,6 @@ def main() -> None:
         for scenario in scenario_pack:
             flags = " ".join(scenario.flags) if scenario.flags else "(none)"
             print(f"- {scenario.name}: controller={scenario.controller} flags={flags}")
-        print(f"- {FIXED_BASELINE_SCENARIO.name}: controller={FIXED_BASELINE_SCENARIO.controller} flags=(none)")
         print(
             f"- {FIXED_PROGRAM0_SCENARIO.name}: controller={FIXED_PROGRAM0_SCENARIO.controller} "
             "flags=--fixed-program-id 0"
@@ -1216,59 +1460,27 @@ def main() -> None:
             f"- {FIXED_TUNED_SCENARIO.name}: controller={FIXED_TUNED_SCENARIO.controller} "
             "flags=--fixed-program-id 0 --fixed-main-green-seconds 30"
         )
+        print(
+            f"- {FIXED_BASELINE_SCENARIO.name}: controller={FIXED_BASELINE_SCENARIO.controller} "
+            "flags=(none), legacy/deprecated"
+        )
         print(f"- {RBL_BASELINE_SCENARIO.name}: controller={RBL_BASELINE_SCENARIO.controller} flags=(none), map_suffix=_rbl")
         return
 
-    if args.scenarios:
-        selected_names = set(args.scenarios)
-        selected_scenarios = list(scenario for scenario in scenario_pack if scenario.name in selected_names)
-        if FIXED_BASELINE_SCENARIO.name in selected_names:
-            selected_scenarios.append(FIXED_BASELINE_SCENARIO)
-        if FIXED_PROGRAM0_SCENARIO.name in selected_names:
-            selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
-        if FIXED_TUNED_SCENARIO.name in selected_names:
-            selected_scenarios.append(FIXED_TUNED_SCENARIO)
-        if RBL_BASELINE_SCENARIO.name in selected_names:
-            selected_scenarios.append(RBL_BASELINE_SCENARIO)
-    else:
-        selected_scenarios = list(scenario_pack)
-    if args.include_classic_baselines:
-        selected_scenarios.append(FIXED_BASELINE_SCENARIO)
-        selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
-        selected_scenarios.append(FIXED_TUNED_SCENARIO)
-    if args.include_fixed_baseline:
-        selected_scenarios.append(FIXED_BASELINE_SCENARIO)
-    if args.include_fixed_program0:
-        selected_scenarios.append(FIXED_PROGRAM0_SCENARIO)
-    if args.include_fixed_tuned:
-        selected_scenarios.append(FIXED_TUNED_SCENARIO)
-    if args.include_rbl_baseline:
-        selected_scenarios.append(RBL_BASELINE_SCENARIO)
-
-    # Deduplica per nome preservando ordine.
-    deduped: list[Scenario] = []
-    seen_names: set[str] = set()
-    for scenario in selected_scenarios:
-        if scenario.name in seen_names:
-            continue
-        seen_names.add(scenario.name)
-        deduped.append(scenario)
-    selected_scenarios = tuple(deduped)
+    selected_scenarios = build_selected_scenarios(
+        scenario_pack,
+        args.scenarios,
+        args.include_classic_baselines,
+        args.include_fixed_baseline,
+        args.include_fixed_program0,
+        args.include_fixed_tuned,
+        args.include_rbl_baseline,
+    )
 
     if not selected_scenarios:
         raise RuntimeError("Nessuno scenario selezionato")
 
-    delta_baseline_scenario = args.delta_baseline_scenario.strip()
-    if not delta_baseline_scenario:
-        names = {s.name for s in selected_scenarios}
-        if "fixed_program0" in names:
-            delta_baseline_scenario = "fixed_program0"
-        elif "fixed_tuned" in names:
-            delta_baseline_scenario = "fixed_tuned"
-        elif "fixed_base" in names:
-            delta_baseline_scenario = "fixed_base"
-        else:
-            delta_baseline_scenario = "mp_base"
+    delta_baseline_scenario = resolve_delta_baseline_scenario(selected_scenarios, args.delta_baseline_scenario)
     selected_scenario_names = {s.name for s in selected_scenarios}
     if delta_baseline_scenario not in selected_scenario_names:
         raise RuntimeError(
@@ -1314,6 +1526,29 @@ def main() -> None:
                     "end_time": float(preset.end_time),
                 }
 
+    population_variants = resolve_population_variants(args)
+    population_generation = {
+        "mode": "preset" if args.population_set else "custom",
+        "custom": None
+        if args.population_set
+        else {
+            "route_sampling": args.population_route_sampling,
+            "route_weight_exponent": args.population_route_weight_exponent,
+            "depart_profile": args.population_depart_profile,
+            "peak_factor": args.population_peak_factor,
+        },
+        "presets": [
+            {
+                "population_set": population_set or "custom",
+                "route_sampling": preset.route_sampling,
+                "route_weight_exponent": preset.route_weight_exponent,
+                "depart_profile": preset.depart_profile,
+                "peak_factor": preset.peak_factor,
+            }
+            for population_set, preset in population_variants
+        ],
+    }
+
     config = {
         "run_id": run_id,
         "run_dir": str(batch_dir),
@@ -1335,12 +1570,8 @@ def main() -> None:
         "python_exe": args.python_exe,
         "driver_profile": args.driver_profile,
         "runner_global_flags": ["--driver-profile", args.driver_profile],
-        "population_generation": {
-            "route_sampling": args.population_route_sampling,
-            "route_weight_exponent": args.population_route_weight_exponent,
-            "depart_profile": args.population_depart_profile,
-            "peak_factor": args.population_peak_factor,
-        },
+        "population_generation": population_generation,
+        "population_sets": [population_set or "custom" for population_set, _ in population_variants],
         "demand_presets": {
             key: {
                 "vehicles": DEMANDS[key].vehicles,
@@ -1364,9 +1595,15 @@ def main() -> None:
         yaml.safe_dump(config, fd, sort_keys=False)
 
     seed_values = [args.seed_start + offset for offset in range(args.num_seeds)]
+    population_variant_count = len(population_variants)
     total_runs = 0
     for map_name in args.maps:
-        total_runs += len(map_scenarios.get(map_name, ())) * len(args.demands) * len(seed_values)
+        total_runs += (
+            len(map_scenarios.get(map_name, ()))
+            * len(args.demands)
+            * len(seed_values)
+            * population_variant_count
+        )
     max_parallel_workers = max(1, min(args.jobs, max((len(v) for v in map_scenarios.values()), default=1)))
     if total_runs == 0:
         raise RuntimeError("Nessun run pianificato: verifica mappe/scenari selezionati")
@@ -1381,7 +1618,7 @@ def main() -> None:
     current_run_id = ""
     current_run_started_at: float | None = None
     current_run_step: float | None = None
-    current_run_meta: tuple[str, str, int, str] | None = None
+    current_run_meta: tuple[str, str, str, int, str] | None = None
 
     def write_progress_files(status: str, error_message: str = "") -> None:
         status_label = {
@@ -1428,9 +1665,10 @@ def main() -> None:
             "current_run_progress_pct": round(run_progress_pct, 2) if run_progress_pct is not None else None,
             "current_run_meta": {
                 "map": current_run_meta[0],
-                "demand": current_run_meta[1],
-                "seed": current_run_meta[2],
-                "scenario": current_run_meta[3],
+                "population_set": current_run_meta[1],
+                "demand": current_run_meta[2],
+                "seed": current_run_meta[3],
+                "scenario": current_run_meta[4],
             }
             if current_run_meta is not None
             else None,
@@ -1465,7 +1703,7 @@ def main() -> None:
         write_progress_files(status="running")
         preflight_checks(args, root, selected_scenarios)
 
-        population_cache: dict[tuple[str, str, int], Path] = {}
+        population_cache: dict[tuple[str, str, str, int], Path] = {}
 
         for map_name in args.maps:
             scenarios_for_map = map_scenarios.get(map_name, ())
@@ -1483,77 +1721,90 @@ def main() -> None:
                     write_progress_files(status="running")
 
                     for emap in effective_maps_for_base:
-                        cache_key = (emap, demand_name, pop_seed)
-                        if cache_key in population_cache:
-                            continue
                         demand = resolve_demand_preset(emap, demand_name)
-                        population_file = populations_dir / f"{emap}_{demand_name}_seed{pop_seed}.yaml"
-                        generate_cmd = [
-                            args.python_exe,
-                            "generate_population.py",
-                            "-n",
-                            emap,
-                            "-o",
-                            str(population_file),
-                            "-N",
-                            str(demand.vehicles),
-                            "--start-time",
-                            str(demand.start_time),
-                            "--end-time",
-                            str(demand.end_time),
-                            "--seed",
-                            str(pop_seed),
-                            "--route-sampling",
-                            args.population_route_sampling,
-                            "--route-weight-exponent",
-                            str(args.population_route_weight_exponent),
-                            "--depart-profile",
-                            args.population_depart_profile,
-                            "--peak-factor",
-                            str(args.population_peak_factor),
-                        ]
-                        generate_code, generate_output = run_command(generate_cmd, root)
-                        if generate_code != 0:
-                            raise RuntimeError(
-                                f"Errore generazione popolazione {population_file}\n{generate_output}"
+                        for population_set_name, population_preset in population_variants:
+                            cache_key = (emap, population_set_name, demand_name, pop_seed)
+                            if cache_key in population_cache:
+                                continue
+                            population_file = populations_dir / build_population_file_name(
+                                emap, population_set_name, demand_name, pop_seed
                             )
-                        population_cache[cache_key] = population_file
+                            generate_cmd = [
+                                args.python_exe,
+                                "generate_population.py",
+                                "-n",
+                                emap,
+                                "-o",
+                                str(population_file),
+                                "-N",
+                                str(demand.vehicles),
+                                "--start-time",
+                                str(demand.start_time),
+                                "--end-time",
+                                str(demand.end_time),
+                                "--seed",
+                                str(pop_seed),
+                                "--route-sampling",
+                                population_preset.route_sampling,
+                                "--route-weight-exponent",
+                                str(population_preset.route_weight_exponent),
+                                "--depart-profile",
+                                population_preset.depart_profile,
+                                "--peak-factor",
+                                str(population_preset.peak_factor),
+                            ]
+                            generate_code, generate_output = run_command(generate_cmd, root)
+                            if generate_code != 0:
+                                raise RuntimeError(
+                                    f"Errore generazione popolazione {population_file}\n{generate_output}"
+                                )
+                            population_cache[cache_key] = population_file
 
                     if args.jobs == 1:
-                        for scenario in scenarios_for_map:
-                            emap = effective_map_name(map_name, scenario)
-                            demand = resolve_demand_preset(emap, demand_name)
-                            population_file = population_cache[(emap, demand_name, pop_seed)]
-                            current_run += 1
-                            case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
-                            current_run_id = case_id
-                            current_run_meta = (map_name, demand_name, pop_seed, f"{scenario.name}@{emap}")
-                            current_run_started_at = time.time()
-                            current_run_step = None
-                            current_activity = f"esecuzione {current_run}/{total_runs}"
-                            write_progress_files(status="running")
+                        for population_set_name, _population_preset in population_variants:
+                            for scenario in scenarios_for_map:
+                                emap = effective_map_name(map_name, scenario)
+                                demand = resolve_demand_preset(emap, demand_name)
+                                population_file = population_cache[(emap, population_set_name, demand_name, pop_seed)]
+                                current_run += 1
+                                case_id = build_case_id(
+                                    map_name, demand_name, pop_seed, scenario.name, population_set_name
+                                )
+                                current_run_id = case_id
+                                current_run_meta = (
+                                    map_name,
+                                    population_set_name or "custom",
+                                    demand_name,
+                                    pop_seed,
+                                    f"{scenario.name}@{emap}",
+                                )
+                                current_run_started_at = time.time()
+                                current_run_step = None
+                                current_activity = f"esecuzione {current_run}/{total_runs}"
+                                write_progress_files(status="running")
 
-                            print(f"[{current_run}/{total_runs}] {case_id}")
-                            _, row = execute_case(
-                                args=args,
-                                root=root,
-                                runs_dir=runs_dir,
-                                source_map_name=map_name,
-                                effective_map_name_value=emap,
-                                demand_name=demand_name,
-                                demand_preset=demand,
-                                pop_seed=pop_seed,
-                                scenario=scenario,
-                                population_file=population_file,
-                            )
-                            run_rows.append(row)
-                            current_run_started_at = None
-                            current_run_step = None
-                            write_progress_files(status="running")
+                                print(f"[{current_run}/{total_runs}] {case_id}")
+                                _, row = execute_case(
+                                    args=args,
+                                    root=root,
+                                    runs_dir=runs_dir,
+                                    source_map_name=map_name,
+                                    effective_map_name_value=emap,
+                                    demand_name=demand_name,
+                                    demand_preset=demand,
+                                    pop_seed=pop_seed,
+                                    population_set=population_set_name,
+                                    scenario=scenario,
+                                    population_file=population_file,
+                                )
+                                run_rows.append(row)
+                                current_run_started_at = None
+                                current_run_step = None
+                                write_progress_files(status="running")
                     else:
                         max_workers = max(1, min(args.jobs, len(scenarios_for_map)))
                         current_activity = (
-                            f"esecuzione parallela seed{pop_seed} ({max_workers} worker, {len(scenarios_for_map)} scenari)"
+                            f"esecuzione parallela seed{pop_seed} ({max_workers} worker, {len(scenarios_for_map)} scenari x {population_variant_count} set)"
                         )
                         current_run_meta = None
                         current_run_started_at = None
@@ -1563,28 +1814,39 @@ def main() -> None:
                         futures = {}
                         active_case_ids: set[str] = set()
                         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                            for scenario in scenarios_for_map:
-                                emap = effective_map_name(map_name, scenario)
-                                demand = resolve_demand_preset(emap, demand_name)
-                                population_file = population_cache[(emap, demand_name, pop_seed)]
-                                current_run += 1
-                                case_id = build_case_id(map_name, demand_name, pop_seed, scenario.name)
-                                print(f"[{current_run}/{total_runs}] {case_id} (queued)")
-                                future = executor.submit(
-                                    execute_case,
-                                    args=args,
-                                    root=root,
-                                    runs_dir=runs_dir,
-                                    source_map_name=map_name,
-                                    effective_map_name_value=emap,
-                                    demand_name=demand_name,
-                                    demand_preset=demand,
-                                    pop_seed=pop_seed,
-                                    scenario=scenario,
-                                    population_file=population_file,
-                                )
-                                futures[future] = (case_id, scenario, emap, population_file, demand)
-                                active_case_ids.add(case_id)
+                            for population_set_name, _population_preset in population_variants:
+                                for scenario in scenarios_for_map:
+                                    emap = effective_map_name(map_name, scenario)
+                                    demand = resolve_demand_preset(emap, demand_name)
+                                    population_file = population_cache[(emap, population_set_name, demand_name, pop_seed)]
+                                    current_run += 1
+                                    case_id = build_case_id(
+                                        map_name, demand_name, pop_seed, scenario.name, population_set_name
+                                    )
+                                    print(f"[{current_run}/{total_runs}] {case_id} (queued)")
+                                    future = executor.submit(
+                                        execute_case,
+                                        args=args,
+                                        root=root,
+                                        runs_dir=runs_dir,
+                                        source_map_name=map_name,
+                                        effective_map_name_value=emap,
+                                        demand_name=demand_name,
+                                        demand_preset=demand,
+                                        pop_seed=pop_seed,
+                                        population_set=population_set_name,
+                                        scenario=scenario,
+                                        population_file=population_file,
+                                    )
+                                    futures[future] = (
+                                        case_id,
+                                        scenario,
+                                        emap,
+                                        population_file,
+                                        demand,
+                                        population_set_name,
+                                    )
+                                    active_case_ids.add(case_id)
 
                             current_run_id = ", ".join(sorted(active_case_ids)[:3])
                             if len(active_case_ids) > 3:
@@ -1610,7 +1872,7 @@ def main() -> None:
                                     continue
 
                                 for future in done:
-                                    case_id, scenario, emap, population_file, demand = futures[future]
+                                    case_id, scenario, emap, population_file, demand, population_set_name = futures[future]
                                     active_case_ids.discard(case_id)
                                     try:
                                         _, row = future.result()
@@ -1623,6 +1885,7 @@ def main() -> None:
                                             "demand_vehicles": int(demand.vehicles),
                                             "demand_start_time": float(demand.start_time),
                                             "demand_end_time": float(demand.end_time),
+                                            "population_set": population_set_name,
                                             "pop_seed": pop_seed,
                                             "scenario": scenario.name,
                                             "controller": scenario.controller,
@@ -1662,6 +1925,7 @@ def main() -> None:
         "demand_vehicles",
         "demand_start_time",
         "demand_end_time",
+        "population_set",
         "pop_seed",
         "scenario",
         "controller",
@@ -1676,14 +1940,20 @@ def main() -> None:
         "p95_wait_s",
         "mean_travel_s",
         "p95_travel_s",
+        "mean_time_loss_s",
         "mean_speed_mps",
         "mean_co2_g",
         "mean_fuel_g",
+        "planned_trips",
+        "completed_trips",
+        "unfinished_trips",
+        "censoring_rate",
         "mp_switch_margin_count",
         "mp_switch_max_green_count",
         "mp_nmin_hold_step_count",
         "mp_spillback_block_event_count",
         "mp_spillback_release_event_count",
+        "mp_spillback_block_step_count",
         "mp_platoon_extend_step_count",
         "mp_fairness_positive_bonus_count",
         "mp_fairness_bonus_sum",
@@ -1691,24 +1961,34 @@ def main() -> None:
     write_csv(run_results_file, run_rows, run_fields)
 
     ok_rows = [row for row in run_rows if row["status"] == "ok"]
-    grouped: dict[tuple[str, str, str], list[dict]] = {}
+    grouped: dict[tuple[str, str, str, str], list[dict]] = {}
     for row in ok_rows:
-        key = (str(row["map"]), str(row["demand"]), str(row["scenario"]))
+        key = (
+            str(row["map"]),
+            str(row.get("population_set", "custom")),
+            str(row["demand"]),
+            str(row["scenario"]),
+        )
         grouped.setdefault(key, []).append(row)
 
     summary_rows: list[dict] = []
-    for (map_name, demand_name, scenario_name), rows in sorted(grouped.items()):
+    for (map_name, population_set_name, demand_name, scenario_name), rows in sorted(grouped.items()):
         wait_means = [float(row["mean_wait_s"]) for row in rows]
         wait_p95 = [float(row["p95_wait_s"]) for row in rows]
         travel_means = [float(row["mean_travel_s"]) for row in rows]
         travel_p95 = [float(row["p95_travel_s"]) for row in rows]
+        time_loss_means = [float(row["mean_time_loss_s"]) for row in rows]
         speed_means = [float(row["mean_speed_mps"]) for row in rows]
-        completion_counts = [float(row["vehicles_count"]) for row in rows]
+        completion_counts = [float(row["completed_trips"]) for row in rows]
+        planned_counts = [float(row["planned_trips"]) for row in rows]
+        unfinished_counts = [float(row["unfinished_trips"]) for row in rows]
+        censoring_rates = [float(row["censoring_rate"]) for row in rows]
         switch_margin_counts = [float(row["mp_switch_margin_count"]) for row in rows]
         switch_max_green_counts = [float(row["mp_switch_max_green_count"]) for row in rows]
         nmin_hold_counts = [float(row["mp_nmin_hold_step_count"]) for row in rows]
         spill_block_counts = [float(row["mp_spillback_block_event_count"]) for row in rows]
         spill_release_counts = [float(row["mp_spillback_release_event_count"]) for row in rows]
+        spill_block_step_counts = [float(row["mp_spillback_block_step_count"]) for row in rows]
         platoon_extend_counts = [float(row["mp_platoon_extend_step_count"]) for row in rows]
         fairness_bonus_counts = [float(row["mp_fairness_positive_bonus_count"]) for row in rows]
         fairness_bonus_sums = [float(row["mp_fairness_bonus_sum"]) for row in rows]
@@ -1716,6 +1996,7 @@ def main() -> None:
         summary_rows.append(
             {
                 "map": map_name,
+                "population_set": population_set_name,
                 "demand": demand_name,
                 "scenario": scenario_name,
                 "runs": len(rows),
@@ -1725,13 +2006,19 @@ def main() -> None:
                 "avg_mean_travel_s": round(safe_mean(travel_means), 6),
                 "std_mean_travel_s": round(safe_std(travel_means), 6),
                 "avg_p95_travel_s": round(safe_mean(travel_p95), 6),
+                "avg_mean_time_loss_s": round(safe_mean(time_loss_means), 6),
                 "avg_mean_speed_mps": round(safe_mean(speed_means), 6),
                 "avg_vehicles_count": round(safe_mean(completion_counts), 2),
+                "avg_planned_trips": round(safe_mean(planned_counts), 2),
+                "avg_completed_trips": round(safe_mean(completion_counts), 2),
+                "avg_unfinished_trips": round(safe_mean(unfinished_counts), 2),
+                "avg_censoring_rate": round(safe_mean(censoring_rates), 4),
                 "avg_switch_margin_count": round(safe_mean(switch_margin_counts), 6),
                 "avg_switch_max_green_count": round(safe_mean(switch_max_green_counts), 6),
                 "avg_nmin_hold_step_count": round(safe_mean(nmin_hold_counts), 6),
                 "avg_spillback_block_event_count": round(safe_mean(spill_block_counts), 6),
                 "avg_spillback_release_event_count": round(safe_mean(spill_release_counts), 6),
+                "avg_spillback_block_step_count": round(safe_mean(spill_block_step_counts), 6),
                 "avg_platoon_extend_step_count": round(safe_mean(platoon_extend_counts), 6),
                 "avg_fairness_positive_bonus_count": round(safe_mean(fairness_bonus_counts), 6),
                 "avg_fairness_bonus_sum": round(safe_mean(fairness_bonus_sums), 6),
@@ -1741,6 +2028,7 @@ def main() -> None:
     summary_file = batch_dir / "summary_by_group.csv"
     summary_fields = [
         "map",
+        "population_set",
         "demand",
         "scenario",
         "runs",
@@ -1750,62 +2038,77 @@ def main() -> None:
         "avg_mean_travel_s",
         "std_mean_travel_s",
         "avg_p95_travel_s",
+        "avg_mean_time_loss_s",
         "avg_mean_speed_mps",
         "avg_vehicles_count",
+        "avg_planned_trips",
+        "avg_completed_trips",
+        "avg_unfinished_trips",
+        "avg_censoring_rate",
         "avg_switch_margin_count",
         "avg_switch_max_green_count",
         "avg_nmin_hold_step_count",
         "avg_spillback_block_event_count",
         "avg_spillback_release_event_count",
+        "avg_spillback_block_step_count",
         "avg_platoon_extend_step_count",
         "avg_fairness_positive_bonus_count",
         "avg_fairness_bonus_sum",
     ]
     write_csv(summary_file, summary_rows, summary_fields)
 
-    by_map_demand: dict[tuple[str, str], dict[str, dict]] = {}
+    by_map_population_demand: dict[tuple[str, str, str], dict[str, dict]] = {}
     for row in summary_rows:
-        key = (str(row["map"]), str(row["demand"]))
-        by_map_demand.setdefault(key, {})[str(row["scenario"])] = row
+        key = (str(row["map"]), str(row.get("population_set", "custom")), str(row["demand"]))
+        by_map_population_demand.setdefault(key, {})[str(row["scenario"])] = row
 
     delta_rows: list[dict] = []
     missing_baseline_groups: list[str] = []
-    for (map_name, demand_name), scenarios in sorted(by_map_demand.items()):
+    for (map_name, population_set_name, demand_name), scenarios in sorted(by_map_population_demand.items()):
         baseline = scenarios.get(delta_baseline_scenario)
         if baseline is None:
-            missing_baseline_groups.append(f"{map_name}/{demand_name}")
+            missing_baseline_groups.append(f"{map_name}/{population_set_name}/{demand_name}")
             continue
         base_wait = float(baseline["avg_mean_wait_s"])
         base_travel = float(baseline["avg_mean_travel_s"])
+        base_time_loss = float(baseline["avg_mean_time_loss_s"])
 
         for scenario_name, row in sorted(scenarios.items()):
             mean_wait_value = float(row["avg_mean_wait_s"])
             mean_travel_value = float(row["avg_mean_travel_s"])
+            mean_time_loss_value = float(row["avg_mean_time_loss_s"])
             wait_delta = ((mean_wait_value - base_wait) / base_wait * 100.0) if base_wait > 0 else 0.0
             travel_delta = ((mean_travel_value - base_travel) / base_travel * 100.0) if base_travel > 0 else 0.0
+            time_loss_delta = mean_time_loss_value - base_time_loss
             delta_rows.append(
                 {
                     "map": map_name,
+                    "population_set": population_set_name,
                     "demand": demand_name,
                     "scenario": scenario_name,
                     "delta_baseline_scenario": delta_baseline_scenario,
                     "avg_mean_wait_s": row["avg_mean_wait_s"],
                     "avg_mean_travel_s": row["avg_mean_travel_s"],
+                    "avg_mean_time_loss_s": row["avg_mean_time_loss_s"],
                     "wait_delta_vs_base_pct": round(wait_delta, 4),
                     "travel_delta_vs_base_pct": round(travel_delta, 4),
+                    "time_loss_delta_vs_base_s": round(time_loss_delta, 4),
                 }
             )
 
     delta_file = batch_dir / "summary_vs_base.csv"
     delta_fields = [
         "map",
+        "population_set",
         "demand",
         "scenario",
         "delta_baseline_scenario",
         "avg_mean_wait_s",
         "avg_mean_travel_s",
+        "avg_mean_time_loss_s",
         "wait_delta_vs_base_pct",
         "travel_delta_vs_base_pct",
+        "time_loss_delta_vs_base_s",
     ]
     write_csv(delta_file, delta_rows, delta_fields)
 
@@ -1819,7 +2122,7 @@ def main() -> None:
         md_lines.append(f"- Gruppi senza baseline '{delta_baseline_scenario}': {', '.join(missing_baseline_groups)}")
     md_lines.append("")
 
-    for (map_name, demand_name), scenarios in sorted(by_map_demand.items()):
+    for (map_name, population_set_name, demand_name), scenarios in sorted(by_map_population_demand.items()):
         rows_md: list[list[str]] = []
         for scenario_name, row in sorted(
             scenarios.items(), key=lambda item: float(item[1]["avg_mean_wait_s"])
@@ -1828,7 +2131,10 @@ def main() -> None:
                 (
                     d
                     for d in delta_rows
-                    if d["map"] == map_name and d["demand"] == demand_name and d["scenario"] == scenario_name
+                    if d["map"] == map_name
+                    and d.get("population_set", "custom") == population_set_name
+                    and d["demand"] == demand_name
+                    and d["scenario"] == scenario_name
                 ),
                 None,
             )
@@ -1842,6 +2148,11 @@ def main() -> None:
                 if matching_delta is not None
                 else "n/a"
             )
+            time_loss_delta = (
+                f"{matching_delta['time_loss_delta_vs_base_s']:+.2f}s"
+                if matching_delta is not None and "time_loss_delta_vs_base_s" in matching_delta
+                else "n/a"
+            )
             rows_md.append(
                 [
                     scenario_name,
@@ -1849,6 +2160,10 @@ def main() -> None:
                     wait_delta,
                     f"{float(row['avg_mean_travel_s']):.2f}",
                     travel_delta,
+                    f"{float(row['avg_mean_time_loss_s']):.2f}",
+                    time_loss_delta,
+                    f"{float(row['avg_censoring_rate']):.2f}%",
+                    f"{float(row['avg_completed_trips']):.0f}",
                     f"{float(row['avg_p95_wait_s']):.2f}",
                     f"{float(row['avg_p95_travel_s']):.2f}",
                     f"{float(row['avg_mean_speed_mps']):.2f}",
@@ -1856,7 +2171,10 @@ def main() -> None:
                 ]
             )
 
-        md_lines.append(f"## {map_name} - {demand_name}")
+        if population_set_name and population_set_name != "custom":
+            md_lines.append(f"## {map_name} / {population_set_name} / {demand_name}")
+        else:
+            md_lines.append(f"## {map_name} - {demand_name}")
         md_lines.append(
             markdown_table(
                 [
@@ -1865,6 +2183,10 @@ def main() -> None:
                     "DeltaWait",
                     "MeanTravel[s]",
                     "DeltaTravel",
+                    "MeanTimeLoss[s]",
+                    "DeltaTimeLoss",
+                    "Censoring",
+                    "Completed",
                     "P95Wait[s]",
                     "P95Travel[s]",
                     "MeanSpeed[m/s]",
