@@ -24,6 +24,20 @@ class _TrafficLightData:
     program0_fixed_mode: bool = True
     program0_enter_streak: int = 0
     program0_exit_streak: int = 0
+    super_mode: str = "program0"
+    super_pending_mode: Optional[str] = None
+    super_mode_streak: int = 0
+    super_prev_phase_demand: Optional[dict[int, float]] = None
+
+
+@dataclass
+class _RegimeSnapshot:
+    load: float
+    imbalance: float
+    wait_imbalance: float
+    burstiness: float
+    platoon_score: float
+    downstream_score: float
 
 
 class MaxPressureController(TrafficController):
@@ -60,6 +74,24 @@ class MaxPressureController(TrafficController):
         program0_enter_mp_load: float = 0.55,
         program0_exit_fixed_load: float = 0.35,
         program0_mode_streak: int = 3,
+        super_router: bool = False,
+        super_load_ref: float = 3.5,
+        super_low_load: float = 0.42,
+        super_high_load: float = 0.68,
+        super_imbalance_threshold: float = 0.60,
+        super_wait_imbalance_threshold: float = 0.60,
+        super_burstiness_threshold: float = 0.55,
+        super_platoon_threshold: float = 0.75,
+        super_downstream_threshold: float = 0.97,
+        super_mode_streak: int = 4,
+        super_nmin_load: float = 0.78,
+        super_lta_gain: float = 0.60,
+        super_lta_sat_flow: float = 0.50,
+        super_nmin_alpha: float = 1.20,
+        super_nmin_floor: int = 4,
+        super_nmin_min_green: float = 4.0,
+        super_nmin_demand_gain: float = 0.40,
+        super_nmin_empty_release_seconds: float = 1.5,
         fairness: bool = False,
         fairness_mu: float = 5.0,
         fairness_w_half: float = 30.0,
@@ -96,6 +128,24 @@ class MaxPressureController(TrafficController):
         self.program0_enter_mp_load = program0_enter_mp_load
         self.program0_exit_fixed_load = program0_exit_fixed_load
         self.program0_mode_streak = program0_mode_streak
+        self.super_router = super_router
+        self.super_load_ref = super_load_ref
+        self.super_low_load = super_low_load
+        self.super_high_load = super_high_load
+        self.super_imbalance_threshold = super_imbalance_threshold
+        self.super_wait_imbalance_threshold = super_wait_imbalance_threshold
+        self.super_burstiness_threshold = super_burstiness_threshold
+        self.super_platoon_threshold = super_platoon_threshold
+        self.super_downstream_threshold = super_downstream_threshold
+        self.super_mode_streak = super_mode_streak
+        self.super_nmin_load = super_nmin_load
+        self.super_lta_gain = super_lta_gain
+        self.super_lta_sat_flow = super_lta_sat_flow
+        self.super_nmin_alpha = super_nmin_alpha
+        self.super_nmin_floor = super_nmin_floor
+        self.super_nmin_min_green = super_nmin_min_green
+        self.super_nmin_demand_gain = super_nmin_demand_gain
+        self.super_nmin_empty_release_seconds = super_nmin_empty_release_seconds
         self.fairness = fairness
         self.fairness_mu = fairness_mu
         self.fairness_w_half = fairness_w_half
@@ -130,6 +180,22 @@ class MaxPressureController(TrafficController):
             "nmin_hold_step_count": 0.0,
             "program0_to_mp_count": 0.0,
             "mp_to_program0_count": 0.0,
+            "super_mode_switch_count": 0.0,
+            "super_program0_to_mp_count": 0.0,
+            "super_mp_to_program0_count": 0.0,
+            "super_program0_step_count": 0.0,
+            "super_base_step_count": 0.0,
+            "super_lta_step_count": 0.0,
+            "super_nmin_step_count": 0.0,
+            "super_fair_step_count": 0.0,
+            "super_platoon_step_count": 0.0,
+            "super_safe_step_count": 0.0,
+            "super_load_sum": 0.0,
+            "super_imbalance_sum": 0.0,
+            "super_wait_imbalance_sum": 0.0,
+            "super_burstiness_sum": 0.0,
+            "super_platoon_sum": 0.0,
+            "super_downstream_sum": 0.0,
             "spillback_block_event_count": 0.0,
             "spillback_release_event_count": 0.0,
             "spillback_block_step_count": 0.0,
@@ -151,7 +217,11 @@ class MaxPressureController(TrafficController):
                 continue
 
             current_program_id = traci.trafficlight.getProgram(tl_id)
-            logic = self._select_program0_logic(logics) if self.program0_hybrid else self._select_logic(logics, preferred_program_id=current_program_id)
+            logic = (
+                self._select_program0_logic(logics)
+                if (self.program0_hybrid or self.super_router)
+                else self._select_logic(logics, preferred_program_id=current_program_id)
+            )
             if logic is None:
                 logic = self._select_logic(logics, preferred_program_id=current_program_id)
             if logic.programID != current_program_id:
@@ -164,9 +234,13 @@ class MaxPressureController(TrafficController):
                     traci.trafficlight.setPhase(tl_id, tl_data.main_phases[0])
                     current_phase = tl_data.main_phases[0]
                 tl_data.active_phase = current_phase
-                tl_data.program0_fixed_mode = self.program0_hybrid
+                tl_data.program0_fixed_mode = self.program0_hybrid or self.super_router
                 tl_data.program0_enter_streak = 0
                 tl_data.program0_exit_streak = 0
+                tl_data.super_mode = "program0" if self.super_router else "base"
+                tl_data.super_pending_mode = None
+                tl_data.super_mode_streak = 0
+                tl_data.super_prev_phase_demand = {phase: 0.0 for phase in tl_data.main_phases}
                 self._data[tl_id] = tl_data
 
     def _select_program0_logic(self, logics) -> object | None:
@@ -253,38 +327,249 @@ class MaxPressureController(TrafficController):
             phase_idx = (phase_idx + 1) % tl_data.phase_count
         return lost_time
 
-    def _switch_margin(self, tl_data: _TrafficLightData, current_phase: int, current_score: float) -> float:
+    def _switch_margin(
+        self,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        current_score: float,
+        *,
+        lost_time_enabled: Optional[bool] = None,
+        lost_time_gain: Optional[float] = None,
+        lost_time_sat_flow: Optional[float] = None,
+    ) -> float:
         margin = self.switch_epsilon
         if self.switch_epsilon_rel > 0.0 and math.isfinite(current_score):
             margin += self.switch_epsilon_rel * abs(current_score)
-        if not self.lost_time_aware:
+        if lost_time_enabled is None:
+            lost_time_enabled = self.lost_time_aware
+        if not lost_time_enabled:
             return margin
 
         lost_time = self._lost_time_seconds(tl_data, current_phase)
-        return margin + self.lost_time_gain * self.lost_time_sat_flow * lost_time
+        gain = self.lost_time_gain if lost_time_gain is None else lost_time_gain
+        sat_flow = self.lost_time_sat_flow if lost_time_sat_flow is None else lost_time_sat_flow
+        return margin + gain * sat_flow * lost_time
+
+    def _load_from_demand(
+        self,
+        tl_data: _TrafficLightData,
+        phase_demand: dict[int, float],
+        load_ref: float,
+    ) -> float:
+        if load_ref <= 1e-6:
+            return 1.0
+        movement_count = sum(len(movements) for movements in tl_data.movements_by_phase.values())
+        if movement_count <= 0:
+            return 1.0
+        total_demand = sum(max(0.0, demand) for demand in phase_demand.values())
+        demand_density = total_demand / float(movement_count)
+        return max(0.0, min(1.0, demand_density / load_ref))
 
     def _program0_load(self, tl_data: _TrafficLightData, phase_demand: dict[int, float]) -> float:
         if not self.program0_hybrid:
             return 1.0
-        if self.program0_load_ref <= 1e-6:
-            return 1.0
+        return self._load_from_demand(tl_data, phase_demand, self.program0_load_ref)
 
-        movement_count = sum(len(movements) for movements in tl_data.movements_by_phase.values())
-        if movement_count <= 0:
-            return 1.0
+    @staticmethod
+    def _phase_imbalance(phase_demand: dict[int, float]) -> float:
+        values = [max(0.0, value) for value in phase_demand.values()]
+        if len(values) < 2:
+            return 0.0
+        mean_demand = sum(values) / float(len(values))
+        if mean_demand <= 1e-6:
+            return 0.0
+        max_demand = max(values)
+        return max(0.0, min(1.0, (max_demand - mean_demand) / mean_demand))
 
-        total_demand = sum(max(0.0, demand) for demand in phase_demand.values())
-        demand_density = total_demand / float(movement_count)
-        return max(0.0, min(1.0, demand_density / self.program0_load_ref))
+    @staticmethod
+    def _phase_wait_imbalance(wait_time_by_phase: dict[int, float]) -> float:
+        values = [max(0.0, value) for value in wait_time_by_phase.values()]
+        if len(values) < 2:
+            return 0.0
+        mean_wait = sum(values) / float(len(values))
+        if mean_wait <= 1e-6:
+            return 0.0
+        max_wait = max(values)
+        return max(0.0, min(1.0, (max_wait - mean_wait) / mean_wait))
 
-    def _reset_mp_state(self, tl_data: _TrafficLightData, current_phase: int) -> None:
+    def _demand_burstiness(self, tl_data: _TrafficLightData, phase_demand: dict[int, float]) -> float:
+        current_values = [max(0.0, phase_demand.get(phase, 0.0)) for phase in tl_data.main_phases]
+        previous = tl_data.super_prev_phase_demand or {}
+        previous_values = [max(0.0, previous.get(phase, 0.0)) for phase in tl_data.main_phases]
+        tl_data.super_prev_phase_demand = {
+            phase: max(0.0, phase_demand.get(phase, 0.0))
+            for phase in tl_data.main_phases
+        }
+
+        if len(current_values) < 2:
+            return 0.0
+        current_total = sum(current_values)
+        previous_total = sum(previous_values)
+        if current_total <= 1e-6 and previous_total <= 1e-6:
+            return 0.0
+
+        total_denom = max(current_total + previous_total, 1.0)
+        total_change = abs(current_total - previous_total) / total_denom
+        phase_denom = max(sum(curr + prev for curr, prev in zip(current_values, previous_values)), 1.0)
+        phase_change = sum(abs(curr - prev) for curr, prev in zip(current_values, previous_values)) / phase_denom
+        return max(0.0, min(1.0, 0.5 * total_change + 0.5 * phase_change))
+
+    def _phase_platoon_score(self, tl_data: _TrafficLightData, current_phase: int, sim_time: float) -> float:
+        movements = tl_data.movements_by_phase.get(current_phase, [])
+        if not movements:
+            return 0.0
+
+        best_score = 0.0
+        threshold = max(1e-6, self.platoon_headway_threshold)
+        for in_lane, _ in movements:
+            headway = self._lane_headway(in_lane, sim_time)
+            if headway is None:
+                continue
+            score = max(0.0, min(1.0, 1.0 - (headway / threshold)))
+            if score > best_score:
+                best_score = score
+        return best_score
+
+    def _phase_downstream_score(self, tl_data: _TrafficLightData, current_phase: int) -> float:
+        movements = tl_data.movements_by_phase.get(current_phase, [])
+        if not movements:
+            return 0.0
+        best_score = 0.0
+        for _, out_lane in movements:
+            occ = self._spillback_downstream_occupancy(out_lane)
+            lane_fill = self._spillback_lane_fill(out_lane)
+            score = max(occ, lane_fill)
+            if score > best_score:
+                best_score = score
+        return best_score
+
+    def _regime_snapshot(
+        self,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        phase_demand: dict[int, float],
+        sim_time: float,
+    ) -> _RegimeSnapshot:
+        load = self._load_from_demand(tl_data, phase_demand, self.super_load_ref)
+        return _RegimeSnapshot(
+            load=load,
+            imbalance=self._phase_imbalance(phase_demand),
+            wait_imbalance=self._phase_wait_imbalance(tl_data.wait_time_by_phase),
+            burstiness=self._demand_burstiness(tl_data, phase_demand),
+            platoon_score=self._phase_platoon_score(tl_data, current_phase, sim_time),
+            downstream_score=self._phase_downstream_score(tl_data, current_phase),
+        )
+
+    def _select_super_mode(self, snapshot: _RegimeSnapshot) -> str:
+        bursty = snapshot.burstiness >= self.super_burstiness_threshold
+        wait_starved = snapshot.wait_imbalance >= self.super_wait_imbalance_threshold
+        imbalanced = snapshot.imbalance >= self.super_imbalance_threshold
+        platoon = snapshot.platoon_score >= self.super_platoon_threshold
+
+        if (
+            snapshot.downstream_score >= self.super_downstream_threshold
+            and snapshot.load >= self.super_nmin_load
+            and (bursty or wait_starved)
+        ):
+            return "safe"
+        if snapshot.load < self.super_low_load:
+            return "program0"
+        if snapshot.load >= self.super_nmin_load:
+            if bursty:
+                return "nmin"
+            if wait_starved and imbalanced:
+                return "lta"
+            if wait_starved and not imbalanced:
+                return "fair"
+            if platoon and not bursty:
+                return "platoon"
+            return "nmin"
+        if snapshot.load >= self.super_high_load:
+            if bursty:
+                return "nmin"
+            if wait_starved and imbalanced:
+                return "lta"
+            if wait_starved and not bursty and not imbalanced:
+                return "fair"
+            if platoon and not wait_starved:
+                return "platoon"
+            return "base"
+        if wait_starved and imbalanced and not bursty:
+            return "lta"
+        if wait_starved and not imbalanced and not bursty:
+            return "fair"
+        if platoon and not wait_starved:
+            return "platoon"
+        if bursty:
+            return "base"
+        return "base"
+
+    def _record_super_snapshot(self, snapshot: _RegimeSnapshot, mode: str) -> None:
+        self._incr_stat("super_load_sum", snapshot.load)
+        self._incr_stat("super_imbalance_sum", snapshot.imbalance)
+        self._incr_stat("super_wait_imbalance_sum", snapshot.wait_imbalance)
+        self._incr_stat("super_burstiness_sum", snapshot.burstiness)
+        self._incr_stat("super_platoon_sum", snapshot.platoon_score)
+        self._incr_stat("super_downstream_sum", snapshot.downstream_score)
+        self._incr_stat(f"super_{mode}_step_count")
+
+    def _apply_super_mode(
+        self,
+        tl_id: str,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        phase_demand: dict[int, float],
+        candidate_mode: str,
+    ) -> bool:
+        if candidate_mode == tl_data.super_mode:
+            tl_data.super_pending_mode = None
+            tl_data.super_mode_streak = 0
+            return False
+
+        if tl_data.super_pending_mode != candidate_mode:
+            tl_data.super_pending_mode = candidate_mode
+            tl_data.super_mode_streak = 1
+        else:
+            tl_data.super_mode_streak += 1
+
+        if tl_data.super_mode_streak < self.super_mode_streak:
+            return False
+
+        previous_mode = tl_data.super_mode
+        tl_data.super_mode = candidate_mode
+        tl_data.super_pending_mode = None
+        tl_data.super_mode_streak = 0
+        tl_data.program0_fixed_mode = candidate_mode == "program0"
+        self._reset_mp_state(tl_data, current_phase, preserve_wait_times=True)
+        self._refresh_active_phase_state(
+            tl_data,
+            current_phase,
+            phase_demand,
+            nmin_enabled=(candidate_mode == "nmin"),
+            nmin_profile="super" if candidate_mode == "nmin" else "default",
+        )
+        self._incr_stat("super_mode_switch_count")
+        if previous_mode == "program0" and candidate_mode != "program0":
+            self._incr_stat("super_program0_to_mp_count")
+        elif previous_mode != "program0" and candidate_mode == "program0":
+            self._incr_stat("super_mp_to_program0_count")
+        return True
+
+    def _reset_mp_state(
+        self,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        *,
+        preserve_wait_times: bool = False,
+    ) -> None:
         tl_data.pending_target = None
         tl_data.active_phase = current_phase if current_phase in tl_data.main_phases else None
         tl_data.active_hold_seconds = 0.0
         tl_data.active_empty_seconds = 0.0
         tl_data.active_platoon_extension_seconds = 0.0
-        for phase in tl_data.main_phases:
-            tl_data.wait_time_by_phase[phase] = 0.0
+        if not preserve_wait_times:
+            for phase in tl_data.main_phases:
+                tl_data.wait_time_by_phase[phase] = 0.0
 
     @staticmethod
     def _delta_seconds() -> float:
@@ -314,8 +599,10 @@ class MaxPressureController(TrafficController):
     def _penalty_downstream_occupancy(self, lane_id: str) -> float:
         return self._ema_occupancy(lane_id, self.downstream_alpha, self._penalty_occ_ema)
 
-    def _is_downstream_blocked(self, out_lane: str) -> bool:
-        if not self.hard_spillback:
+    def _is_downstream_blocked(self, out_lane: str, enabled: Optional[bool] = None) -> bool:
+        if enabled is None:
+            enabled = self.hard_spillback
+        if not enabled:
             return False
 
         occ = self._spillback_downstream_occupancy(out_lane)
@@ -337,8 +624,10 @@ class MaxPressureController(TrafficController):
         self._downstream_blocked[out_lane] = blocked
         return blocked
 
-    def _movement_downstream_penalty(self, out_lane: str) -> float:
-        if not self.downstream_penalty:
+    def _movement_downstream_penalty(self, out_lane: str, enabled: Optional[bool] = None) -> float:
+        if enabled is None:
+            enabled = self.downstream_penalty
+        if not enabled:
             return 0.0
         occ = self._penalty_downstream_occupancy(out_lane)
         return self.downstream_beta * occ
@@ -394,16 +683,24 @@ class MaxPressureController(TrafficController):
             return None
         return sum(intervals) / float(len(intervals))
 
-    def _phase_downstream_guard_ok(self, out_lanes: set[str]) -> bool:
+    def _phase_downstream_guard_ok(self, out_lanes: set[str], spillback_enabled: bool, downstream_penalty_enabled: bool) -> bool:
         for out_lane in out_lanes:
-            if self.hard_spillback and self._is_downstream_blocked(out_lane):
+            if spillback_enabled and self._is_downstream_blocked(out_lane, enabled=True):
                 return False
-            if self._penalty_downstream_occupancy(out_lane) >= self.platoon_guard_occ:
+            if downstream_penalty_enabled and self._penalty_downstream_occupancy(out_lane) >= self.platoon_guard_occ:
                 return False
         return True
 
-    def _track_phase_platoon_arrivals(self, tl_data: _TrafficLightData, phase_index: int, sim_time: float) -> None:
-        if not self.platoon_extension:
+    def _track_phase_platoon_arrivals(
+        self,
+        tl_data: _TrafficLightData,
+        phase_index: int,
+        sim_time: float,
+        enabled: Optional[bool] = None,
+    ) -> None:
+        if enabled is None:
+            enabled = self.platoon_extension
+        if not enabled:
             return
         movements = tl_data.movements_by_phase.get(phase_index, [])
         if not movements:
@@ -411,8 +708,16 @@ class MaxPressureController(TrafficController):
         for in_lane, _ in movements:
             self._update_lane_passages(in_lane, sim_time)
 
-    def _should_extend_for_platoon(self, tl_data: _TrafficLightData, current_phase: int, spent: float) -> bool:
-        if not self.platoon_extension:
+    def _should_extend_for_platoon(
+        self,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        spent: float,
+        enabled: Optional[bool] = None,
+    ) -> bool:
+        if enabled is None:
+            enabled = self.platoon_extension
+        if not enabled:
             return False
         if tl_data.active_phase != current_phase:
             return False
@@ -437,14 +742,28 @@ class MaxPressureController(TrafficController):
                 break
         if not has_platoon:
             return False
-        if not self._phase_downstream_guard_ok(out_lanes):
+        if not self._phase_downstream_guard_ok(
+            out_lanes,
+            spillback_enabled=self.hard_spillback,
+            downstream_penalty_enabled=self.downstream_penalty,
+        ):
             return False
 
         tl_data.active_platoon_extension_seconds += self._delta_seconds()
         self._incr_stat("platoon_extend_step_count")
         return True
 
-    def _phase_pressures(self, tl_data: _TrafficLightData) -> tuple[dict[int, float], dict[int, float]]:
+    def _phase_pressures(
+        self,
+        tl_data: _TrafficLightData,
+        *,
+        spillback_enabled: Optional[bool] = None,
+        downstream_penalty_enabled: Optional[bool] = None,
+    ) -> tuple[dict[int, float], dict[int, float]]:
+        if spillback_enabled is None:
+            spillback_enabled = self.hard_spillback
+        if downstream_penalty_enabled is None:
+            downstream_penalty_enabled = self.downstream_penalty
         lane_queue_cache: dict[str, float] = {}
         downstream_blocked_cache: dict[str, bool] = {}
         downstream_penalty_cache: dict[str, float] = {}
@@ -456,12 +775,15 @@ class MaxPressureController(TrafficController):
 
         def downstream_blocked(lane_id: str) -> bool:
             if lane_id not in downstream_blocked_cache:
-                downstream_blocked_cache[lane_id] = self._is_downstream_blocked(lane_id)
+                downstream_blocked_cache[lane_id] = self._is_downstream_blocked(lane_id, enabled=spillback_enabled)
             return downstream_blocked_cache[lane_id]
 
         def movement_downstream_penalty(lane_id: str) -> float:
             if lane_id not in downstream_penalty_cache:
-                downstream_penalty_cache[lane_id] = self._movement_downstream_penalty(lane_id)
+                downstream_penalty_cache[lane_id] = self._movement_downstream_penalty(
+                    lane_id,
+                    enabled=downstream_penalty_enabled,
+                )
             return downstream_penalty_cache[lane_id]
 
         pressures: dict[int, float] = {}
@@ -494,8 +816,16 @@ class MaxPressureController(TrafficController):
             self._incr_stat("spillback_block_step_count")
         return pressures, phase_demand
 
-    def _update_wait_times(self, tl_data: _TrafficLightData, current_phase: int, phase_demand: dict[int, float]) -> None:
-        if not self.fairness:
+    def _update_wait_times(
+        self,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        phase_demand: dict[int, float],
+        enabled: Optional[bool] = None,
+    ) -> None:
+        if enabled is None:
+            enabled = self.fairness
+        if not enabled:
             return
 
         delta_seconds = self._delta_seconds()
@@ -508,55 +838,107 @@ class MaxPressureController(TrafficController):
             else:
                 tl_data.wait_time_by_phase[phase] = 0.0
 
-    def _fairness_bonus(self, wait_seconds: float) -> float:
-        if not self.fairness:
+    def _fairness_bonus(self, wait_seconds: float, enabled: Optional[bool] = None) -> float:
+        if enabled is None:
+            enabled = self.fairness
+        if not enabled:
             return 0.0
         if self.fairness_w_half <= 0.0:
             return self.fairness_mu
         return self.fairness_mu * (wait_seconds / (wait_seconds + self.fairness_w_half))
 
-    def _phase_scores(self, tl_data: _TrafficLightData, pressures: dict[int, float]) -> dict[int, float]:
+    def _phase_scores(
+        self,
+        tl_data: _TrafficLightData,
+        pressures: dict[int, float],
+        fairness_enabled: Optional[bool] = None,
+    ) -> dict[int, float]:
         scores: dict[int, float] = {}
         for phase, pressure in pressures.items():
             if pressure == float("-inf"):
                 scores[phase] = pressure
                 continue
-            bonus = self._fairness_bonus(tl_data.wait_time_by_phase.get(phase, 0.0))
+            bonus = self._fairness_bonus(
+                tl_data.wait_time_by_phase.get(phase, 0.0),
+                enabled=fairness_enabled,
+            )
             if bonus > 0.0:
                 self._incr_stat("fairness_positive_bonus_count")
                 self._incr_stat("fairness_bonus_sum", bonus)
             scores[phase] = pressure + bonus
         return scores
 
-    def _nmin_hold_seconds(self, tl_data: _TrafficLightData, current_phase: int, phase_demand: dict[int, float]) -> float:
-        if not self.nmin_dynamic:
+    def _nmin_hold_seconds(
+        self,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        phase_demand: dict[int, float],
+        enabled: Optional[bool] = None,
+        profile: str = "default",
+    ) -> float:
+        if enabled is None:
+            enabled = self.nmin_dynamic
+        if not enabled:
             return self.min_green
+
+        if profile == "super":
+            nmin_alpha = self.super_nmin_alpha
+            nmin_floor = self.super_nmin_floor
+            nmin_min_green = self.super_nmin_min_green
+            nmin_demand_gain = self.super_nmin_demand_gain
+            nmin_empty_release_seconds = self.super_nmin_empty_release_seconds
+        else:
+            nmin_alpha = self.nmin_alpha
+            nmin_floor = self.nmin_floor
+            nmin_min_green = self.nmin_min_green
+            nmin_demand_gain = self.nmin_demand_gain
+            nmin_empty_release_seconds = self.nmin_empty_release_seconds
 
         if self.lost_time_sat_flow <= 1e-6:
             return self.min_green
 
         lost_time = self._lost_time_seconds(tl_data, current_phase)
-        n_cost = self.nmin_alpha * self.lost_time_sat_flow * lost_time
-        n_target = max(float(self.nmin_floor), n_cost)
+        n_cost = nmin_alpha * self.lost_time_sat_flow * lost_time
+        n_target = max(float(nmin_floor), n_cost)
 
         # If current demand is small, avoid overholding a phase that is already almost drained.
         demand = max(0.0, phase_demand.get(current_phase, 0.0))
-        if self.nmin_demand_gain > 0.0:
-            n_target = max(n_target, self.nmin_demand_gain * demand)
+        if nmin_demand_gain > 0.0:
+            n_target = max(n_target, nmin_demand_gain * demand)
         if demand > 0.0:
             n_target = min(n_target, demand)
 
         service_seconds = n_target / self.lost_time_sat_flow
-        nmin_floor_seconds = self.min_green if self.nmin_min_green < 0.0 else self.nmin_min_green
+        nmin_floor_seconds = self.min_green if nmin_min_green < 0.0 else nmin_min_green
         return max(nmin_floor_seconds, service_seconds)
 
-    def _refresh_active_phase_state(self, tl_data: _TrafficLightData, current_phase: int, phase_demand: dict[int, float]) -> None:
+    def _refresh_active_phase_state(
+        self,
+        tl_data: _TrafficLightData,
+        current_phase: int,
+        phase_demand: dict[int, float],
+        nmin_enabled: Optional[bool] = None,
+        nmin_profile: str = "default",
+    ) -> None:
         if tl_data.active_phase == current_phase:
+            tl_data.active_hold_seconds = self._nmin_hold_seconds(
+                tl_data,
+                current_phase,
+                phase_demand,
+                enabled=nmin_enabled,
+                profile=nmin_profile,
+            )
             return
         tl_data.active_phase = current_phase
         tl_data.active_empty_seconds = 0.0
         tl_data.active_platoon_extension_seconds = 0.0
-        tl_data.active_hold_seconds = self._nmin_hold_seconds(tl_data, current_phase, phase_demand)
+        tl_data.active_hold_seconds = self._nmin_hold_seconds(
+            tl_data,
+            current_phase,
+            phase_demand,
+            enabled=nmin_enabled,
+            profile=nmin_profile,
+        )
 
     def _must_hold_current_phase(
         self,
@@ -564,8 +946,12 @@ class MaxPressureController(TrafficController):
         current_phase: int,
         spent: float,
         phase_demand: dict[int, float],
+        enabled: Optional[bool] = None,
+        nmin_profile: str = "default",
     ) -> bool:
-        if not self.nmin_dynamic:
+        if enabled is None:
+            enabled = self.nmin_dynamic
+        if not enabled:
             return False
         if tl_data.active_phase != current_phase:
             return False
@@ -577,7 +963,11 @@ class MaxPressureController(TrafficController):
             return True
 
         tl_data.active_empty_seconds += self._delta_seconds()
-        return tl_data.active_empty_seconds < self.nmin_empty_release_seconds
+        if nmin_profile == "super":
+            empty_release_seconds = self.super_nmin_empty_release_seconds
+        else:
+            empty_release_seconds = self.nmin_empty_release_seconds
+        return tl_data.active_empty_seconds < empty_release_seconds
 
     @staticmethod
     def _advance_to_next_phase(tl_id: str, phase_count: int) -> None:
@@ -641,9 +1031,92 @@ class MaxPressureController(TrafficController):
             tl_data.non_main_seconds = 0.0
 
             pressures, phase_demand = self._phase_pressures(tl_data)
-            self._update_wait_times(tl_data, current_phase, phase_demand)
+            self._update_wait_times(tl_data, current_phase, phase_demand, enabled=self.fairness or self.super_router)
             self._refresh_active_phase_state(tl_data, current_phase, phase_demand)
-            self._track_phase_platoon_arrivals(tl_data, current_phase, float(traci.simulation.getTime()))
+            self._track_phase_platoon_arrivals(tl_data, current_phase, float(traci.simulation.getTime()), enabled=self.platoon_extension or self.super_router)
+
+            if self.super_router:
+                sim_time = float(traci.simulation.getTime())
+                pressures, phase_demand = self._phase_pressures(
+                    tl_data,
+                    spillback_enabled=False,
+                    downstream_penalty_enabled=False,
+                )
+                snapshot = self._regime_snapshot(tl_data, current_phase, phase_demand, sim_time)
+                candidate_mode = self._select_super_mode(snapshot)
+                committed = self._apply_super_mode(tl_id, tl_data, current_phase, phase_demand, candidate_mode)
+                self._record_super_snapshot(snapshot, tl_data.super_mode)
+                if committed:
+                    continue
+                if tl_data.super_mode == "program0":
+                    continue
+                if tl_data.super_mode == "safe":
+                    pressures, phase_demand = self._phase_pressures(
+                        tl_data,
+                        spillback_enabled=True,
+                        downstream_penalty_enabled=True,
+                    )
+
+                use_fairness = tl_data.super_mode == "fair"
+                use_nmin = tl_data.super_mode == "nmin"
+                use_platoon = tl_data.super_mode == "platoon"
+                use_lta = tl_data.super_mode == "lta"
+                self._refresh_active_phase_state(
+                    tl_data,
+                    current_phase,
+                    phase_demand,
+                    nmin_enabled=use_nmin,
+                    nmin_profile="super" if use_nmin else "default",
+                )
+                active_min_green = (
+                    self.super_nmin_min_green
+                    if use_nmin and self.super_nmin_min_green >= 0.0
+                    else (self.nmin_min_green if use_nmin and self.nmin_min_green >= 0.0 else self.min_green)
+                )
+                spent = traci.trafficlight.getSpentDuration(tl_id)
+                if spent < active_min_green:
+                    continue
+                if use_nmin and self._must_hold_current_phase(
+                    tl_data,
+                    current_phase,
+                    spent,
+                    phase_demand,
+                    nmin_profile="super",
+                ):
+                    self._incr_stat("nmin_hold_step_count")
+                    continue
+                if self._should_extend_for_platoon(tl_data, current_phase, spent, enabled=use_platoon):
+                    continue
+
+                if current_phase not in pressures or len(pressures) <= 1:
+                    continue
+                if all(value == float("-inf") for value in pressures.values()):
+                    continue
+
+                scores = self._phase_scores(tl_data, pressures, fairness_enabled=use_fairness)
+                best_phase, best_score = max(scores.items(), key=lambda item: item[1])
+                current_score = scores[current_phase]
+                switch_margin = self._switch_margin(
+                    tl_data,
+                    current_phase,
+                    current_score,
+                    lost_time_enabled=use_lta,
+                    lost_time_gain=self.super_lta_gain if use_lta else None,
+                    lost_time_sat_flow=self.super_lta_sat_flow if use_lta else None,
+                )
+
+                if best_phase != current_phase and best_score > current_score + switch_margin:
+                    self._incr_stat("switch_margin_count")
+                    tl_data.pending_target = best_phase
+                    self._advance_to_next_phase(tl_id, tl_data.phase_count)
+                    continue
+
+                # Safety cap to avoid overextending one phase in pathological cases.
+                if spent >= self.max_green and best_phase != current_phase and best_score > float("-inf"):
+                    self._incr_stat("switch_max_green_count")
+                    tl_data.pending_target = best_phase
+                    self._advance_to_next_phase(tl_id, tl_data.phase_count)
+                continue
 
             if self.program0_hybrid:
                 load = self._program0_load(tl_data, phase_demand)

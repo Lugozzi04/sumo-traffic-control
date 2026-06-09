@@ -190,7 +190,7 @@ python3 utils/run_ablation.py \
 Opzionale:
 - `--progress-interval <s>`: frequenza aggiornamento `progress.txt/.yaml` (default 15s).
 - `--jobs <N>`: parallelismo semplice tra scenari per ogni seed (default 1, es. 2/3/4).
-- `--scenario-pack <name>`: set scenari da usare (`tuned_v1` default, `tuning_matrix_v1` e `tuning_matrix_v2` per tuning; `tuning_matrix_v2` include anche `mp_program0`, alias retrocompatibile di `mp_base_v2`).
+- `--scenario-pack <name>`: set scenari da usare (`tuned_v1` default, `tuning_matrix_v1` e `tuning_matrix_v2` per tuning; `tuning_matrix_v2` include anche `mp_program0` e `mp_super`, alias retrocompatibile di `mp_base_v2`).
 - `--scenarios <nome1 nome2 ...>`: subset scenari del pack (utile per mini-run veloci).
 - `--list-scenarios`: stampa gli scenari disponibili nel pack selezionato ed esce.
 - `--driver-profile {default,human_light}`: profilo guidatori globale (vale per tutti gli scenari nel batch).

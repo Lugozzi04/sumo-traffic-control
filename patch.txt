@@ -78,6 +78,6 @@ PATCH NOTES
 12. `mp_program0` per far tornare il base al piano fisso in low
 - Problema: `mp_base` restava troppo lontano da `fixed_program0` nei casi low, mentre la prima versione adattiva era troppo complessa e poco stabile.
 - File toccati: `src/controllers/max_pressure.py`, `runner.py`, `utils/run_ablation.py`, `tests/test_run_ablation.py`, `README.md`, `guida_flag.txt`
-- Cosa ho fatto: ho sostituito `mp_base_v2` con `mp_program0` (alias retrocompatibile) e gli ho dato un comportamento binario load-aware: quando il carico e' basso lascia lavorare direttamente `program0`, quando il carico sale torna a controllare le fasi come MP.
-- Cosa cambia nei dati: in low il controller dovrebbe comportarsi molto piu' come il semaforo fisso, mentre in medium/high puo' ancora adattarsi e sfruttare la pressione.
-- Come spiegarlo in tesi: non e' un MP sempre attivo, ma una versione ibrida che delega a `program0` sotto carico leggero e recupera la logica MP sotto carico elevato.
+- Cosa ho fatto: ho mantenuto `mp_program0` come ibrido rule-based load-aware e ho aggiunto `mp_super`, un meta-controller live che usa load, sbilanciamento, platoon e downstream per scegliere fra `program0`, `base`, `nmin`, `fair`, `platoon` e `safe`.
+- Cosa cambia nei dati: in low `mp_program0` deve comportarsi molto piu' come il semaforo fisso; `mp_super` registra anche `super_load_sum`, `super_imbalance_sum`, `super_platoon_sum`, `super_downstream_sum` e i conteggi per ciascun regime, cosi' possiamo capire quale ramo viene scelto davvero nei vari contesti.
+- Come spiegarlo in tesi: non e' piu' solo un MP adattivo, ma una selezione rule-based di strategia che usa segnali live per avvicinarsi al controller migliore in ogni regime di traffico.

@@ -1,0 +1,555 @@
+APPUNTI PER LA CALL DI FINE TIROCINIO
+=====================================
+
+Obiettivo generale
+------------------
+L'obiettivo del progetto e' capire quando i controllori a pressione (MP) sono davvero utili
+rispetto al semaforo fisso della rete di Bologna, e come rendere il sistema abbastanza
+intelligente da scegliere il comportamento giusto in base al traffico.
+
+Il punto importante che abbiamo scoperto nel tempo e' questo:
+- non esiste un MP che vince sempre ovunque
+- Bologna ha un baseline statico molto forte
+- alcuni MP funzionano bene solo in certi regimi
+- gli MP puri, senza adattamenti, spesso perdono contro un buon piano fisso
+- le soluzioni migliori sono diventate via via piu' ibride e regime-aware
+
+Questi appunti servono per ricordare:
+- cosa abbiamo aggiunto
+- perche' lo abbiamo aggiunto
+- come si sono evoluti i problemi
+- cosa dire al professore in modo chiaro e onesto
+
+
+1) Il primo problema: metriche poco affidabili
+----------------------------------------------
+All'inizio i tempi di viaggio e di attesa venivano letti in modo troppo fragile.
+Se la simulazione finiva prima che tutti i viaggi fossero completati, i numeri
+potevano sembrare buoni ma in realta' non raccontavano tutta la storia.
+
+Abbiamo quindi sistemato la parte di metriche:
+- lettura finale da `tripinfo`
+- conteggio dei viaggi completati
+- conteggio dei viaggi non finiti
+- `censoring_rate`
+
+Perche' e' importante:
+- `mean_wait` da solo puo' ingannare
+- `mean_travel` vale solo sui viaggi completati
+- se la censura e' alta, i confronti vanno letti con molta cautela
+
+Questa modifica e' stata fondamentale per rendere i report difendibili.
+
+
+2) Cosa abbiamo capito con i primi run
+--------------------------------------
+I run iniziali su Bologna ci hanno fatto capire una cosa chiave:
+`fixed_program0` e' molto forte.
+
+Non e' un fixed generico: e' il piano statico `programID = 0` gia' presente nella rete.
+Su Bologna quel piano non e' banale, e spesso coordina meglio di un MP puro.
+
+Questo ha ribaltato un po' l'idea iniziale:
+- non bastava dire "MP e' dinamico quindi deve essere migliore"
+- dovevamo capire dove il dinamismo conviene davvero
+- e dove invece il costo dello switch supera il vantaggio
+
+
+3) Differenza tra i controller principali
+-----------------------------------------
+
+3.1 `fixed_program0`
+---------------------
+Questo e' il baseline statico vero.
+
+Come funziona:
+- forza il `programID=0` della mappa
+- non fa nessuna decisione online
+- segue il piano statico cosi' come e' stato definito nella rete
+
+Perche' e' forte:
+- la rete di Bologna e' gia' tarata su quel piano
+- evita completamente il costo dell'adattamento
+- in `low` e in parte di `medium` resta spesso migliore dei MP puri
+
+Messaggio da dire:
+- `fixed_program0` non e' "stupido"
+- e' il baseline statico serio da battere
+
+
+3.2 `fixed_tuned`
+-----------------
+E' una variante statica che prende `program0` ma uniforma i verdi principali.
+
+In pratica:
+- resta fisso
+- ma i verdi vengono resi piu' regolari e omogenei
+
+Perche' spesso va peggio di `fixed_program0`:
+- uniformare troppo i tempi toglie parte della precisione del piano originale
+- su Bologna, il `program0` originale sembra piu' equilibrato
+
+Messaggio da dire:
+- `fixed_tuned` e' utile come confronto, ma non e' il baseline principale
+- il baseline principale resta `fixed_program0`
+
+
+3.3 `mp_base`
+-------------
+E' il MP puro.
+
+Come funziona:
+- calcola la pressione delle fasi
+- aspetta il `min_green`
+- cambia solo se il guadagno supera il costo dello switch
+
+Perche' spesso perde:
+- paga il costo dell'adattivita' anche quando il traffico e' leggero
+- vede una pressione locale molto grezza
+- su Bologna rompe a volte la buona coordinazione del piano statico
+
+Messaggio da dire:
+- `mp_base` e' il MP classico
+- non e' sufficiente da solo per battere sempre `fixed_program0`
+
+
+3.4 `mp_program0`
+-----------------
+E' un ibrido semplice e molto importante.
+
+Come funziona:
+- quando il traffico e' basso, si comporta come `program0`
+- quando il carico sale abbastanza, passa a MP
+- quando il carico torna basso, rientra nel comportamento statico
+
+Perche' e' stato utile:
+- evita il costo dello switch nei casi in cui non conviene
+- si avvicina molto a `fixed_program0` in `low`
+- resta piu' flessibile di un fixed puro quando il traffico cresce
+
+Messaggio da dire:
+- `mp_program0` non e' un MP puro
+- e' il primo ibrido semplice che ci ha fatto capire che il comportamento giusto dipende dal regime
+
+
+3.5 `mp_super`
+--------------
+E' il meta-controller piu' avanzato che abbiamo costruito.
+
+Come funziona:
+- legge segnali live del traffico
+- stima il regime corrente
+- sceglie tra piu' famiglie:
+  - `program0`
+  - `base`
+  - `lta`
+  - `nmin`
+  - `fair`
+  - `platoon`
+  - `safe`
+
+Segnali usati dal super:
+- `load`
+- `imbalance`
+- `wait_imbalance`
+- `burstiness`
+- `platoon_score`
+- `downstream_score`
+
+Perche' e' importante:
+- non prova a usare lo stesso MP per tutti i casi
+- tenta di scegliere il ramo giusto in base a cio' che vede in tempo reale
+- e' il candidato migliore finora come "super MP" generale
+
+Messaggio da dire:
+- `mp_super` non e' un controller magico
+- e' un selettore di strategie che cerca di usare il comportamento migliore nel regime corrente
+
+Come legge le variabili, in pratica:
+- prima costruisce una fotografia istantanea del nodo semaforico
+- poi normalizza i segnali per ottenere valori confrontabili tra loro
+- infine decide quale ramo usare in base a soglie e priorita'
+
+Le variabili del super, spiegate bene:
+
+- `load`
+  - misura quanto e' carico il nodo in quel momento
+  - viene ricavato dalla domanda totale delle fasi e normalizzato con una soglia di riferimento
+  - nel codice il riferimento e' `super_load_ref = 3.5`
+  - il risultato viene riportato in un intervallo circa tra 0 e 1
+  - se `load` e' basso, il super tende a restare su `program0`
+
+- `imbalance`
+  - misura quanto una fase e' piu' carica delle altre
+  - si calcola confrontando il massimo della domanda con la media delle altre fasi
+  - se e' alto, significa che il traffico non e' distribuito in modo uniforme
+  - e' una delle variabili piu' importanti per capire se serve `lta` o `fair`
+
+- `wait_imbalance`
+  - misura quanto le attese sono sbilanciate tra le fasi
+  - non guarda solo quanta domanda c'e', ma quanta attesa si e' accumulata
+  - se cresce, significa che una fase sta soffrendo piu' delle altre
+  - e' molto utile per capire quando non basta la pressione pura
+
+- `burstiness`
+  - misura quanto la domanda cambia rapidamente da uno step al successivo
+  - viene confrontata con la domanda precedente della stessa TLS
+  - se e' alta, il traffico arriva a ondate
+  - se e' bassa, il traffico e' piu' stabile e regolare
+  - questa variabile aiuta soprattutto a distinguere `peak` da `skewed`
+
+- `platoon_score`
+  - misura quanto gli arrivi sono compatti
+  - guarda gli headway delle lane in ingresso
+  - se gli headway sono piccoli, il punteggio sale
+  - serve per capire se conviene il ramo `platoon`
+
+- `downstream_score`
+  - misura quanto la via di uscita e' piena
+  - combina occupazione della lane di uscita e fill della lane
+  - se e' alto, significa che il rischio di bloccare a valle e' serio
+  - e' la variabile che puo' portare a `safe`
+
+Le soglie attuali del super:
+- `super_low_load = 0.42`
+- `super_high_load = 0.68`
+- `super_imbalance_threshold = 0.60`
+- `super_wait_imbalance_threshold = 0.60`
+- `super_burstiness_threshold = 0.55`
+- `super_platoon_threshold = 0.75`
+- `super_downstream_threshold = 0.97`
+- `super_nmin_load = 0.78`
+- `super_mode_streak = 4`
+
+Cosa attivano queste soglie:
+- sotto `0.42` di load -> `program0`
+- sopra `0.68` il super considera il nodo davvero carico
+- sopra `0.78` entra nella fascia alta vera, dove `nmin` forte diventa il ramo principale
+- `imbalance >= 0.60` -> segnala forte sbilanciamento tra fasi
+- `wait_imbalance >= 0.60` -> segnala che una fase aspetta troppo rispetto alle altre
+- `burstiness >= 0.55` -> segnala picchi rapidi e domanda a raffiche
+- `platoon_score >= 0.75` -> segnala arrivi compatti, quindi possibile `platoon`
+- `downstream_score >= 0.97` -> segnala downstream quasi saturo, quindi possibile `safe`
+- `super_mode_streak = 4` -> la modalita' candidata deve restare coerente per piu' step prima di diventare attiva
+
+Regole pratiche del router:
+- se `load < 0.42` -> `program0`
+- se `downstream_score >= 0.97` e `load >= 0.78` e il traffico e' molto instabile -> `safe`
+- se `load >= 0.78` e `burstiness` e' alta -> `nmin`
+- se `load >= 0.78` e `wait_imbalance` e `imbalance` sono alti -> `lta`
+- se `load >= 0.78` e `wait_imbalance` e' alto ma lo sbilanciamento non e' forte -> `fair`
+- se `load >= 0.78` e `platoon_score` e' alto ma il traffico non e' a raffiche -> `platoon`
+- tra `0.68` e `0.78` il super usa ancora logiche miste, ma con piu' spazio al ramo `base`
+- sotto `0.68` ma sopra `0.42` continua a privilegiare `base`, `lta`, `fair` o `platoon` a seconda del segnale dominante
+
+Messaggio da dire:
+- il super non legge il traffico in modo "magico"
+- legge segnali normalizzati e decide per priorita'
+- prima guarda il carico, poi guarda se il traffico e' sbilanciato, poi se arriva a ondate, poi se le uscite sono piene
+- l'obiettivo e' evitare di cambiare ramo quando non serve e cambiare solo quando il segnale e' davvero forte
+
+
+3.6 Famiglie di MP nel pack `tuning_matrix_v2`
+-----------------------------------------------
+Nel pack finale non abbiamo tenuto un solo MP, ma una famiglia di strategie.
+Questo e' importante da dire perche' il progetto non confronta piu' solo "fisso vs MP",
+ma diverse letture del traffico.
+
+Le varianti principali e cosa sfruttano:
+- `mp_base`
+  - pressione locale pura
+  - e' il riferimento classico
+
+- `mp_program0`
+  - sfrutta il piano statico della rete quando il traffico e' leggero
+  - passa a MP solo quando il carico cresce abbastanza
+
+- `mp_lta_*`
+  - sfrutta il costo dello switch e la stabilita' della fase
+  - e' utile quando il traffico e' sbilanciato e il cambio di fase costa troppo
+
+- `mp_nmin_*`
+  - sfrutta la necessita' di servire una fase per un minimo di tempo
+  - e' utile quando arrivano ondate o quando il traffico e' piu' aggressivo
+
+- `mp_fair_*`
+  - sfrutta l'idea di non lasciare una fase indietro troppo a lungo
+  - e' utile quando le attese diventano molto sbilanciate
+
+- `mp_platoon_*`
+  - sfrutta l'arrivo compatto dei veicoli
+  - e' utile quando le auto arrivano in piccoli gruppi coerenti
+
+- `mp_spillback_*`
+  - sfrutta il rischio di saturazione della via di uscita
+  - serve a evitare di spingere verde dove il downstream e' gia' pieno
+
+- `mp_downstream_*`
+  - e' un controllo molto conservativo sulla saturazione a valle
+  - nella pratica e' stato spesso troppo penalizzante
+
+- `mp_super`
+  - combina i segnali live per scegliere tra piu' famiglie
+  - prova a fare da meta-controller generale
+
+Messaggio da dire:
+- il nostro obiettivo non era trovare un solo MP vincente
+- l'obiettivo diventava capire quali famiglie funzionano in quali regimi
+
+
+4) Perche' abbiamo introdotto `skewed` e `peak`
+-----------------------------------------------
+All'inizio il traffico era troppo uniforme.
+
+Il problema era semplice:
+- se il traffico e' quasi omogeneo dappertutto, gli MP non vedono colli di bottiglia abbastanza netti
+- lo spillback non scatta
+- i controller specializzati non emergono
+
+Per questo abbiamo aggiunto nuove distribuzioni di popolazione:
+
+4.1 `balanced`
+--------------
+Serve come controllo.
+E' piu' uniforme e aiuta a capire come si comporta il sistema in modo regolare.
+
+4.2 `skewed`
+------------
+Concentra il traffico su alcune rotte/corridoi.
+
+Serve per:
+- creare sbilanciamento tra le fasi
+- far emergere `lta`
+- testare meglio i casi in cui il traffico e' persistente e non uniforme
+
+4.3 `peak`
+---------
+Concentra anche temporalmente gli arrivi.
+
+Serve per:
+- creare ondate
+- far emergere `nmin`
+- testare scenari piu' duri e piu' realistici in termini di picchi
+
+Messaggio da dire:
+- `balanced` ci dice come va il sistema in modo regolare
+- `skewed` aiuta a far emergere i corridoi forti
+- `peak` aiuta a far emergere i picchi e i controller che gestiscono meglio le ondate
+
+
+5) Come abbiamo scoperto i problemi run dopo run
+-----------------------------------------------
+La cosa piu' utile e' stata guardare i risultati in serie.
+
+Run 19:
+- primo stress serio su Bologna
+- abbiamo capito che il piano statico e' molto forte
+- abbiamo visto che i risultati cambiano col regime
+
+Run 20:
+- introdotte bene le distribuzioni `skewed` e `peak`
+- abbiamo visto che i controller specializzati cominciano a vincere in casi diversi
+- spillback era ancora troppo difficile da attivare
+
+Run 21:
+- abbiamo provato `mp_base_v2` / `adaptive`
+- e' diventato troppo conservativo
+- non ha migliorato abbastanza
+
+Run 22:
+- introdotto `mp_program0`
+- abbiamo visto che il comportamento ibrido aiuta molto
+- `mp_super` ha cominciato a mostrarsi come meta-controller reale
+
+Run 23:
+- abbiamo aggiunto `wait_imbalance` e `burstiness`
+- `mp_super` e' diventato piu' sensibile ai regimi
+- pero' era ancora troppo prudente in alcuni casi
+
+Run 24:
+- `mp_super` e' migliorato come generalista
+- vince in molti casi low e medium
+- nei casi high continuano a vincere i migliori specialisti
+
+Messaggio chiave:
+- non siamo arrivati a un controller unico che batte tutto
+- ma siamo arrivati a capire quali ingredienti servono per avvicinarsi davvero
+
+
+6) Come e' stato sistemato lo spillback
+--------------------------------------
+All'inizio lo spillback non si attivava quasi mai.
+
+Perche' succedeva:
+- guardava una condizione troppo rigida
+- serviva saturazione locale molto forte sulla sola `out_lane`
+- con traffico omogeneo non scattava
+
+Abbiamo quindi reso lo spillback piu' realistico:
+- combinazione tra occupazione smussata e riempimento della lane
+- soglie piu' sensate
+- uso come ultima risorsa, non come comportamento normale
+
+Messaggio da dire:
+- lo spillback non era "rotto"
+- era troppo difficile da attivare nei primi test
+- abbiamo dovuto renderlo piu' vicino a una saturazione reale e misurabile
+
+
+7) Perche' il `mp_super` e' diventato il centro del progetto
+-----------------------------------------------------------
+L'idea di fondo e' evoluta cosi':
+
+Fase iniziale:
+- cercavamo un MP migliore del fisso
+
+Fase successiva:
+- abbiamo capito che un solo MP non basta
+
+Fase attuale:
+- usiamo un meta-controller che cerca di scegliere il ramo giusto
+
+Le feature che sfrutta `mp_super` servono a distinguere regimi diversi:
+- `load` -> quanto e' carico il nodo
+- `imbalance` -> quanto una fase soffre piu' delle altre
+- `wait_imbalance` -> quanto le attese sono sbilanciate
+- `burstiness` -> se la domanda arriva a ondate
+- `platoon_score` -> se gli arrivi sono compatti
+- `downstream_score` -> se la via di uscita e' gia' troppo piena
+
+Questa e' la parte concettuale piu' importante da spiegare:
+- non si tratta di "far switchare di piu'"
+- si tratta di capire quando conviene restare statici e quando conviene cambiare
+
+
+8) Perche' `safe` va trattato come ultima risorsa
+-----------------------------------------------
+`safe` e' utile, ma puo' diventare troppo invasivo.
+
+Significato:
+- se il downstream e' davvero troppo saturo, il controller si mette in protezione
+
+Problema:
+- se scatta troppo spesso, blocca anche i rami che in quel momento sarebbero migliori
+
+Quindi la regola mentale giusta e':
+- `safe` deve esistere
+- ma deve essere davvero l'ultima difesa
+- non deve diventare una modalità frequente
+
+
+9) Cosa dicono i risultati piu' recenti
+---------------------------------------
+L'ultima run completa, run 24, mostra bene il quadro:
+
+- 180/180 run completati, 0 fail
+- `mp_super` e' il miglior generalista
+- vince 5 gruppi su 9 come miglior assoluto
+- sul wait medio batte `fixed_program0` in 8 gruppi su 9
+- in high restano migliori i controller specialistici
+
+Esempio pratico:
+- `balanced/low` -> vince `mp_super`
+- `balanced/medium` -> vince `mp_super`
+- `balanced/high` -> vince `mp_program0`
+- `skewed/low` -> vince `mp_super`
+- `skewed/medium` -> vince `mp_program0`
+- `skewed/high` -> vince `mp_lta_g060_sf050`
+- `peak/low` -> vince `mp_super`
+- `peak/medium` -> vince `mp_super`
+- `peak/high` -> vince `mp_nmin_a120_f4`
+
+Come leggerlo:
+- nei regimi normali il super fa bene
+- nei regimi alti molto duri, i migliori specialisti restano ancora superiori
+- il super quindi non e' il "campione assoluto" su tutto, ma e' il miglior compromesso globale che abbiamo visto finora
+
+Questa non e' una cattiva notizia:
+- significa che il lavoro ha prodotto una struttura credibile
+- ma non una soluzione magica
+
+
+10) Differenza tra wait, travel, time loss e censoring
+------------------------------------------------------
+Per la call e' importante saper spiegare bene le metriche.
+
+- `mean_wait_s`
+  - quanto tempo i veicoli stanno fermi o quasi fermi
+
+- `mean_travel_s`
+  - tempo totale del viaggio, ma solo per i viaggi completati
+
+- `mean_time_loss_s`
+  - quanto tempo si perde rispetto al moto ideale
+
+- `censoring_rate`
+  - quota di viaggi che non finiscono entro la fine della simulazione
+
+Perche' e' importante:
+- un controller puo' sembrare buono sul wait ma lasciare molti viaggi aperti
+- quindi bisogna leggere sempre insieme performance e censura
+
+
+11) Come spiegare il ragionamento di progetto
+---------------------------------------------
+Il procedimento mentale e' stato questo:
+
+1. capire che i dati iniziali non erano abbastanza solidi
+2. migliorare le metriche
+3. testare Bologna con regimi diversi
+4. rendersi conto che il traffico troppo uniforme non fa emergere i problemi
+5. introdurre `balanced`, `skewed`, `peak`
+6. vedere che gli MP puri non bastano sempre
+7. costruire soluzioni ibride: `mp_program0`
+8. salire a un meta-controller: `mp_super`
+9. raffinare il super con piu' segnali live
+10. leggere i risultati come tradeoff tra:
+   - wait
+   - travel
+   - throughput
+   - censura
+
+La conclusione da raccontare e':
+- non abbiamo cercato di forzare un MP che vince sempre
+- abbiamo capito che serve scegliere il comportamento giusto per il regime giusto
+
+
+12) Cosa dire in modo molto semplice al professore
+-----------------------------------------------
+Puoi dirlo cosi':
+
+"All'inizio pensavamo di confrontare un MP puro con il semaforo fisso.
+Poi i run ci hanno mostrato che Bologna ha un baseline statico molto forte
+e che gli MP non sono tutti equivalenti: alcuni lavorano bene in low, altri
+solo in high, altri ancora solo quando il traffico e' sbilanciato o a ondate.
+Per questo abbiamo aggiunto distribuzioni piu' realistiche (`skewed` e `peak`),
+poi abbiamo costruito un ibrido semplice (`mp_program0`) e infine un meta-controller
+(`mp_super`) che sceglie in tempo reale il ramo piu' adatto usando load, imbalance,
+wait imbalance, burstiness, platoon e downstream. La conclusione non e' che gli MP
+vincono sempre, ma che i controlli migliori sono regime-aware e spesso ibridi." 
+
+
+13) Frasi utili da tenere pronte
+--------------------------------
+- "Il baseline statico di Bologna e' piu' forte del previsto."
+- "Il MP puro non basta sempre; il costo dello switch pesa molto."
+- "Skewed e peak servono per creare regime piu' realistici e far emergere i controller specializzati."
+- "mp_program0 e' il primo ibrido che si comporta da fisso quando conviene."
+- "mp_super non e' un nuovo MP, ma un selettore di famiglie MP."
+- "Safe e' una protezione, non un comportamento normale."
+- "La metrica va sempre letta insieme alla censura."
+- "La soluzione migliore non e' una sola strategia universale, ma una scelta dinamica del regime."
+
+
+14) Riassunto finale
+--------------------
+Se devi ricordare solo tre cose:
+
+1. `fixed_program0` e' fortissimo su Bologna.
+2. I MP puri non bastano da soli; servono regole ibride o meta-controller.
+3. `mp_super` e' il nostro miglior passo avanti per scegliere in tempo reale il comportamento giusto, ma i casi high restano la parte piu' difficile.
+
+Questo progetto ha quindi mostrato che:
+- il traffico non si controlla bene con una sola idea fissa
+- il comportamento migliore dipende dal regime
+- i controller piu' utili sono quelli che sanno adattarsi senza diventare troppo nervosi

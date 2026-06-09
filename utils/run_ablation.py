@@ -477,15 +477,60 @@ TUNING_MATRIX_V2_SCENARIOS: tuple[Scenario, ...] = (
     Scenario(
         "mp_program0",
         (
+            # Rule-based hybrid tuned from the latest Bologna runs:
+            # keep program0 in low-load regimes, then hand control back to MP
+            # only when the local load stays clearly above the threshold.
             "--program0-hybrid",
             "--program0-load-ref",
-            "3.0",
+            "3.5",
             "--program0-enter-mp-load",
-            "0.55",
+            "0.60",
             "--program0-exit-fixed-load",
-            "0.35",
+            "0.40",
             "--program0-mode-streak",
-            "3",
+            "4",
+        ),
+    ),
+    Scenario(
+        "mp_super",
+        (
+            # Regime-aware meta-controller:
+            # low -> program0, medium/high -> select the best MP family from live signals.
+            "--super-router",
+            "--super-load-ref",
+            "3.5",
+            "--super-low-load",
+            "0.42",
+            "--super-high-load",
+            "0.68",
+            "--super-imbalance-threshold",
+            "0.60",
+            "--super-wait-imbalance-threshold",
+            "0.60",
+            "--super-burstiness-threshold",
+            "0.55",
+            "--super-platoon-threshold",
+            "0.75",
+            "--super-downstream-threshold",
+            "0.97",
+            "--super-mode-streak",
+            "4",
+            "--super-nmin-load",
+            "0.78",
+            "--super-lta-gain",
+            "0.60",
+            "--super-lta-sat-flow",
+            "0.50",
+            "--super-nmin-alpha",
+            "1.20",
+            "--super-nmin-floor",
+            "4",
+            "--super-nmin-min-green",
+            "4.0",
+            "--super-nmin-demand-gain",
+            "0.40",
+            "--super-nmin-empty-release-seconds",
+            "1.5",
         ),
     ),
     Scenario(
@@ -1274,6 +1319,22 @@ def fill_failed_metrics(base_row: dict) -> dict:
             "mp_platoon_extend_step_count": 0.0,
             "mp_fairness_positive_bonus_count": 0.0,
             "mp_fairness_bonus_sum": 0.0,
+            "mp_super_mode_switch_count": 0.0,
+            "mp_super_program0_to_mp_count": 0.0,
+            "mp_super_mp_to_program0_count": 0.0,
+            "mp_super_program0_step_count": 0.0,
+            "mp_super_base_step_count": 0.0,
+            "mp_super_lta_step_count": 0.0,
+            "mp_super_nmin_step_count": 0.0,
+            "mp_super_fair_step_count": 0.0,
+            "mp_super_platoon_step_count": 0.0,
+            "mp_super_safe_step_count": 0.0,
+            "mp_super_load_sum": 0.0,
+            "mp_super_imbalance_sum": 0.0,
+            "mp_super_wait_imbalance_sum": 0.0,
+            "mp_super_burstiness_sum": 0.0,
+            "mp_super_platoon_sum": 0.0,
+            "mp_super_downstream_sum": 0.0,
         }
     )
     return base_row
@@ -1434,6 +1495,22 @@ def execute_case(
                     float(stats_mean.get("fairness_positive_bonus_count", 0.0)), 6
                 ),
                 "mp_fairness_bonus_sum": round(float(stats_mean.get("fairness_bonus_sum", 0.0)), 6),
+                "mp_super_mode_switch_count": round(float(stats_mean.get("super_mode_switch_count", 0.0)), 6),
+                "mp_super_program0_to_mp_count": round(float(stats_mean.get("super_program0_to_mp_count", 0.0)), 6),
+                "mp_super_mp_to_program0_count": round(float(stats_mean.get("super_mp_to_program0_count", 0.0)), 6),
+                "mp_super_program0_step_count": round(float(stats_mean.get("super_program0_step_count", 0.0)), 6),
+                "mp_super_base_step_count": round(float(stats_mean.get("super_base_step_count", 0.0)), 6),
+                "mp_super_lta_step_count": round(float(stats_mean.get("super_lta_step_count", 0.0)), 6),
+                "mp_super_nmin_step_count": round(float(stats_mean.get("super_nmin_step_count", 0.0)), 6),
+                "mp_super_fair_step_count": round(float(stats_mean.get("super_fair_step_count", 0.0)), 6),
+                "mp_super_platoon_step_count": round(float(stats_mean.get("super_platoon_step_count", 0.0)), 6),
+                "mp_super_safe_step_count": round(float(stats_mean.get("super_safe_step_count", 0.0)), 6),
+                "mp_super_load_sum": round(float(stats_mean.get("super_load_sum", 0.0)), 6),
+                "mp_super_imbalance_sum": round(float(stats_mean.get("super_imbalance_sum", 0.0)), 6),
+                "mp_super_wait_imbalance_sum": round(float(stats_mean.get("super_wait_imbalance_sum", 0.0)), 6),
+                "mp_super_burstiness_sum": round(float(stats_mean.get("super_burstiness_sum", 0.0)), 6),
+                "mp_super_platoon_sum": round(float(stats_mean.get("super_platoon_sum", 0.0)), 6),
+                "mp_super_downstream_sum": round(float(stats_mean.get("super_downstream_sum", 0.0)), 6),
             }
         )
     except Exception:
@@ -1957,6 +2034,22 @@ def main() -> None:
         "mp_platoon_extend_step_count",
         "mp_fairness_positive_bonus_count",
         "mp_fairness_bonus_sum",
+        "mp_super_mode_switch_count",
+        "mp_super_program0_to_mp_count",
+        "mp_super_mp_to_program0_count",
+        "mp_super_program0_step_count",
+        "mp_super_base_step_count",
+        "mp_super_lta_step_count",
+        "mp_super_nmin_step_count",
+        "mp_super_fair_step_count",
+        "mp_super_platoon_step_count",
+        "mp_super_safe_step_count",
+        "mp_super_load_sum",
+        "mp_super_imbalance_sum",
+        "mp_super_wait_imbalance_sum",
+        "mp_super_burstiness_sum",
+        "mp_super_platoon_sum",
+        "mp_super_downstream_sum",
     ]
     write_csv(run_results_file, run_rows, run_fields)
 
@@ -1992,6 +2085,22 @@ def main() -> None:
         platoon_extend_counts = [float(row["mp_platoon_extend_step_count"]) for row in rows]
         fairness_bonus_counts = [float(row["mp_fairness_positive_bonus_count"]) for row in rows]
         fairness_bonus_sums = [float(row["mp_fairness_bonus_sum"]) for row in rows]
+        super_mode_switch_counts = [float(row["mp_super_mode_switch_count"]) for row in rows]
+        super_program0_to_mp_counts = [float(row["mp_super_program0_to_mp_count"]) for row in rows]
+        super_mp_to_program0_counts = [float(row["mp_super_mp_to_program0_count"]) for row in rows]
+        super_program0_steps = [float(row["mp_super_program0_step_count"]) for row in rows]
+        super_base_steps = [float(row["mp_super_base_step_count"]) for row in rows]
+        super_lta_steps = [float(row["mp_super_lta_step_count"]) for row in rows]
+        super_nmin_steps = [float(row["mp_super_nmin_step_count"]) for row in rows]
+        super_fair_steps = [float(row["mp_super_fair_step_count"]) for row in rows]
+        super_platoon_steps = [float(row["mp_super_platoon_step_count"]) for row in rows]
+        super_safe_steps = [float(row["mp_super_safe_step_count"]) for row in rows]
+        super_load_sums = [float(row["mp_super_load_sum"]) for row in rows]
+        super_imbalance_sums = [float(row["mp_super_imbalance_sum"]) for row in rows]
+        super_wait_imbalance_sums = [float(row["mp_super_wait_imbalance_sum"]) for row in rows]
+        super_burstiness_sums = [float(row["mp_super_burstiness_sum"]) for row in rows]
+        super_platoon_sums = [float(row["mp_super_platoon_sum"]) for row in rows]
+        super_downstream_sums = [float(row["mp_super_downstream_sum"]) for row in rows]
 
         summary_rows.append(
             {
@@ -2022,6 +2131,22 @@ def main() -> None:
                 "avg_platoon_extend_step_count": round(safe_mean(platoon_extend_counts), 6),
                 "avg_fairness_positive_bonus_count": round(safe_mean(fairness_bonus_counts), 6),
                 "avg_fairness_bonus_sum": round(safe_mean(fairness_bonus_sums), 6),
+                "avg_mp_super_mode_switch_count": round(safe_mean(super_mode_switch_counts), 6),
+                "avg_mp_super_program0_to_mp_count": round(safe_mean(super_program0_to_mp_counts), 6),
+                "avg_mp_super_mp_to_program0_count": round(safe_mean(super_mp_to_program0_counts), 6),
+                "avg_mp_super_program0_step_count": round(safe_mean(super_program0_steps), 6),
+                "avg_mp_super_base_step_count": round(safe_mean(super_base_steps), 6),
+                "avg_mp_super_lta_step_count": round(safe_mean(super_lta_steps), 6),
+                "avg_mp_super_nmin_step_count": round(safe_mean(super_nmin_steps), 6),
+                "avg_mp_super_fair_step_count": round(safe_mean(super_fair_steps), 6),
+                "avg_mp_super_platoon_step_count": round(safe_mean(super_platoon_steps), 6),
+                "avg_mp_super_safe_step_count": round(safe_mean(super_safe_steps), 6),
+                "avg_mp_super_load_sum": round(safe_mean(super_load_sums), 6),
+                "avg_mp_super_imbalance_sum": round(safe_mean(super_imbalance_sums), 6),
+                "avg_mp_super_wait_imbalance_sum": round(safe_mean(super_wait_imbalance_sums), 6),
+                "avg_mp_super_burstiness_sum": round(safe_mean(super_burstiness_sums), 6),
+                "avg_mp_super_platoon_sum": round(safe_mean(super_platoon_sums), 6),
+                "avg_mp_super_downstream_sum": round(safe_mean(super_downstream_sums), 6),
             }
         )
 
@@ -2054,6 +2179,22 @@ def main() -> None:
         "avg_platoon_extend_step_count",
         "avg_fairness_positive_bonus_count",
         "avg_fairness_bonus_sum",
+        "avg_mp_super_mode_switch_count",
+        "avg_mp_super_program0_to_mp_count",
+        "avg_mp_super_mp_to_program0_count",
+        "avg_mp_super_program0_step_count",
+        "avg_mp_super_base_step_count",
+        "avg_mp_super_lta_step_count",
+        "avg_mp_super_nmin_step_count",
+        "avg_mp_super_fair_step_count",
+        "avg_mp_super_platoon_step_count",
+        "avg_mp_super_safe_step_count",
+        "avg_mp_super_load_sum",
+        "avg_mp_super_imbalance_sum",
+        "avg_mp_super_wait_imbalance_sum",
+        "avg_mp_super_burstiness_sum",
+        "avg_mp_super_platoon_sum",
+        "avg_mp_super_downstream_sum",
     ]
     write_csv(summary_file, summary_rows, summary_fields)
 

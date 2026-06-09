@@ -339,7 +339,8 @@ File/riga: utils/run_ablation.py:157, utils/run_ablation.py:160, utils/run_ablat
 
 Pack tuning_matrix_v2 (base piu' prudente + varianti principali):
 - mp_base
-- mp_program0 (alias vecchio: mp_base_v2) = base ibrido: in low segue program0, in high torna a fare MP
+- mp_program0 (alias vecchio: mp_base_v2) = base ibrido rule-based: in low segue program0, in high torna a fare MP
+- mp_super = meta-controller rule-based live: legge load, sbilanciamento, platoon e downstream e sceglie il ramo piu' adatto
 - LTA, Nmin, downstream, spillback, fairness, platoon e sweep switch-epsilon
 File/riga: utils/run_ablation.py:476, utils/run_ablation.py:480, utils/run_ablation.py:638
 
@@ -390,11 +391,37 @@ File/riga: src/controllers/max_pressure.py:351, src/controllers/max_pressure.py:
 
 - `--program0-hybrid` (runner.py, usato solo da `mp_program0`):
   - rende il base MP ibrido: sotto una soglia di carico lascia lavorare direttamente `program0`, sopra la soglia torna a comportarsi come MP.
+  - soglie conservative attuali, tarate sui run recenti:
+    - `--program0-load-ref 3.5`
+    - `--program0-enter-mp-load 0.60`
+    - `--program0-exit-fixed-load 0.40`
+    - `--program0-mode-streak 4`
   - flag collegati:
     - `--program0-load-ref`
     - `--program0-enter-mp-load`
     - `--program0-exit-fixed-load`
     - `--program0-mode-streak`
+
+- `--super-router` (runner.py, usato solo da `mp_super`):
+  - meta-controller rule-based live: decide tra `program0`, `base`, `nmin`, `fair`, `platoon`, `safe`.
+  - segnali live usati:
+    - `load` normalizzato (`--super-load-ref`)
+    - `imbalance` tra fasi (`--super-imbalance-threshold`)
+    - `wait_imbalance` sulle attese accumulate (`--super-wait-imbalance-threshold`)
+    - `burstiness` della domanda locale (`--super-burstiness-threshold`)
+    - `platoon_score` sugli headway (`--super-platoon-threshold`)
+    - `downstream_score` su occupancy/fill (`--super-downstream-threshold`)
+  - soglie conservative attuali:
+    - `--super-load-ref 3.5`
+    - `--super-low-load 0.42`
+    - `--super-high-load 0.68`
+    - `--super-imbalance-threshold 0.60`
+    - `--super-wait-imbalance-threshold 0.60`
+    - `--super-burstiness-threshold 0.55`
+    - `--super-platoon-threshold 0.75`
+    - `--super-downstream-threshold 0.97`
+    - `--super-mode-streak 4`
+  - il ramo `safe` resta disponibile ma e' pensato come ultima risorsa vera e propria; sotto carico alto e downstream critico deve scattare molto meno spesso di prima.
 
 
 14) Popolazione meno uniforme (nuovo)

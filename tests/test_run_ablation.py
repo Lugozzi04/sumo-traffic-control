@@ -78,8 +78,63 @@ class RunAblationDemandTest(unittest.TestCase):
         self.assertEqual([scenario.name for scenario in selected], ["mp_base", "mp_lta_g040_sf050", "fixed_program0", "fixed_tuned"])
 
     def test_tuning_matrix_v2_includes_program0_hybrid(self) -> None:
-        names = [scenario.name for scenario in SCENARIO_PACKS["tuning_matrix_v2"]]
-        self.assertIn("mp_program0", names)
+        scenarios = {scenario.name: scenario for scenario in SCENARIO_PACKS["tuning_matrix_v2"]}
+        self.assertIn("mp_program0", scenarios)
+        self.assertEqual(
+            scenarios["mp_program0"].flags,
+            (
+                "--program0-hybrid",
+                "--program0-load-ref",
+                "3.5",
+                "--program0-enter-mp-load",
+                "0.60",
+                "--program0-exit-fixed-load",
+                "0.40",
+                "--program0-mode-streak",
+                "4",
+            ),
+        )
+        self.assertIn("mp_super", scenarios)
+        self.assertEqual(
+            scenarios["mp_super"].flags,
+            (
+                "--super-router",
+                "--super-load-ref",
+                "3.5",
+                "--super-low-load",
+                "0.42",
+                "--super-high-load",
+                "0.68",
+                "--super-imbalance-threshold",
+                "0.60",
+                "--super-wait-imbalance-threshold",
+                "0.60",
+                "--super-burstiness-threshold",
+                "0.55",
+                "--super-platoon-threshold",
+                "0.75",
+                "--super-downstream-threshold",
+                "0.97",
+                "--super-mode-streak",
+                "4",
+                "--super-nmin-load",
+                "0.78",
+                "--super-lta-gain",
+                "0.60",
+                "--super-lta-sat-flow",
+                "0.50",
+                "--super-nmin-alpha",
+                "1.20",
+                "--super-nmin-floor",
+                "4",
+                "--super-nmin-min-green",
+                "4.0",
+                "--super-nmin-demand-gain",
+                "0.40",
+                "--super-nmin-empty-release-seconds",
+                "1.5",
+            ),
+        )
 
     def test_default_delta_baseline_prefers_program0_then_tuned(self) -> None:
         scenarios = (Scenario("mp_base", ()), FIXED_TUNED_SCENARIO)
