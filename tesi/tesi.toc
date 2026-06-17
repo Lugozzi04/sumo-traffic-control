@@ -1,0 +1,112 @@
+\babel@toc {italian}{}\relax 
+\babel@toc {italian}{}\relax 
+\contentsline {chapter}{Sommario}{3}{chapter*.1}%
+\contentsline {chapter}{Parole chiave}{5}{chapter*.2}%
+\contentsline {chapter}{\numberline {1}Introduzione}{11}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Contesto e motivazioni}{11}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Problema affrontato}{12}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Obiettivi della tesi}{12}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Contributi del lavoro}{13}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Organizzazione della tesi}{13}{section.1.5}%
+\contentsline {chapter}{\numberline {2}Contesto e stato dell'arte}{15}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Controllo semaforico urbano}{15}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Controllo a tempi fissi}{15}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Controllo attuato e adattivo}{16}{subsection.2.1.2}%
+\contentsline {section}{\numberline {2.2}Strategie Max-Pressure}{16}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Principio di funzionamento}{16}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Pressione dei movimenti e delle fasi}{17}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Proprietà e limiti del controllo locale}{17}{subsection.2.2.3}%
+\contentsline {section}{\numberline {2.3}Estensioni del Max-Pressure}{18}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Costo delle transizioni semaforiche}{18}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Prevenzione dello spillback}{18}{subsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.3.3}Fairness e prevenzione della starvation}{19}{subsection.2.3.3}%
+\contentsline {subsection}{\numberline {2.3.4}Gestione dei plotoni di veicoli}{19}{subsection.2.3.4}%
+\contentsline {section}{\numberline {2.4}Simulazione microscopica del traffico}{19}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}SUMO}{19}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Interfaccia TraCI}{20}{subsection.2.4.2}%
+\contentsline {section}{\numberline {2.5}Situazione iniziale del progetto}{20}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Componenti software già disponibili}{20}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Limiti della soluzione iniziale}{21}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Contributi sviluppati nella tesi}{21}{subsection.2.5.3}%
+\contentsline {chapter}{\numberline {3}Requisiti e progettazione del sistema}{23}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Requisiti funzionali}{23}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Requisiti non funzionali}{23}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Riproducibilità}{24}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Modularità}{24}{subsection.3.2.2}%
+\contentsline {subsection}{\numberline {3.2.3}Osservabilità}{24}{subsection.3.2.3}%
+\contentsline {section}{\numberline {3.3}Architettura generale}{25}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Runner delle simulazioni}{25}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Generazione delle popolazioni}{26}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}Controller semaforici}{26}{subsection.3.3.3}%
+\contentsline {subsection}{\numberline {3.3.4}Raccolta e aggregazione delle metriche}{26}{subsection.3.3.4}%
+\contentsline {section}{\numberline {3.4}Flusso di esecuzione di una simulazione}{27}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Scelte progettuali}{27}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Separazione tra controller e simulatore}{27}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Configurazione mediante parametri}{28}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Gestione delle mappe reali e sintetiche}{28}{subsection.3.5.3}%
+\contentsline {chapter}{\numberline {4}Implementazione dei controller Max-Pressure}{29}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Rappresentazione dei semafori}{29}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Identificazione delle fasi principali}{29}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Costruzione dei movimenti}{30}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}Conservazione delle transizioni di sicurezza}{30}{subsection.4.1.3}%
+\contentsline {section}{\numberline {4.2}Controller Max-Pressure di base}{30}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Misura delle code}{30}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Calcolo della pressione}{31}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Selezione della fase}{31}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}Vincoli di minimo e massimo verde}{31}{subsection.4.2.4}%
+\contentsline {section}{\numberline {4.3}Macchina a stati del controller}{32}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Fase attiva e target pendente}{32}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Gestione di giallo e all-red}{32}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Recupero dalle transizioni anomale}{33}{subsection.4.3.3}%
+\contentsline {section}{\numberline {4.4}Lost-Time-Aware}{33}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Minimo verde dinamico Nmin}{33}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Fairness}{34}{section.4.6}%
+\contentsline {section}{\numberline {4.7}Penalità downstream}{34}{section.4.7}%
+\contentsline {section}{\numberline {4.8}Anti-spillback}{35}{section.4.8}%
+\contentsline {section}{\numberline {4.9}Platoon extension}{35}{section.4.9}%
+\contentsline {section}{\numberline {4.10}Margini e stabilità dello switch}{36}{section.4.10}%
+\contentsline {section}{\numberline {4.11}Contatori di attivazione}{36}{section.4.11}%
+\contentsline {chapter}{\numberline {5}Metodologia e piattaforma sperimentale}{37}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Obiettivi della valutazione}{37}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Pipeline di ablation}{37}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Generazione dei casi sperimentali}{38}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Esecuzione parallela}{38}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Organizzazione delle run}{38}{subsection.5.2.3}%
+\contentsline {subsection}{\numberline {5.2.4}Report automatici}{39}{subsection.5.2.4}%
+\contentsline {section}{\numberline {5.3}Generazione della domanda di traffico}{39}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Livelli low, medium e high}{40}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Distribuzione balanced}{40}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}Distribuzione skewed}{40}{subsection.5.3.3}%
+\contentsline {subsection}{\numberline {5.3.4}Distribuzione peak}{41}{subsection.5.3.4}%
+\contentsline {subsection}{\numberline {5.3.5}Seed e riproducibilità}{41}{subsection.5.3.5}%
+\contentsline {section}{\numberline {5.4}Profilo di guida human-light}{41}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Controller di confronto}{42}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}Fixed program0}{42}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}Fixed tuned}{42}{subsection.5.5.2}%
+\contentsline {subsection}{\numberline {5.5.3}Max-Pressure di base}{42}{subsection.5.5.3}%
+\contentsline {section}{\numberline {5.6}Metriche}{43}{section.5.6}%
+\contentsline {subsection}{\numberline {5.6.1}Tempo di attesa}{43}{subsection.5.6.1}%
+\contentsline {subsection}{\numberline {5.6.2}Tempo di viaggio e time loss}{43}{subsection.5.6.2}%
+\contentsline {subsection}{\numberline {5.6.3}Velocità media}{43}{subsection.5.6.3}%
+\contentsline {subsection}{\numberline {5.6.4}Viaggi completati e throughput}{43}{subsection.5.6.4}%
+\contentsline {subsection}{\numberline {5.6.5}Censura}{43}{subsection.5.6.5}%
+\contentsline {section}{\numberline {5.7}Criteri di confronto}{44}{section.5.7}%
+\contentsline {section}{\numberline {5.8}Ambiente hardware e software}{44}{section.5.8}%
+\contentsline {section}{\numberline {5.9}Minacce alla validità}{44}{section.5.9}%
+\contentsline {chapter}{\numberline {6}Valutazione su Manhattan 8x8}{47}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Motivazione dello scenario sintetico}{47}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Topologia della rete}{47}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Configurazione sperimentale}{48}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Confronto tra Max-Pressure e controllo fisso}{49}{section.6.4}%
+\contentsline {section}{\numberline {6.5}Valutazione delle singole estensioni}{51}{section.6.5}%
+\contentsline {subsection}{\numberline {6.5.1}Lost-Time-Aware}{51}{subsection.6.5.1}%
+\contentsline {subsection}{\numberline {6.5.2}Nmin dinamico}{51}{subsection.6.5.2}%
+\contentsline {subsection}{\numberline {6.5.3}Fairness}{52}{subsection.6.5.3}%
+\contentsline {subsection}{\numberline {6.5.4}Penalità downstream}{52}{subsection.6.5.4}%
+\contentsline {subsection}{\numberline {6.5.5}Anti-spillback}{52}{subsection.6.5.5}%
+\contentsline {subsection}{\numberline {6.5.6}Platoon extension}{53}{subsection.6.5.6}%
+\contentsline {subsection}{\numberline {6.5.7}Margini di switch}{53}{subsection.6.5.7}%
+\contentsline {section}{\numberline {6.6}Analisi dei contatori di attivazione}{53}{section.6.6}%
+\contentsline {section}{\numberline {6.7}Confronto complessivo}{54}{section.6.7}%
+\contentsline {section}{\numberline {6.8}Indicazioni ricavate per lo scenario reale}{54}{section.6.8}%
+\contentsline {chapter}{Riferimenti bibliografici}{57}{chapter*.12}%

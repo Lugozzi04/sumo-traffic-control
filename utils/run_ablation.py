@@ -500,23 +500,25 @@ TUNING_MATRIX_V2_SCENARIOS: tuple[Scenario, ...] = (
             "--super-load-ref",
             "3.5",
             "--super-low-load",
-            "0.42",
+            "0.38",
+            "--super-program0-exit-load",
+            "0.28",
             "--super-high-load",
-            "0.68",
+            "0.62",
             "--super-imbalance-threshold",
-            "0.60",
+            "0.50",
             "--super-wait-imbalance-threshold",
-            "0.60",
+            "0.50",
             "--super-burstiness-threshold",
-            "0.55",
+            "0.10",
             "--super-platoon-threshold",
-            "0.75",
+            "0.50",
             "--super-downstream-threshold",
             "0.97",
             "--super-mode-streak",
             "4",
             "--super-nmin-load",
-            "0.78",
+            "0.72",
             "--super-lta-gain",
             "0.60",
             "--super-lta-sat-flow",
@@ -531,6 +533,31 @@ TUNING_MATRIX_V2_SCENARIOS: tuple[Scenario, ...] = (
             "0.40",
             "--super-nmin-empty-release-seconds",
             "1.5",
+            # Parameters shared by the specialist branches selected below.
+            "--fairness-mu",
+            "5.0",
+            "--fairness-w-half",
+            "20.0",
+            "--platoon-headway-threshold",
+            "2.1",
+            "--platoon-gap-out-seconds",
+            "2.1",
+            "--platoon-max-extra-green",
+            "2.0",
+            "--platoon-guard-occ",
+            "0.90",
+            "--spillback-on",
+            "0.90",
+            "--spillback-off",
+            "0.80",
+            "--spillback-min-halts",
+            "3",
+            "--spillback-alpha",
+            "0.30",
+            "--downstream-beta",
+            "0.4",
+            "--downstream-alpha",
+            "0.30",
         ),
     ),
     Scenario(
@@ -691,10 +718,32 @@ TUNING_MATRIX_V2_SCENARIOS: tuple[Scenario, ...] = (
     Scenario("mp_switch_rel010", ("--switch-epsilon-rel", "0.10")),
 )
 
+BOLOGNA_THESIS_V1_SCENARIO_NAMES: tuple[str, ...] = (
+    "mp_base",
+    "mp_program0",
+    "mp_super",
+    "mp_lta_g060_sf050",
+    "mp_nmin_a120_f4",
+    "mp_spillback_on90_off80",
+    "mp_fair_mu5_w20",
+    "mp_platoon_x2",
+)
+_TUNING_MATRIX_V2_BY_NAME = {
+    scenario.name: scenario for scenario in TUNING_MATRIX_V2_SCENARIOS
+}
+MP_SUPER_NO_SAFE_SCENARIO = Scenario(
+    "mp_super_no_safe",
+    _TUNING_MATRIX_V2_BY_NAME["mp_super"].flags + ("--super-disable-safe",),
+)
+BOLOGNA_THESIS_V1_SCENARIOS: tuple[Scenario, ...] = tuple(
+    _TUNING_MATRIX_V2_BY_NAME[name] for name in BOLOGNA_THESIS_V1_SCENARIO_NAMES
+) + (MP_SUPER_NO_SAFE_SCENARIO,)
+
 SCENARIO_PACKS: dict[str, tuple[Scenario, ...]] = {
     "tuned_v1": TUNED_V1_SCENARIOS,
     "tuning_matrix_v1": TUNING_MATRIX_V1_SCENARIOS,
     "tuning_matrix_v2": TUNING_MATRIX_V2_SCENARIOS,
+    "bologna_thesis_v1": BOLOGNA_THESIS_V1_SCENARIOS,
 }
 
 SCENARIO_ALIASES: dict[str, str] = {

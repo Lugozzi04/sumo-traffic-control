@@ -85,15 +85,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--program0-mode-streak", type=int, default=3, help="Numero minimo di step consecutivi oltre soglia per cambiare modalita'")
     parser.add_argument("--super-router", action="store_true", help="Abilita il selettore di regime live (program0/base/nmin/fair/platoon/safe)")
     parser.add_argument("--super-load-ref", type=float, default=3.5, help="Riferimento carico normalizzato per il selettore live")
-    parser.add_argument("--super-low-load", type=float, default=0.42, help="Sotto questa soglia il super controller resta su program0")
-    parser.add_argument("--super-high-load", type=float, default=0.68, help="Sopra questa soglia il super controller usa i rami MP")
-    parser.add_argument("--super-imbalance-threshold", type=float, default=0.60, help="Soglia di sbilanciamento per favorire LTA/Fair")
-    parser.add_argument("--super-wait-imbalance-threshold", type=float, default=0.60, help="Soglia di sbilanciamento delle attese per favorire LTA/Fair")
-    parser.add_argument("--super-burstiness-threshold", type=float, default=0.55, help="Soglia burstiness per favorire NMIN")
-    parser.add_argument("--super-platoon-threshold", type=float, default=0.75, help="Soglia platoon per favorire l'estensione verde")
+    parser.add_argument("--super-low-load", type=float, default=0.38, help="Soglia di ingresso dai tempi fissi ai rami MP")
+    parser.add_argument("--super-program0-exit-load", type=float, default=0.28, help="Soglia inferiore per tornare a program0 dopo essere entrati in un ramo MP")
+    parser.add_argument("--super-high-load", type=float, default=0.62, help="Sopra questa soglia il super controller usa i rami MP ad alto carico")
+    parser.add_argument("--super-imbalance-threshold", type=float, default=0.50, help="Soglia di sbilanciamento per favorire LTA/Fair")
+    parser.add_argument("--super-wait-imbalance-threshold", type=float, default=0.50, help="Soglia di sbilanciamento delle attese per favorire LTA/Fair")
+    parser.add_argument("--super-burstiness-threshold", type=float, default=0.10, help="Soglia burstiness per favorire NMIN")
+    parser.add_argument("--super-platoon-threshold", type=float, default=0.50, help="Soglia binaria del rilevatore platoon")
     parser.add_argument("--super-downstream-threshold", type=float, default=0.97, help="Soglia downstream per attivare il ramo safety")
+    parser.add_argument("--super-disable-safe", action="store_true", help="Disabilita il ramo safe del super controller")
     parser.add_argument("--super-mode-streak", type=int, default=4, help="Numero minimo di step consecutivi per confermare il cambio di regime live")
-    parser.add_argument("--super-nmin-load", type=float, default=0.78, help="Load oltre cui il super controller usa il ramo Nmin forte")
+    parser.add_argument("--super-nmin-load", type=float, default=0.72, help="Load oltre cui il super controller usa il ramo Nmin forte")
     parser.add_argument("--super-lta-gain", type=float, default=0.60, help="Guadagno lost-time-aware del ramo LTA del super controller")
     parser.add_argument("--super-lta-sat-flow", type=float, default=0.50, help="Flusso di saturazione usato dal ramo LTA del super controller")
     parser.add_argument("--super-nmin-alpha", type=float, default=1.20, help="Alpha del profilo Nmin forte del super controller")
@@ -180,6 +182,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--super-load-ref deve essere > 0")
     if not 0.0 <= args.super_low_load <= 1.0:
         parser.error("--super-low-load deve essere nel range [0, 1]")
+    if not 0.0 <= args.super_program0_exit_load <= args.super_low_load:
+        parser.error("--super-program0-exit-load deve essere nel range [0, --super-low-load]")
     if not 0.0 <= args.super_high_load <= 1.0:
         parser.error("--super-high-load deve essere nel range [0, 1]")
     if args.super_low_load > args.super_high_load:
@@ -284,12 +288,14 @@ def build_controller(name: str, args: argparse.Namespace):
             super_router=args.super_router,
             super_load_ref=args.super_load_ref,
             super_low_load=args.super_low_load,
+            super_program0_exit_load=args.super_program0_exit_load,
             super_high_load=args.super_high_load,
             super_imbalance_threshold=args.super_imbalance_threshold,
             super_wait_imbalance_threshold=args.super_wait_imbalance_threshold,
             super_burstiness_threshold=args.super_burstiness_threshold,
             super_platoon_threshold=args.super_platoon_threshold,
             super_downstream_threshold=args.super_downstream_threshold,
+            super_safe_enabled=not args.super_disable_safe,
             super_mode_streak=args.super_mode_streak,
             super_nmin_load=args.super_nmin_load,
             super_lta_gain=args.super_lta_gain,

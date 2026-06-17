@@ -1,0 +1,6062 @@
+RIASSUNTO COMPLETO DEL TIROCINIO
+================================
+
+Progetto: SUMO Traffic Control
+Repository: sumo-traffic-control
+Periodo ricostruito dai commit: 4 marzo 2026 - 9 giugno 2026
+Ultimo commit analizzato: 5d9b63e - "super_mp"
+Data di redazione e ultimo approfondimento: 11 giugno 2026
+
+
+INDICE
+======
+
+1. Obiettivo generale del tirocinio
+2. Fonti usate per ricostruire il lavoro
+3. Stato finale della repository
+4. Architettura iniziale del progetto
+5. Evoluzione cronologica, commit per commit
+6. Funzionamento del Max-Pressure di base
+7. Moduli specialistici aggiunti al Max-Pressure
+8. Controller fixed e baseline di confronto
+9. Generazione della popolazione e tipi di traffico
+10. Profilo di guida human_light
+11. Metriche, tripinfo e censura
+12. Pipeline di ablation e organizzazione dei risultati
+13. Mappe e utility sviluppate
+14. Evoluzione sperimentale delle simulazioni
+15. Il problema dello spillback
+16. Da mp_base ad mp_program0
+17. Nascita ed evoluzione di mp_super
+18. Logica dettagliata della versione finale di mp_super
+19. Risultati delle campagne complete finali
+20. Interpretazione corretta dei risultati high
+21. Cosa e' stato raggiunto
+22. Limiti attuali e lavoro futuro
+23. Procedimento mentale seguito durante il tirocinio
+24. Guida ai file principali
+25. Glossario essenziale
+26. Riassunto finale da usare in una presentazione
+27. Flusso completo di una simulazione, passo per passo
+28. Macchina a stati dettagliata del controller MP
+29. Catalogo esatto degli scenari finali
+30. Analisi ingegneristica approfondita della cronologia Git
+31. Perche' le varianti MP possono peggiorare il traffico
+32. Lettura completa della run finale, scenario per scenario
+33. Analisi dei contatori di attivazione
+34. Confronto controllato tra run 22, 23 e 24
+35. Lavoro operativo su server e workstation locale
+36. Riproducibilita', dimensione dei batch e costi computazionali
+37. Decisioni progettuali, alternative scartate e compromessi
+38. Limiti specifici dell'implementazione corrente
+39. Interpretazione del contributo scientifico del tirocinio
+40. Traccia estesa per spiegare il progetto oralmente
+
+
+1. OBIETTIVO GENERALE DEL TIROCINIO
+===================================
+
+L'obiettivo iniziale era costruire e valutare controllori semaforici
+Max-Pressure, abbreviati MP, all'interno del simulatore SUMO.
+
+L'idea di partenza era relativamente semplice:
+
+- usare le code in ingresso e in uscita dagli incroci;
+- calcolare la pressione associata alle fasi semaforiche;
+- assegnare il verde alla fase con maggiore necessita';
+- confrontare il controllo dinamico MP con i programmi semaforici fissi.
+
+Durante il tirocinio l'obiettivo si e' evoluto. I risultati hanno mostrato che
+un MP puro non e' automaticamente migliore di un buon programma statico.
+In particolare, il program0 della rete di Bologna e' risultato molto
+competitivo. Il lavoro si e' quindi spostato verso una domanda piu' utile:
+
+"In quali regimi di traffico conviene usare un controllo MP, quale variante
+conviene usare e quando invece e' meglio conservare il piano statico?"
+
+Da questa domanda sono nate:
+
+- varianti MP specializzate;
+- una pipeline di ablation riproducibile;
+- traffico balanced, skewed e peak;
+- metriche finali piu' affidabili;
+- il controller ibrido mp_program0;
+- il meta-controller rule-based mp_super.
+
+Il risultato finale non e' un singolo MP che vince sempre. Il risultato e'
+una piattaforma sperimentale che permette di:
+
+- simulare reti sintetiche e reali;
+- generare domande diverse e riproducibili;
+- confrontare controller statici e dinamici;
+- misurare attesa, viaggio, time loss, throughput e censura;
+- osservare quali meccanismi MP si attivano;
+- scegliere dinamicamente una strategia in base al regime locale.
+
+
+2. FONTI USATE PER RICOSTRUIRE IL LAVORO
+========================================
+
+Questo documento e' stato prodotto analizzando direttamente:
+
+- la cronologia Git completa;
+- tutti i 19 commit presenti nel branch main;
+- il codice corrente;
+- le versioni storiche dei file nei commit;
+- README.md;
+- guida_flag.txt;
+- explanation_mat.txt;
+- formule_matematiche.txt;
+- appunti.txt;
+- appunti_run_0007_miglioramenti.txt;
+- patch.txt;
+- cronologia_mp_super.txt;
+- appunti_call_professore.txt;
+- i test automatici;
+- le configurazioni YAML delle simulazioni;
+- i CSV e i report delle run locali;
+- le directory locali da run_0001 a run_0024.
+
+E' stato inoltre verificato che:
+
+- il branch locale e' main;
+- HEAD locale e origin/main coincidono;
+- entrambi puntano al commit:
+  5d9b63e04da211954987e7f619ec7d6d2cc2e8d2;
+- il working tree era pulito prima della creazione di questo documento.
+
+E' stato tentato anche un accesso SSH in sola lettura al server
+pccabri2.mat.unimo.it. L'autenticazione disponibile nella sessione non e'
+stata accettata, quindi non sono stati letti, modificati o cancellati dati
+remoti. La ricostruzione si basa pertanto sui dati locali, sulla cronologia
+Git e sugli appunti gia' presenti nella repository.
+
+Nota importante sulla numerazione delle run:
+
+- le directory locali usano una numerazione da run_0001 a run_0024;
+- alcuni appunti storici citano run eseguiti sul server con numerazioni e
+  timestamp differenti;
+- per evitare confusione, in questo documento viene sempre specificato se si
+  parla della directory locale o di una campagna descritta negli appunti.
+
+
+3. STATO FINALE DELLA REPOSITORY
+================================
+
+La repository finale contiene:
+
+- 199 file tracciati da Git;
+- circa 1,57 milioni di righe contando anche le grandi mappe XML;
+- 42 directory di mappe/scenari SUMO;
+- 20 file Python principali e di test;
+- documentazione matematica, operativa e sperimentale;
+- run locali organizzate in cartelle numerate.
+
+Le aree principali sono:
+
+- runner.py
+  Avvia una simulazione singola, collega SUMO tramite TraCI, crea il
+  controller, raccoglie metriche e salva gli output.
+
+- generate_population.py
+  Genera popolazioni YAML con route, tempi di partenza, seed e tipi di
+  veicolo.
+
+- src/controllers/max_pressure.py
+  Contiene MP base, tutti i moduli specialistici, mp_program0 e mp_super.
+
+- src/controllers/fixed_time.py
+  Implementa i baseline statici e la modifica dei tempi verdi.
+
+- src/metrics.py
+  Legge tripinfo, calcola censura e aggrega le metriche di traffico.
+
+- src/population.py
+  Definisce i veicoli, i profili guidatore e l'inserimento in SUMO.
+
+- utils/run_ablation.py
+  Gestisce le campagne sperimentali complete.
+
+- utils/show_ablation_table.py
+  Produce classifiche leggibili per ogni gruppo.
+
+- utils/show_ablation_winners.py
+  Mostra i vincitori per attesa media.
+
+- tests/
+  Contiene test di coerenza per popolazioni, domanda, scenario pack,
+  baseline e alias.
+
+- sumo_xml_files/
+  Contiene reti sintetiche, Manhattan, Bologna, Masa, Torino e varianti.
+
+- logs/ablation/runs/
+  Contiene configurazioni e risultati delle campagne locali.
+
+
+4. ARCHITETTURA INIZIALE DEL PROGETTO
+=====================================
+
+Il commit iniziale reale del progetto applicativo e' il commit "Template"
+del 4 marzo 2026.
+
+La base comprendeva:
+
+- un ambiente Python per SUMO e TraCI;
+- un runner;
+- un generatore di popolazioni;
+- una classe astratta TrafficController;
+- un controller fixed;
+- uno smart_template ancora vuoto o dimostrativo;
+- raccolta di metriche per veicolo;
+- utility per risolvere i path;
+- molte mappe gia' disponibili.
+
+Il flusso iniziale era:
+
+1. scegliere una mappa;
+2. generare un file YAML con i veicoli;
+3. avviare SUMO;
+4. inserire i veicoli tramite TraCI;
+5. collegare un controller ai semafori;
+6. eseguire simulationStep;
+7. salvare le metriche.
+
+Questa base e' stata mantenuta, ma progressivamente resa molto piu' robusta.
+
+
+5. EVOLUZIONE CRONOLOGICA, COMMIT PER COMMIT
+============================================
+
+5.1 Commit 7b6ec4b - 4 marzo 2026 - "Initial commit"
+----------------------------------------------------
+
+Contenuto:
+
+- creazione iniziale della repository;
+- primo README minimale.
+
+Significato:
+
+- punto di partenza amministrativo del progetto.
+
+
+5.2 Commit 22cdb0b - 4 marzo 2026 - "Template"
+----------------------------------------------
+
+Contenuto:
+
+- struttura completa del progetto;
+- runner.py;
+- generate_population.py;
+- controller fixed;
+- smart template;
+- metriche;
+- popolazioni;
+- path;
+- mappe sintetiche;
+- Manhattan da 3x3 a 8x8;
+- varianti con percentuali diverse di semaforizzazione;
+- Bologna;
+- Masa;
+- scenari di test.
+
+Logica:
+
+- creare una piattaforma generica prima di implementare l'algoritmo di
+  controllo;
+- separare simulazione, controller, dati, metriche e mappe;
+- rendere possibile sostituire il controller senza riscrivere il runner.
+
+
+5.3 Commit f84905c - 4 marzo 2026 - "adds"
+------------------------------------------
+
+Contenuto principale:
+
+- prima implementazione di MaxPressureController;
+- nuovo controller selezionabile dal runner;
+- flag min_green, max_green e switch_epsilon;
+- documentazione e script di pulizia.
+
+Logica MP iniziale:
+
+1. leggere i programmi semaforici gia' presenti nella mappa;
+2. identificare le fasi principali, cioe' con verde e senza giallo;
+3. ricostruire i movimenti in_lane -> out_lane controllati da ogni fase;
+4. misurare le code con getLastStepHaltingNumber;
+5. calcolare la pressione:
+
+   P_fase = somma(q_in - q_out)
+
+6. scegliere la fase con pressione massima;
+7. cambiare solo dopo min_green;
+8. non cambiare se il vantaggio non supera switch_epsilon;
+9. mantenere le transizioni giallo/all-red della mappa;
+10. usare max_green come limite di sicurezza.
+
+Questa e' la nascita del nucleo MP usato in tutto il tirocinio.
+
+
+5.4 Commit ddab697 - 5 marzo 2026 - "MP pure"
+---------------------------------------------
+
+Contenuto:
+
+- rimozione del vecchio smart_template;
+- semplificazione dei controller disponibili;
+- focus su fixed e MP.
+
+Logica:
+
+- eliminare una variante dimostrativa non utile;
+- avere una baseline statica e un controller MP chiaramente separati.
+
+
+5.5 Commit eaf5b98 - 6 marzo 2026 - "spillback"
+------------------------------------------------
+
+Contenuto:
+
+- primo anti-spillback hard;
+- soglie ON e OFF;
+- filtro EMA sull'occupazione downstream;
+- numero minimo di veicoli fermi;
+- isteresi per evitare oscillazioni.
+
+Prima logica:
+
+- se una corsia di uscita supera la soglia ON ed esistono veicoli fermi,
+  viene marcata come bloccata;
+- una volta bloccata, resta bloccata finche' non scende sotto la soglia OFF;
+- se una fase alimenta una lane bloccata, la pressione della fase diventa
+  meno infinito e la fase viene esclusa.
+
+Motivazione:
+
+- MP non deve spingere veicoli in una strada gia' satura;
+- prevenire un blocco a cascata e' piu' importante del guadagno locale.
+
+
+5.6 Commit 805ddd4 - 7 marzo 2026 - "Lost time aware"
+-----------------------------------------------------
+
+Contenuto:
+
+- calcolo del tempo perso nelle transizioni;
+- margine di cambio legato a giallo e all-red;
+- nuovi parametri sat_flow e gain.
+
+Formula:
+
+   margin = switch_epsilon
+            + lost_time_gain * lost_time_sat_flow * T_lost
+
+Dove T_lost e' la somma delle durate delle fasi di transizione dopo il verde
+corrente.
+
+Motivazione:
+
+- un cambio semaforico non e' gratuito;
+- se il vantaggio di pressione e' piccolo, il tempo perso nel giallo puo'
+  annullarlo;
+- il controller deve cambiare solo quando il guadagno ripaga il costo.
+
+
+5.7 Commit 974589c - 7 marzo 2026 - "Fairness satura"
+-----------------------------------------------------
+
+Contenuto:
+
+- tempo di attesa per fase;
+- bonus di fairness saturato;
+- prevenzione della starvation.
+
+Formula:
+
+   bonus_fair = mu * w / (w + w_half)
+
+   score_fase = pressione_fase + bonus_fair
+
+Comportamento:
+
+- la fase servita azzera l'attesa;
+- una fase non servita con domanda accumula attesa;
+- una fase senza domanda torna a zero;
+- il bonus cresce ma ha un limite massimo mu.
+
+Motivazione:
+
+- evitare che una fase con pressione sempre leggermente inferiore non venga
+  mai servita;
+- usare una funzione saturata per non lasciare che la fairness domini il
+  throughput.
+
+
+5.8 Commit 9d575f6 - 7 marzo 2026 - "Nmin/ MinGreen Dinamico"
+-------------------------------------------------------------
+
+Contenuto:
+
+- minimo servizio dinamico dopo uno switch;
+- target espresso in veicoli equivalenti;
+- conversione del target in secondi;
+- rilascio anticipato se la fase si svuota.
+
+Formula concettuale:
+
+   N_cost = nmin_alpha * sat_flow * T_lost
+   N_target = max(nmin_floor, N_cost)
+   hold = max(min_green, N_target / sat_flow)
+
+Evoluzione successiva:
+
+- N_target puo' includere una quota della domanda;
+- N_target viene limitato dalla domanda reale se questa e' bassa;
+- una fase vuota puo' essere rilasciata dopo empty_release_seconds.
+
+Motivazione:
+
+- se si paga il costo di un cambio fase, la nuova fase deve ricevere un
+  servizio sufficiente;
+- evitare switch molto brevi e poco produttivi.
+
+
+5.9 Commit 65b354b - 24 marzo 2026 - "Penalita downstream"
+----------------------------------------------------------
+
+Contenuto:
+
+- penalita' continua per occupazione a valle;
+- EMA separata da quella dello spillback;
+- parametro beta.
+
+Formula:
+
+   P_movimento = q_in - q_out - beta * occ_down_ema
+
+Differenza rispetto allo spillback:
+
+- downstream penalty e' soft e continua;
+- spillback e' hard e binario;
+- la penalita riduce progressivamente l'attrattiva di una lane congestionata;
+- lo spillback esclude completamente la fase in condizioni critiche.
+
+
+5.10 Commit a1ba3f2 - 24 marzo 2026 - "platoon-extension"
+---------------------------------------------------------
+
+Contenuto:
+
+- detector virtuale vicino alla stop line;
+- tracciamento dei passaggi;
+- stima dell'headway;
+- riconoscimento dei platoon;
+- estensione del verde;
+- gap-out;
+- guardia downstream;
+- limite di extra green.
+
+Logica:
+
+1. il detector virtuale e' posto circa 8 metri prima della fine della lane;
+2. vengono registrati i timestamp dei passaggi;
+3. viene calcolato l'headway medio recente;
+4. headway basso significa arrivi compatti;
+5. il verde puo' essere esteso;
+6. l'estensione termina se non passano veicoli per troppo tempo;
+7. l'estensione non e' concessa se il downstream e' critico;
+8. non si supera il budget extra e il max_green globale.
+
+Motivazione:
+
+- evitare di interrompere un gruppo compatto di veicoli;
+- aumentare l'efficienza locale senza provocare spillback.
+
+
+5.11 Commit f720bc3 - 25 marzo 2026 - "script"
+----------------------------------------------
+
+Contenuto:
+
+- prima versione di utils/run_ablation.py;
+- generazione automatica delle popolazioni;
+- scenari predefiniti;
+- esecuzione batch;
+- CSV e report Markdown;
+- confronto con mp_base.
+
+Scenari iniziali:
+
+- mp_base;
+- mp_switch_aware;
+- mp_downstream_aware;
+- mp_fairness;
+- mp_platoon_safe;
+- mp_all_on.
+
+Domande iniziali generiche:
+
+- low: 2000 veicoli;
+- medium: 4000 veicoli;
+- high: 7000 veicoli;
+- partenze tra 0 e 3600 secondi.
+
+Motivazione:
+
+- passare da test manuali a una sperimentazione riproducibile;
+- testare piu' controller, seed e domande con la stessa procedura.
+
+
+5.12 Commit b3f57d5 - 25 marzo 2026 - "fixes"
+----------------------------------------------
+
+Contenuto:
+
+- robustezza dell'ablation;
+- miglior gestione degli errori;
+- miglior aggregazione;
+- miglior organizzazione dei casi;
+- avvio del parallelismo e della tracciabilita' dei run.
+
+Motivazione:
+
+- le campagne lunghe devono poter continuare anche se un singolo caso fallisce;
+- il risultato deve essere ricostruibile a posteriori.
+
+
+5.13 Commit 2eaa41f - 28 marzo 2026 - "fixes"
+----------------------------------------------
+
+Contenuto:
+
+- scenario pack di tuning;
+- separazione tra LTA e Nmin;
+- matrice di parametri;
+- progress.txt e progress.yaml;
+- cartelle run numerate;
+- table.txt;
+- winners.txt;
+- utility show_ablation_table;
+- utility show_ablation_winners;
+- appunti sull'analisi sperimentale.
+
+Problema scoperto:
+
+- la prima combinazione switch-aware era troppo conservativa;
+- LTA e Nmin insieme peggioravano molto il wait;
+- downstream e spillback erano troppo aggressivi;
+- fairness era invece vicina a mp_base e spesso utile.
+
+Decisione:
+
+- isolare le feature;
+- ridurre gain, beta, soglie e tempi extra;
+- non attribuire un degrado a un intero gruppo di tecniche senza testarle
+  separatamente.
+
+
+5.14 Commit 11216b2 - 1 aprile 2026 - "map fixes"
+-------------------------------------------------
+
+Contenuto:
+
+- utility build_bologna_fixed.py;
+- variante bologna_fixed;
+- round-trip con netconvert;
+- correzioni geometriche;
+- patch di fasi semaforiche unsafe;
+- selezione piu' robusta del programma semaforico;
+- recupero da stalli nelle fasi di transizione.
+
+Problemi affrontati:
+
+- warning SUMO su fasi unsafe;
+- verdi prioritari G conflittuali verso la stessa lane;
+- rischio che MP selezionasse un programma inadatto;
+- rischio di restare bloccati in una fase non principale.
+
+Logica di robustezza:
+
+- scegliere il programma con il maggior numero di fasi verdi principali;
+- preferire il programma corrente se valido;
+- inizializzare una fase principale valida;
+- se una transizione non termina entro 20 secondi, forzare un recupero.
+
+
+5.15 Commit 971a141 - 30 aprile 2026 - "new utils"
+--------------------------------------------------
+
+Contenuto:
+
+- utility build_rbl_variant.py;
+- baseline right-before-left;
+- mappa Manhattan RBL;
+- segnaletica grafica di precedenza;
+- supporto a baseline fixed e RBL;
+- utility per ricostruire i comandi;
+- Torino;
+- documentazione matematica estesa;
+- explanation_mat.txt;
+- formule_matematiche.txt;
+- guida_flag.txt.
+
+Motivazione:
+
+- confrontare MP non solo con un semaforo fisso, ma anche con una rete a
+  precedenza;
+- rendere spiegabili formule, flag e scenari;
+- rendere riproducibili le mappe derivate.
+
+
+5.16 Commit 999ef40 - 4 maggio 2026 - "Human-light"
+---------------------------------------------------
+
+Contenuto:
+
+- profilo guidatore human_light;
+- fixed_program0;
+- fixed_tuned;
+- selezione esplicita del programID;
+- modifica delle durate dei verdi principali;
+- propagazione del profilo guidatore nei batch.
+
+Motivazione:
+
+- rendere il comportamento dei veicoli meno robotico;
+- confrontare MP con il vero program0 della mappa;
+- distinguere il piano originale da una variante statica uniformata.
+
+
+5.17 Commit 1f50b3e - 14 maggio 2026 - "last version"
+-----------------------------------------------------
+
+Contenuto:
+
+- route sampling uniforme o pesato;
+- profilo temporale uniforme o peaked;
+- esponente del peso delle route;
+- peak factor;
+- domanda calibrata per Bologna e Masa;
+- tuning_matrix_v2;
+- nuovi contatori runtime del controller;
+- nuove varianti spillback;
+- espansione della pipeline.
+
+Problema affrontato:
+
+- il traffico uniforme rendeva troppo simili i controller;
+- i moduli specialistici non si attivavano;
+- lo spillback restava spesso a zero;
+- la stessa domanda assoluta non era adatta a mappe diverse.
+
+Decisione:
+
+- introdurre traffico spazialmente sbilanciato;
+- introdurre traffico temporalmente concentrato;
+- calibrare low, medium e high per mappa;
+- registrare quante volte le feature si attivano.
+
+
+5.18 Commit 97f5527 - 23 maggio 2026 - "fixes"
+----------------------------------------------
+
+Contenuto:
+
+- lettura finale con tripinfo;
+- completed_trips;
+- unfinished_trips;
+- censoring_rate;
+- mean_time_loss;
+- population set balanced, skewed e peak;
+- domanda finale Bologna 1500/3000/5000;
+- domanda finale Masa 1400/2200/2700;
+- fixed_base rimosso dai baseline classici;
+- spillback basato su occupancy e lane fill;
+- mp_program0;
+- test automatici;
+- alias retrocompatibili;
+- report piu' completi.
+
+Motivazione:
+
+- i risultati precedenti potevano essere parziali;
+- un wait basso non e' credibile se meta' dei veicoli non termina;
+- spillback doveva misurare meglio la saturazione reale;
+- in low serviva sfruttare la forza del program0.
+
+
+5.19 Commit 5d9b63e - 9 giugno 2026 - "super_mp"
+------------------------------------------------
+
+Contenuto:
+
+- mp_super;
+- snapshot del regime locale;
+- load;
+- imbalance;
+- wait_imbalance;
+- burstiness;
+- platoon_score;
+- downstream_score;
+- selezione dinamica tra sette modalita';
+- soglie e isteresi temporale;
+- Nmin forte;
+- LTA dedicato;
+- safe come ultima risorsa;
+- contatori per modalita' e feature;
+- cronologia e appunti per la presentazione.
+
+Motivazione:
+
+- nessuna variante MP era la migliore in tutti i gruppi;
+- program0 era forte in low;
+- LTA era forte in skewed/high;
+- Nmin forte era forte in peak/high;
+- serviva un selettore rule-based che osservasse il traffico live.
+
+
+6. FUNZIONAMENTO DEL MAX-PRESSURE DI BASE
+=========================================
+
+6.1 Le fasi non vengono inventate
+---------------------------------
+
+MP non crea nuovi programmi semaforici.
+
+Il controller:
+
+- legge le logiche presenti nel file .net.xml;
+- identifica le fasi verdi principali;
+- conserva i gialli e gli all-red gia' definiti;
+- decide quale fase verde esistente servire.
+
+
+6.2 Identificazione delle fasi principali
+-----------------------------------------
+
+Una fase e' considerata principale se:
+
+- contiene almeno un simbolo g o G;
+- non contiene y o Y.
+
+Le fasi gialle sono quindi trattate come transizioni, non come candidati MP.
+
+
+6.3 Costruzione dei movimenti
+-----------------------------
+
+Per ogni semaforo vengono letti i controlled links.
+
+Per ogni fase verde vengono salvate coppie:
+
+   in_lane -> out_lane
+
+I duplicati vengono rimossi.
+
+
+6.4 Misura delle code
+---------------------
+
+La coda su una lane e' approssimata con:
+
+   traci.lane.getLastStepHaltingNumber(lane_id)
+
+Sono quindi contati i veicoli considerati fermi da SUMO.
+
+
+6.5 Pressione del movimento e della fase
+----------------------------------------
+
+Per un movimento:
+
+   P_m = q_in - q_out
+
+Per una fase:
+
+   P_fase = somma dei P_m dei movimenti permessi
+
+L'idea e':
+
+- coda alta in ingresso aumenta la priorita';
+- coda alta in uscita riduce la priorita';
+- la fase con maggiore differenza tende a scaricare il nodo piu' urgente.
+
+
+6.6 Regola di switch
+--------------------
+
+Dopo il minimo verde:
+
+   cambia se best_score > current_score + margin
+
+Il margin puo' includere:
+
+- switch_epsilon assoluto;
+- switch_epsilon_rel * abs(current_score);
+- costo LTA.
+
+
+6.7 Gestione sicura della transizione
+-------------------------------------
+
+Quando MP sceglie una nuova fase:
+
+- memorizza pending_target;
+- avanza alla fase successiva;
+- lascia scorrere giallo e all-red;
+- quando la transizione termina, raggiunge il target;
+- se la transizione si blocca, interviene il recupero dopo 20 secondi.
+
+
+6.8 Vincoli temporali
+---------------------
+
+- min_green impedisce cambi troppo precoci;
+- max_green evita che una fase resti attiva indefinitamente;
+- Nmin puo' sostituire il minimo statico con un hold dinamico;
+- platoon puo' estendere il verde entro un budget.
+
+
+7. MODULI SPECIALISTICI AGGIUNTI AL MAX-PRESSURE
+=================================================
+
+7.1 Lost-Time-Aware, LTA
+------------------------
+
+Scopo:
+
+- evitare switch marginali che non ripagano il tempo di transizione.
+
+Formula:
+
+   margin_LTA = gain * sat_flow * lost_time
+
+Uso emerso:
+
+- particolarmente utile in traffico persistente e sbilanciato;
+- nella campagna finale lo specialista
+  mp_lta_g060_sf050 vince il ranking wait di skewed/high.
+
+Rischio:
+
+- gain troppo alto rende il controller eccessivamente conservativo.
+
+
+7.2 Nmin dinamico
+-----------------
+
+Scopo:
+
+- garantire che una fase appena attivata riceva servizio sufficiente.
+
+Versione finale:
+
+   N_cost = alpha * sat_flow * lost_time
+   N_target = max(floor, N_cost, demand_gain * domanda)
+
+Se esiste domanda:
+
+   N_target = min(N_target, domanda)
+
+Poi:
+
+   hold_seconds = max(min_green_nmin, N_target / sat_flow)
+
+Uso emerso:
+
+- il profilo forte aiuta i picchi;
+- mp_nmin_a120_f4 vince il ranking wait di peak/high.
+
+Rischio:
+
+- se il hold e' troppo lungo, il controller perde reattivita';
+- se min_green domina sempre, varianti diverse diventano equivalenti.
+
+
+7.3 Fairness saturata
+---------------------
+
+Scopo:
+
+- evitare starvation;
+- dare priorita' graduale a una fase trascurata.
+
+Formula:
+
+   bonus = mu * w / (w + w_half)
+
+Uso emerso:
+
+- buona nei primi test;
+- spesso migliora mp_base senza stravolgerlo;
+- non deve diventare il ramo dominante del super.
+
+
+7.4 Downstream penalty
+----------------------
+
+Scopo:
+
+- ridurre la pressione verso uscite congestionate prima del blocco totale.
+
+Formula:
+
+   P_m = q_in - q_out - beta * occupancy_ema
+
+Uso emerso:
+
+- concettualmente corretto;
+- in molte run e' risultato troppo penalizzante;
+- le varianti b04 e b08 hanno spesso aumentato wait e censura.
+
+
+7.5 Spillback hard
+------------------
+
+Scopo:
+
+- escludere una fase che alimenta un downstream realmente saturo.
+
+Versione finale dello score:
+
+   occupancy = EMA dell'occupazione SUMO
+
+   capacity = lane_length / 7.5 metri
+
+   lane_fill = halted_vehicles / capacity
+
+   spillback_score = max(occupancy, lane_fill)
+
+Attivazione:
+
+- score >= spillback_on;
+- halted vehicles >= spillback_min_halts.
+
+Rilascio:
+
+- score < spillback_off.
+
+Effetto:
+
+- se un solo movimento della fase e' bloccato, l'intera fase riceve
+  pressione meno infinito.
+
+Rischio:
+
+- e' un vincolo molto forte;
+- se attivato troppo presto puo' peggiorare il throughput;
+- deve essere una protezione, non una strategia normale.
+
+
+7.6 Platoon extension
+---------------------
+
+Scopo:
+
+- non spezzare un gruppo compatto di arrivi.
+
+Misura:
+
+- passaggi su detector virtuale;
+- media degli ultimi headway;
+- gap-out se l'ultimo passaggio e' troppo vecchio.
+
+Vincoli:
+
+- extra green limitato;
+- max_green globale;
+- downstream guard;
+- eventuale spillback non attivo.
+
+Rischio:
+
+- estendere troppo un verde puo' affamare altre fasi;
+- senza arrivi realmente compatti il modulo si attiva poco.
+
+
+7.7 Switch epsilon assoluto e relativo
+--------------------------------------
+
+Scopo:
+
+- evitare switch per differenze di pressione minime.
+
+Varianti:
+
+- mp_switch_eps1 usa epsilon assoluto 1;
+- mp_switch_rel005 usa 5% dello score corrente;
+- mp_switch_rel010 usa 10%.
+
+Uso emerso:
+
+- il margine relativo 0.05 e' competitivo in alcuni casi high;
+- un margine eccessivo puo' rendere il controllo lento.
+
+
+8. CONTROLLER FIXED E BASELINE DI CONFRONTO
+===========================================
+
+8.1 fixed_base
+--------------
+
+E' il comportamento legacy:
+
+- usa il controller fixed;
+- non forza un programID specifico;
+- lascia il programma corrente della mappa.
+
+Problema:
+
+- e' ambiguo tra mappe diverse;
+- puo' usare programmi non pensati come baseline;
+- e' stato rimosso da include-classic-baselines;
+- resta disponibile solo esplicitamente.
+
+
+8.2 fixed_program0
+------------------
+
+E' il baseline statico principale.
+
+Comportamento:
+
+- forza programID = 0 se esiste;
+- non prende decisioni online;
+- SUMO esegue ciclicamente durate e transizioni della mappa.
+
+Perche' e' forte a Bologna:
+
+- il piano originale e' gia' ben strutturato;
+- non paga decisioni online;
+- evita cambi nervosi;
+- conserva coordinamenti e durate specifiche;
+- in low il traffico non richiede necessariamente adattivita'.
+
+
+8.3 fixed_tuned
+---------------
+
+Comportamento:
+
+- parte da program0;
+- conserva stati, ordine delle fasi e transizioni;
+- imposta i verdi principali a 30 secondi.
+
+Scopo:
+
+- verificare se un piano statico piu' uniforme sia migliore.
+
+Risultato generale:
+
+- a Bologna e' spesso peggiore di fixed_program0;
+- l'uniformazione perde parte della taratura originale.
+
+
+8.4 rbl_base
+------------
+
+RBL significa right-before-left, precedenza a destra.
+
+Comportamento:
+
+- usa una variante della rete senza il controllo semaforico tradizionale;
+- gli incroci sono convertiti alla regola di precedenza;
+- vengono aggiunti indicatori grafici.
+
+Nei brevi test Manhattan:
+
+- RBL ottiene wait molto bassi;
+- tuttavia le run sono brevi e poco cariche;
+- il risultato non dimostra che RBL sia migliore su traffico reale alto.
+
+
+8.5 mp_program0
+---------------
+
+Non e' un fixed puro e non e' un MP puro.
+
+E' un ibrido:
+
+- seleziona la logica program0;
+- in basso carico non interviene online;
+- se il carico locale resta alto passa a MP;
+- se il carico scende torna al programma statico.
+
+Soglie del pack finale:
+
+- load_ref = 3.5;
+- entra in MP a load >= 0.60;
+- torna fixed a load <= 0.40;
+- richiede 4 osservazioni consecutive.
+
+L'isteresi 0.60/0.40 evita continui cambi di modalita'.
+
+
+9. GENERAZIONE DELLA POPOLAZIONE E TIPI DI TRAFFICO
+===================================================
+
+9.1 Distribuzione dei tipi di veicolo
+-------------------------------------
+
+La popolazione usa:
+
+- passenger: 75%;
+- delivery: 10%;
+- motorcycle: 10%;
+- truck: 3%;
+- bus: 2%.
+
+Il seed rende la generazione riproducibile.
+
+
+9.2 Route sampling uniforme
+---------------------------
+
+Con uniform:
+
+- ogni route ha la stessa probabilita';
+- il traffico tende a distribuirsi in modo piu' omogeneo;
+- e' il preset balanced.
+
+
+9.3 Route sampling edge_weighted
+--------------------------------
+
+Con edge_weighted:
+
+- la route riceve peso in base al numero di edge;
+- peso = edge_count elevato a route_weight_exponent;
+- route piu' lunghe hanno probabilita' maggiore;
+- alcuni corridoi vengono usati piu' spesso;
+- aumenta lo sbilanciamento spaziale.
+
+
+9.4 Profilo partenze uniform
+----------------------------
+
+Le partenze sono distribuite uniformemente nella finestra temporale.
+
+
+9.5 Profilo partenze peaked
+---------------------------
+
+Il profilo peaked:
+
+- crea due picchi larghi con distribuzioni beta;
+- miscela il profilo di picco con una componente uniforme;
+- usa peak_factor per controllare l'intensita';
+- rappresenta meglio ondate di domanda.
+
+
+9.6 Preset balanced
+-------------------
+
+- route_sampling = uniform;
+- route_weight_exponent = 1.0;
+- depart_profile = uniform;
+- peak_factor = 0.
+
+Scopo:
+
+- scenario regolare di controllo.
+
+
+9.7 Preset skewed
+-----------------
+
+- route_sampling = edge_weighted;
+- route_weight_exponent = 1.4;
+- depart_profile = uniform;
+- peak_factor = 0.
+
+Scopo:
+
+- concentrare il traffico su alcune route;
+- produrre corridoi persistentemente piu' carichi;
+- far emergere imbalance e LTA.
+
+
+9.8 Preset peak
+---------------
+
+- route_sampling = edge_weighted;
+- route_weight_exponent = 1.4;
+- depart_profile = peaked;
+- peak_factor = 0.80.
+
+Scopo:
+
+- unire sbilanciamento spaziale e picchi temporali;
+- far emergere Nmin e controlli per traffico a ondate.
+
+
+9.9 Domanda calibrata per mappa
+-------------------------------
+
+Preset generici:
+
+- low 2000;
+- medium 4000;
+- high 7000.
+
+Override Bologna:
+
+- low 1500;
+- medium 3000;
+- high 5000.
+
+Override Masa:
+
+- low 1400;
+- medium 2200;
+- high 2700.
+
+Motivazione:
+
+- lo stesso numero di veicoli non ha lo stesso significato su reti diverse;
+- una domanda troppo bassa non attiva i moduli;
+- una domanda troppo alta porta subito a censura o gridlock;
+- low, medium e high devono essere letti rispetto alla capacita' della mappa.
+
+Durata consigliata:
+
+- 5400 step e' il minimo pratico indicato nella documentazione;
+- 7000-7200 step riducono maggiormente la censura;
+- run da 30, 60 o 180 step sono smoke test, non prove finali.
+
+
+10. PROFILO DI GUIDA HUMAN_LIGHT
+================================
+
+Il profilo human_light e' stato introdotto per rendere la simulazione meno
+robotica.
+
+Parametri modificati per categoria:
+
+- tau;
+- sigma;
+- actionStepLength;
+- jmTimegapMinor;
+- startupDelay.
+
+La partenza usa:
+
+   departSpeed = desired
+
+invece di:
+
+   departSpeed = max
+
+Effetti attesi:
+
+- distanza temporale piu' realistica;
+- imperfezione del guidatore;
+- reazione meno aggressiva;
+- ritardo di ripartenza;
+- differenze tra auto, furgoni, bus, camion e moto.
+
+Valori finali principali:
+
+- passenger:
+  tau 1.45, sigma 0.55, startupDelay 0.8;
+
+- delivery:
+  tau 1.55, sigma 0.50, startupDelay 1.0;
+
+- truck e bus:
+  tau 1.75, sigma 0.45, startupDelay 1.2;
+
+- motorcycle:
+  tau 1.25, sigma 0.65, startupDelay 0.45.
+
+Il profilo viene applicato globalmente a tutti gli scenari del batch per
+mantenere il confronto equo.
+
+
+11. METRICHE, TRIPINFO E CENSURA
+================================
+
+11.1 Problema iniziale
+----------------------
+
+Le metriche raccolte solo step-by-step potevano descrivere viaggi incompleti.
+
+Se max_steps fermava la simulazione:
+
+- alcuni veicoli non erano arrivati;
+- travel time e waiting time non erano finali;
+- un controller poteva sembrare migliore solo perche' completava meno viaggi.
+
+
+11.2 Soluzione con tripinfo
+---------------------------
+
+Il runner chiede a SUMO un file tripinfo temporaneo.
+
+Dopo la chiusura corretta di TraCI vengono letti:
+
+- routeLength;
+- duration;
+- waitingTime;
+- timeLoss.
+
+La chiusura di TraCI prima del parsing e' importante per assicurare che SUMO
+abbia terminato la scrittura del file XML.
+
+
+11.3 Metriche finali
+--------------------
+
+Per ogni scenario vengono considerate:
+
+- mean_waiting_time_s;
+- mean_travel_time_s;
+- mean_time_loss_s;
+- mean_speed_mps;
+- p95 waiting;
+- p95 travel;
+- planned_trips;
+- completed_trips;
+- unfinished_trips;
+- censoring_rate.
+
+
+11.4 Significato della censura
+------------------------------
+
+La censura e':
+
+   unfinished_trips / planned_trips
+
+Un valore del 0% significa che tutti i viaggi sono terminati.
+
+Un valore del 50% significa che meta' dei viaggi non e' terminata entro la
+fine del run.
+
+Con censura alta:
+
+- mean_wait e mean_travel sono calcolati sui completati;
+- i veicoli piu' difficili possono essere assenti dalla media;
+- una media bassa puo' essere selettiva;
+- il confronto deve includere throughput e completed_trips.
+
+
+11.5 Confine delle metriche usate nel progetto
+----------------------------------------------
+
+Il progetto usa per l'analisi esclusivamente metriche relative alla qualita'
+del traffico:
+
+- attesa;
+- viaggio;
+- time loss;
+- completamenti;
+- censura.
+
+Nel modulo metrics.py sono rimasti due campi legacy di SUMO relativi a
+emissioni e consumo. Vengono ancora interrogati e salvati nel CSV tecnico
+run_results, ma non entrano nelle tabelle summary_by_group, nel ranking, nei
+controller o nelle conclusioni del tirocinio. Non costituiscono quindi una
+parte dell'esperimento descritto in questo documento.
+
+
+12. PIPELINE DI ABLATION E ORGANIZZAZIONE DEI RISULTATI
+=======================================================
+
+12.1 Cosa fa run_ablation.py
+----------------------------
+
+La pipeline:
+
+1. valida dipendenze, mappe e comando SUMO;
+2. risolve domanda e population set;
+3. genera le popolazioni una sola volta per mappa, domanda e seed;
+4. costruisce tutti i casi scenario;
+5. avvia piu' processi runner;
+6. limita il parallelismo con --jobs;
+7. cattura stdout e stderr;
+8. legge metriche e sidecar JSON;
+9. registra i fallimenti senza perdere tutta la campagna;
+10. aggrega per mappa, set, domanda e scenario;
+11. calcola delta rispetto alla baseline;
+12. genera CSV, Markdown, table.txt e winners.txt.
+
+
+12.2 Cartelle
+-------------
+
+Ogni batch crea:
+
+   logs/ablation/runs/run_XXXX_YYYYMMDD_HHMMSS/
+
+File principali:
+
+- config_resolved.yaml;
+- run_results.csv;
+- summary_by_group.csv;
+- summary_vs_base.csv;
+- summary.md;
+- table.txt;
+- winners.txt;
+- populations/;
+- runs/<case_id>/.
+
+
+12.3 Progresso
+--------------
+
+File globali:
+
+- logs/ablation/progress.txt;
+- logs/ablation/progress.yaml;
+- logs/ablation/latest_run.txt.
+
+Il progresso mostra:
+
+- casi totali;
+- completati;
+- falliti;
+- caso corrente;
+- tempo trascorso;
+- stima residua;
+- stato finale.
+
+
+12.4 Gestione errori
+--------------------
+
+Stati finali:
+
+- COMPLETATO;
+- COMPLETATO_CON_ERRORI;
+- ERRORE.
+
+I singoli casi mantengono:
+
+- log;
+- comando;
+- output;
+- metriche disponibili;
+- stato.
+
+
+12.5 Parallelismo
+-----------------
+
+--jobs controlla quante simulazioni possono essere eseguite insieme.
+
+Il parallelismo e' CPU, non GPU:
+
+- SUMO e i runner sono processi principalmente CPU;
+- una GPU potente non accelera direttamente le simulazioni;
+- jobs troppo alto puo' saturare processore, memoria e raffreddamento;
+- OMP_NUM_THREADS, MKL_NUM_THREADS e OPENBLAS_NUM_THREADS possono essere
+  limitati per evitare parallelismo annidato.
+
+
+12.6 Scenario pack
+------------------
+
+tuned_v1:
+
+- primo set conservativo dopo i test iniziali.
+
+tuning_matrix_v1:
+
+- matrice per isolare LTA, Nmin, downstream, platoon e fairness.
+
+tuning_matrix_v2:
+
+- pack finale;
+- include mp_base, mp_program0, mp_super e specialisti piu' maturi.
+
+
+13. MAPPE E UTILITY SVILUPPATE
+==============================
+
+13.1 Famiglie di mappe
+----------------------
+
+La repository contiene:
+
+- incroci a 3 e 4 vie;
+- 4-way con diverse lunghezze e geometrie;
+- Manhattan da 3x3 a 8x8;
+- Manhattan 8x8 con 25%, 50%, 75% e 100% di semafori;
+- varianti noSem;
+- Bologna;
+- Bologna fixed;
+- Masa 25%, 50%, 75% e 100%;
+- Manhattan RBL;
+- Torino TUST;
+- mappe di test.
+
+
+13.2 adjust_routes.py
+---------------------
+
+Serve a filtrare o correggere route non compatibili, soprattutto su mappe
+reali.
+
+
+13.3 routes_editor.py
+---------------------
+
+Serve a normalizzare o riassegnare gli identificativi delle route.
+
+
+13.4 build_bologna_fixed.py
+---------------------------
+
+Procedura:
+
+1. esporta la rete;
+2. la rigenera con netconvert;
+3. applica fix geometrici;
+4. individua fasi note unsafe;
+5. converte alcuni G prioritari in g;
+6. copia le route;
+7. genera il sumocfg.
+
+
+13.5 build_rbl_variant.py
+-------------------------
+
+Procedura:
+
+1. legge la rete sorgente;
+2. decide modalita' grid o patch;
+3. converte i nodi a right_before_left;
+4. conserva o ricostruisce le route;
+5. verifica gli edge;
+6. crea poligoni grafici di precedenza;
+7. genera una nuova mappa pronta.
+
+
+14. EVOLUZIONE SPERIMENTALE DELLE SIMULAZIONI
+==============================================
+
+14.1 Prime prove locali, run_0001 - run_0008
+---------------------------------------------
+
+Queste directory sono soprattutto smoke test.
+
+run_0001:
+
+- Manhattan 6x6;
+- low;
+- 1 seed;
+- 5400 step;
+- 6 scenari iniziali;
+- directory incompleta, senza summary finale.
+
+run_0002:
+
+- Manhattan 3x3;
+- 30 step;
+- 6 scenari;
+- downstream_aware e platoon_safe mostrano wait 1.27 contro 1.55 di base;
+- durata troppo breve per conclusioni scientifiche.
+
+run_0003:
+
+- Manhattan 3x3;
+- 120 step;
+- configurazione presente ma summary mancante.
+
+run_0004:
+
+- 120 step;
+- fairness migliore con wait 7.12 contro 7.41 di base;
+- piccolo segnale coerente con il ruolo anti-starvation.
+
+run_0005:
+
+- 60 step;
+- risultati quasi identici;
+- conferma che run brevi non attivano bene le differenze.
+
+run_0006:
+
+- confronto mirato base, LTA, downstream e platoon;
+- base e LTA identici;
+- downstream e platoon leggermente peggiori.
+
+run_0007:
+
+- confronto base, Nmin e LTA+Nmin;
+- risultati identici;
+- Nmin collassava sul min_green o non aveva condizioni sufficienti.
+
+run_0008:
+
+- base contro fairness;
+- entrambi wait 1.55;
+- ulteriore smoke test.
+
+
+14.2 Campagna documentata negli appunti di marzo
+-------------------------------------------------
+
+appunti_run_0007_miglioramenti.txt descrive una campagna piu' grande,
+eseguita con una numerazione diversa:
+
+- Manhattan 6x6 e 8x8;
+- low, medium e high;
+- 5 seed;
+- 5400 step;
+- 6 scenari.
+
+Risultato documentato:
+
+- fairness vince 5 gruppi su 6;
+- mp_base vince 1 gruppo;
+- switch_aware peggiora molto;
+- downstream e platoon peggiorano circa 5-14%;
+- all_on peggiora;
+- fairness resta vicina al base.
+
+Conclusione:
+
+- LTA+Nmin erano troppo conservativi;
+- downstream/spillback erano troppo aggressivi;
+- platoon over-holdava il verde;
+- fairness aveva un buon bilanciamento.
+
+Da qui nasce tuning_matrix_v1.
+
+
+14.3 Confronti RBL e baseline, run_0009 - run_0014
+--------------------------------------------------
+
+run_0009 e run_0010:
+
+- Manhattan 8x8 low;
+- 180 step;
+- RBL wait 0.47;
+- MP wait 13.50;
+- fixed_base wait 64.65.
+
+run_0011:
+
+- 17 scenari;
+- 90 step;
+- RBL wait 0.07;
+- platoon x2/x3/x4 circa 6.44;
+- MP base 6.60;
+- fixed_base 20.62.
+
+run_0012:
+
+- 60 step;
+- RBL wait 0;
+- MP 4.19;
+- fixed 9.19.
+
+run_0013:
+
+- aggiunti fixed_program0 e fixed_tuned;
+- RBL 0.47;
+- MP 13.50;
+- fixed_tuned 23.96;
+- fixed_program0 31.05;
+- fixed_base 64.65.
+
+run_0014:
+
+- domanda high, ma solo 300 step;
+- RBL 8.90;
+- MP 22.94;
+- fixed_tuned 39.91;
+- fixed_program0 45.89.
+
+Interpretazione:
+
+- RBL appare molto competitivo su rete regolare e run brevi;
+- il carico effettivamente entrato e' limitato dalla finestra di partenza;
+- questi numeri servono a verificare la pipeline, non a concludere che la
+  precedenza sia sempre superiore.
+
+
+14.4 Smoke test human_light e popolazione, run_0015 - run_0017
+--------------------------------------------------------------
+
+run_0015:
+
+- Manhattan 3x3;
+- 30 step;
+- MP base;
+- verifica dopo human_light.
+
+run_0016:
+
+- Masa;
+- 1 solo step;
+- risultato zero;
+- puro test di avvio, non esperimento.
+
+run_0017:
+
+- Manhattan 3x3;
+- route edge_weighted;
+- partenze peaked;
+- 60 step;
+- nessun viaggio completato;
+- verifica tecnica della generazione, non dato scientifico.
+
+
+14.5 Test mirati spillback, run_0018 - run_0020
+-----------------------------------------------
+
+run_0018 locale:
+
+- Masa high;
+- peak;
+- 2700 veicoli;
+- 2400 step;
+- base e due spillback;
+- tutti identici;
+- 577 completati;
+- censura 78.63%.
+
+Conclusione:
+
+- spillback non si attivava;
+- il run era anche troppo censurato per una comparazione solida.
+
+run_0019 locale:
+
+- Bologna high;
+- 5000 veicoli;
+- route exponent 2.5;
+- peak factor 0.95;
+- 10000 step;
+- base e spillback ancora identici;
+- 2226 completati;
+- censura 55.48%.
+
+Conclusione:
+
+- aumentare semplicemente traffico e durata non bastava;
+- la definizione di saturazione era troppo restrittiva o locale.
+
+run_0020 locale:
+
+- Bologna peak high;
+- 4000 step;
+- nuove soglie 0.85/0.70 e 0.90/0.80;
+- mp_base wait 541.19;
+- spillback 0.90/0.80 wait 564.33;
+- spillback 0.85/0.70 wait 597.81.
+
+Conclusione:
+
+- spillback finalmente produceva un comportamento diverso;
+- entrambe le varianti peggioravano;
+- la piu' aggressiva peggiorava di piu';
+- conferma che spillback e' una protezione, non un miglioramento automatico.
+
+
+14.6 Preparazione campagne complete, run_0021
+---------------------------------------------
+
+run_0021:
+
+- Bologna;
+- balanced, skewed e peak;
+- low, medium e high;
+- 1 seed;
+- 7000 step;
+- 20 scenari;
+- 16 jobs;
+- configurazione creata;
+- risultati non presenti, perche' il processo fu fermato o rilanciato.
+
+
+14.7 Campagne complete, run_0022 - run_0024
+-------------------------------------------
+
+Ogni campagna contiene:
+
+- 1 mappa;
+- 3 population set;
+- 3 livelli di domanda;
+- 1 seed;
+- 20 scenari;
+- 180 casi;
+- 7000 step;
+- 16 jobs;
+- human_light;
+- fixed_program0 come baseline delta.
+
+Le popolazioni e gli specialisti sono gli stessi. Cambia soprattutto la
+configurazione di mp_super. Questo rende leggibile l'evoluzione del router.
+
+
+15. IL PROBLEMA DELLO SPILLBACK
+===============================
+
+15.1 Perche' inizialmente restava a zero
+----------------------------------------
+
+Cause individuate:
+
+- occupancy troppo locale;
+- soglie alte;
+- richiesta simultanea di occupancy e halts;
+- lane di uscita non abbastanza sature;
+- domanda troppo uniforme;
+- traffico distribuito su molte route;
+- run brevi;
+- censura che rendeva difficile interpretare l'effetto.
+
+
+15.2 Prima correzione sperimentale
+----------------------------------
+
+Sono stati aggiunti:
+
+- skewed;
+- peak;
+- soglie meno severe;
+- contatori di block e release;
+- block_step_count.
+
+
+15.3 Correzione finale
+----------------------
+
+Lo score usa:
+
+- occupancy EMA;
+- lane fill stimato dai veicoli fermi e dalla lunghezza della lane.
+
+Questo permette di rilevare:
+
+- corsia fisicamente piena;
+- coda ferma vicina alla capacita' di stoccaggio;
+- situazioni che la sola percentuale occupancy non coglie bene.
+
+
+15.4 Lezione appresa
+--------------------
+
+Spillback non deve essere giudicato dal numero di volte in cui "vince".
+
+La sua funzione e':
+
+- prevenire alimentazione di un downstream quasi bloccato;
+- limitare situazioni patologiche;
+- proteggere la rete.
+
+Se attivato spesso:
+
+- puo' escludere troppe fasi;
+- riduce il servizio;
+- aumenta wait e censura.
+
+Per questo mp_super usa safe solo in condizioni molto severe.
+
+
+16. DA MP_BASE AD MP_PROGRAM0
+=============================
+
+16.1 Perche' mp_base perdeva in low
+-----------------------------------
+
+L'intuizione "adattivo significa piu' veloce" non e' sempre vera.
+
+In low:
+
+- ci sono poche code;
+- differenze di pressione piccole possono causare switch;
+- ogni switch costa giallo e all-red;
+- il piano statico puo' gia' essere coordinato;
+- MP usa informazione locale, non la progressione globale dei corridoi;
+- la scelta greedy puo' rompere un buon ciclo.
+
+
+16.2 Tentativo adaptive/mp_base_v2
+----------------------------------
+
+E' stata provata una variante piu' prudente.
+
+Problema:
+
+- diventava troppo conservativa;
+- cambiava poco;
+- non replicava davvero il piano program0;
+- perdeva sia i vantaggi del fisso sia quelli del MP.
+
+La variante e' stata rimossa come concetto autonomo.
+
+
+16.3 Soluzione mp_program0
+--------------------------
+
+La nuova soluzione e' esplicita:
+
+- in basso carico esegue davvero program0;
+- quando il carico e' alto per piu' osservazioni passa a MP;
+- quando il carico scende torna program0.
+
+Il load locale e':
+
+   total_phase_demand / movement_count / load_ref
+
+limitato tra 0 e 1.
+
+Risultato:
+
+- comportamento vicino al fixed in low;
+- flessibilita' MP nei nodi piu' carichi;
+- ottime prestazioni nelle campagne finali;
+- vittorie in balanced/high e skewed/medium nella run finale.
+
+
+17. NASCITA ED EVOLUZIONE DI MP_SUPER
+=====================================
+
+17.1 Motivazione
+----------------
+
+Le campagne mostravano:
+
+- program0 forte in low;
+- LTA forte in skewed/high;
+- Nmin forte in peak/high;
+- fairness utile quando una fase soffre;
+- platoon utile solo con arrivi compatti;
+- safe utile solo in emergenza.
+
+Invece di fissare un controller unico, e' stato creato un router rule-based.
+
+
+17.2 Prima versione, run_0022
+-----------------------------
+
+Soglie principali:
+
+- low load 0.38;
+- high load 0.62;
+- imbalance 0.45;
+- platoon 0.60;
+- downstream 0.80;
+- streak 3.
+
+Risultato:
+
+- mp_super vince 6 gruppi su 9;
+- batte fixed_program0 nei nove gruppi sul wait;
+- non vince i tre high;
+- safe e fair erano considerati troppo presenti;
+- mancavano segnali sufficienti per distinguere traffico persistente e
+  traffico bursty.
+
+Vincitori:
+
+- balanced/low: mp_super;
+- balanced/medium: mp_super;
+- balanced/high: mp_program0;
+- skewed/low: mp_super;
+- skewed/medium: mp_super;
+- skewed/high: LTA;
+- peak/low: mp_super;
+- peak/medium: mp_super;
+- peak/high: Nmin forte.
+
+
+17.3 Seconda versione, run_0023
+-------------------------------
+
+Modifiche:
+
+- low load 0.40;
+- high load 0.65;
+- imbalance 0.55;
+- platoon 0.70;
+- downstream 0.92;
+- streak 4;
+- Nmin forte;
+- LTA piu' deciso;
+- safe meno facile.
+
+Risultato:
+
+- mp_super vince 3 gruppi;
+- mp_program0 vince 4;
+- balanced/high migliora molto e viene vinto dal super;
+- medium peggiora;
+- peak/high peggiora;
+- router troppo prudente o poco preciso nei regimi intermedi.
+
+
+17.4 Versione finale, run_0024
+------------------------------
+
+Modifiche:
+
+- low load 0.42;
+- high load 0.68;
+- imbalance 0.60;
+- nuovo wait_imbalance 0.60;
+- nuova burstiness 0.55;
+- platoon 0.75;
+- downstream 0.97;
+- Nmin load 0.78;
+- streak 4;
+- safe come ultima risorsa;
+- separazione piu' chiara tra LTA e Nmin.
+
+Risultato:
+
+- mp_super vince 5 gruppi su 9;
+- batte fixed_program0 sul wait in 8 gruppi su 9;
+- recupera low e medium;
+- non vince balanced/high;
+- non supera gli specialisti nel ranking wait di skewed/high e peak/high.
+
+
+18. LOGICA DETTAGLIATA DELLA VERSIONE FINALE DI MP_SUPER
+========================================================
+
+18.1 mp_super e' locale
+-----------------------
+
+Ogni semaforo mantiene il proprio stato:
+
+- modalita' corrente;
+- modalita' candidata;
+- streak;
+- domanda precedente;
+- attesa per fase;
+- fase attiva;
+- eventuale target di switch.
+
+Non esiste un unico load globale della citta'.
+
+Ogni TLS decide in base a cio' che vede sulle proprie lane.
+
+
+18.2 Load
+---------
+
+Calcolo:
+
+   total_demand = somma delle code in ingresso associate alle fasi
+
+   movement_count = numero totale di movimenti controllati
+
+   demand_density = total_demand / movement_count
+
+   load = clamp(demand_density / super_load_ref, 0, 1)
+
+Con super_load_ref = 3.5:
+
+- una densita' media di circa 3.5 veicoli fermi per movimento porta load
+  vicino a 1;
+- nodi vuoti hanno load vicino a 0.
+
+Nota:
+
+- la media globale dei load nei report e' bassa perche' Bologna contiene
+  molti TLS poco carichi;
+- le soglie vengono comunque superate localmente nei nodi congestionati.
+
+
+18.3 Imbalance
+--------------
+
+Calcolo:
+
+   mean_demand = media della domanda delle fasi
+
+   imbalance = (max_demand - mean_demand) / mean_demand
+
+limitato tra 0 e 1.
+
+Interpretazione:
+
+- 0 significa fasi simili;
+- alto significa una fase molto piu' carica delle altre.
+
+
+18.4 Wait imbalance
+-------------------
+
+Calcolo analogo all'imbalance, ma sui tempi di attesa accumulati per fase:
+
+   wait_imbalance = (max_wait - mean_wait) / mean_wait
+
+Interpretazione:
+
+- misura starvation o disparita' di servizio;
+- permette di distinguere una coda grande ma appena arrivata da una fase
+  trascurata da tempo.
+
+
+18.5 Burstiness
+---------------
+
+Per ogni decisione viene confrontata la domanda corrente con la precedente.
+
+Componenti:
+
+- variazione del totale;
+- variazione fase per fase.
+
+Formula:
+
+   burstiness = 0.5 * total_change + 0.5 * phase_change
+
+limitata tra 0 e 1.
+
+Interpretazione:
+
+- alta: arrivi a ondate o rapidi spostamenti della domanda;
+- bassa: traffico persistente e stabile.
+
+
+18.6 Platoon score
+------------------
+
+Per le lane della fase corrente:
+
+   score = 1 - headway / threshold
+
+limitato tra 0 e 1.
+
+Viene scelto il punteggio migliore tra le lane.
+
+Un punteggio alto indica passaggi molto ravvicinati.
+
+
+18.7 Downstream score
+---------------------
+
+Per le lane di uscita:
+
+   score = max(occupancy_ema, lane_fill)
+
+Il massimo tra le uscite della fase corrente diventa downstream_score.
+
+
+18.8 Soglie finali
+------------------
+
+- super_load_ref = 3.5;
+- super_low_load = 0.42;
+- super_high_load = 0.68;
+- super_nmin_load = 0.78;
+- super_imbalance_threshold = 0.60;
+- super_wait_imbalance_threshold = 0.60;
+- super_burstiness_threshold = 0.55;
+- super_platoon_threshold = 0.75;
+- super_downstream_threshold = 0.97;
+- super_mode_streak = 4.
+
+
+18.9 Priorita' del router
+-------------------------
+
+Ordine logico:
+
+1. controllare se esiste una condizione safe estrema;
+2. controllare se il load e' sotto low;
+3. controllare se il load e' sopra nmin_load;
+4. controllare la fascia high;
+5. gestire la fascia intermedia.
+
+
+18.10 Modalita' safe
+--------------------
+
+Si attiva solo se:
+
+- downstream_score >= 0.97;
+- load >= 0.78;
+- burstiness alta oppure wait_imbalance alto.
+
+Effetto:
+
+- abilita spillback hard;
+- abilita downstream penalty;
+- prova a non alimentare uscite critiche.
+
+E' volutamente l'ultima risorsa.
+
+
+18.11 Modalita' program0
+------------------------
+
+Se:
+
+   load < 0.42
+
+allora:
+
+- il controller non fa decisioni MP;
+- lascia scorrere program0.
+
+
+18.12 Fascia load >= 0.78
+-------------------------
+
+Regole:
+
+- bursty -> nmin;
+- wait_starved e imbalanced -> lta;
+- wait_starved e non imbalanced -> fair;
+- platoon e non bursty -> platoon;
+- altrimenti -> nmin.
+
+
+18.13 Fascia 0.68 <= load < 0.78
+--------------------------------
+
+Regole:
+
+- bursty -> nmin;
+- wait_starved e imbalanced -> lta;
+- wait_starved, non bursty e non imbalanced -> fair;
+- platoon senza starvation -> platoon;
+- altrimenti -> base.
+
+
+18.14 Fascia 0.42 <= load < 0.68
+--------------------------------
+
+Regole:
+
+- wait_starved e imbalanced, non bursty -> lta;
+- wait_starved, non imbalanced, non bursty -> fair;
+- platoon senza starvation -> platoon;
+- altrimenti -> base.
+
+
+18.15 Conferma del cambio modalita'
+-----------------------------------
+
+Una modalita' candidata non viene applicata subito.
+
+Deve restare candidata per 4 osservazioni consecutive.
+
+Questo serve a:
+
+- filtrare rumore;
+- evitare mode flapping;
+- non cambiare strategia per un singolo campione.
+
+
+18.16 Stato preservato
+----------------------
+
+Quando cambia modalita':
+
+- si pulisce pending_target;
+- si resetta lo stato di hold;
+- si mantiene wait_time_by_phase;
+- si aggiorna Nmin se necessario;
+- si contano gli switch di modalita'.
+
+Preservare le attese evita di dimenticare una fase affamata durante il cambio.
+
+
+18.17 Parametri specialistici interni
+-------------------------------------
+
+Ramo LTA:
+
+- gain 0.60;
+- sat_flow 0.50.
+
+Ramo Nmin forte:
+
+- alpha 1.20;
+- floor 4;
+- min_green 4 secondi;
+- demand_gain 0.40;
+- empty release 1.5 secondi.
+
+
+18.18 Runtime stats
+-------------------
+
+mp_super registra:
+
+- super_mode_switch_count;
+- program0_to_mp;
+- mp_to_program0;
+- step count per modalita';
+- somma load;
+- somma imbalance;
+- somma wait_imbalance;
+- somma burstiness;
+- somma platoon;
+- somma downstream.
+
+Questi dati permettono di capire non solo il risultato, ma anche come il
+router lo ha prodotto.
+
+
+19. RISULTATI DELLE CAMPAGNE COMPLETE FINALI
+============================================
+
+19.1 Configurazione comune
+--------------------------
+
+- mappa Bologna;
+- low 1500 veicoli;
+- medium 3000 veicoli;
+- high 5000 veicoli;
+- balanced, skewed, peak;
+- 1 seed;
+- 7000 step;
+- human_light;
+- 20 scenari;
+- 180 casi;
+- fixed_program0 baseline.
+
+
+19.2 Run_0022
+-------------
+
+Numero di vittorie sul wait:
+
+- mp_super: 6;
+- mp_program0: 1;
+- LTA: 1;
+- Nmin forte: 1.
+
+Punti forti:
+
+- super migliore in tutti i low;
+- super migliore in tutti i medium;
+- super vicino ai migliori in high.
+
+Problema:
+
+- non distingueva ancora abbastanza i tipi di high.
+
+
+19.3 Run_0023
+-------------
+
+Numero di vittorie:
+
+- mp_program0: 4;
+- mp_super: 3;
+- LTA: 1;
+- Nmin forte: 1.
+
+Punto positivo:
+
+- super vince balanced/high con wait 682.14.
+
+Problema:
+
+- balanced/medium, skewed/medium e peak/medium peggiorano;
+- peak/high peggiora;
+- la retaratura aveva sacrificato troppo il regime medio.
+
+
+19.4 Run_0024 finale
+--------------------
+
+Vincitori per wait:
+
+- balanced/low:
+  mp_super, 190.09 s, censura 0%;
+
+- balanced/medium:
+  mp_super, 383.35 s, censura 0%;
+
+- balanced/high:
+  mp_program0, 711.30 s, censura 5.52%;
+
+- skewed/low:
+  mp_super, 253.91 s, censura 0%;
+
+- skewed/medium:
+  mp_program0, 678.46 s, censura 1.80%;
+
+- skewed/high:
+  mp_lta_g060_sf050, 913.41 s, censura 48.20%;
+
+- peak/low:
+  mp_super, 408.26 s, censura 0%;
+
+- peak/medium:
+  mp_super, 892.89 s, censura 4.57%;
+
+- peak/high:
+  mp_nmin_a120_f4, 1026.65 s, censura 51.28%.
+
+Numero di vittorie:
+
+- mp_super: 5;
+- mp_program0: 2;
+- LTA: 1;
+- Nmin forte: 1.
+
+
+19.5 mp_super contro fixed_program0 nella run finale
+----------------------------------------------------
+
+balanced/low:
+
+- super 190.09;
+- fixed 203.37;
+- super migliore di circa 6.53%.
+
+balanced/medium:
+
+- super 383.35;
+- fixed 528.50;
+- super migliore di circa 27.47%.
+
+balanced/high:
+
+- super 783.62;
+- fixed 746.37;
+- super peggiore di circa 4.99%.
+
+skewed/low:
+
+- super 253.91;
+- fixed 404.60;
+- super migliore di circa 37.25%.
+
+skewed/medium:
+
+- super 703.57;
+- fixed 750.69;
+- super migliore di circa 6.28%.
+
+skewed/high:
+
+- super 1103.28;
+- fixed 1220.73;
+- super migliore di circa 9.62%.
+
+peak/low:
+
+- super 408.26;
+- fixed 698.90;
+- super migliore di circa 41.59%.
+
+peak/medium:
+
+- super 892.89;
+- fixed 998.77;
+- super migliore di circa 10.60%.
+
+peak/high:
+
+- super 1334.64;
+- fixed 1355.56;
+- super migliore di circa 1.54%.
+
+Conclusione:
+
+- super batte fixed_program0 sul wait in 8 gruppi su 9;
+- perde solo balanced/high;
+- e' il miglior generalista della campagna;
+- non e' il vincitore assoluto in tutti i gruppi.
+
+
+19.6 Uso delle modalita' nella run finale
+-----------------------------------------
+
+Percentuali aggregate approssimative degli step decisionali del super:
+
+balanced/low:
+
+- program0 99.91%;
+- altre modalita' quasi nulle.
+
+balanced/medium:
+
+- program0 99.30%;
+- LTA 0.30%;
+- fair 0.28%;
+- base 0.10%.
+
+balanced/high:
+
+- program0 95.91%;
+- LTA 1.49%;
+- Nmin 0.96%;
+- safe 0.61%;
+- base 0.52%;
+- fair 0.52%.
+
+skewed/high:
+
+- program0 92.42%;
+- LTA 2.92%;
+- Nmin 1.69%;
+- safe 1.28%;
+- base 1.25%;
+- fair 0.44%.
+
+peak/high:
+
+- program0 90.90%;
+- LTA 3.46%;
+- safe 1.91%;
+- Nmin 1.83%;
+- base 1.31%;
+- fair 0.59%.
+
+Osservazione:
+
+- il super resta ancora troppo spesso in program0;
+- nei nodi high passa agli specialisti, ma per una quota ridotta;
+- questo spiega perche' non raggiunge sempre lo specialista puro.
+
+Nota:
+
+- le percentuali sono aggregate su tutti i TLS;
+- molti incroci sono poco carichi e restano correttamente in program0;
+- non vanno interpretate come una singola modalita' globale della citta'.
+
+
+20. INTERPRETAZIONE CORRETTA DEI RISULTATI HIGH
+===============================================
+
+20.1 Il ranking wait da solo e' insufficiente
+----------------------------------------------
+
+Nel report winners il vincitore e' scelto usando il wait medio minimo.
+
+In high, pero', la censura e' molto diversa tra scenari.
+
+
+20.2 Skewed/high
+----------------
+
+LTA:
+
+- wait 913.41;
+- travel 1270.90;
+- completati 2590 su 5000;
+- censura 48.20%.
+
+mp_super:
+
+- wait 1103.28;
+- travel 1675.92;
+- completati 4025 su 5000;
+- censura 19.50%.
+
+Interpretazione:
+
+- LTA ha una media migliore sui viaggi completati;
+- super completa 1435 viaggi in piu';
+- i gruppi di veicoli misurati non sono equivalenti;
+- non e' corretto dire semplicemente che LTA domina in senso assoluto.
+
+
+20.3 Peak/high
+--------------
+
+Nmin forte:
+
+- wait 1026.65;
+- travel 1439.58;
+- completati 2436 su 5000;
+- censura 51.28%.
+
+mp_super:
+
+- wait 1334.64;
+- travel 1986.79;
+- completati 3919 su 5000;
+- censura 21.62%.
+
+Interpretazione:
+
+- Nmin forte ha wait inferiore sui completati;
+- super completa 1483 viaggi in piu';
+- Nmin lascia incompleto piu' di meta' del carico;
+- il ranking sul wait favorisce un insieme piu' piccolo e selezionato.
+
+
+20.4 Balanced/high
+------------------
+
+mp_program0:
+
+- wait 711.30;
+- completati 4724;
+- censura 5.52%.
+
+mp_super:
+
+- wait 783.62;
+- completati 4727;
+- censura 5.46%.
+
+Interpretazione:
+
+- completamenti e censura sono quasi identici;
+- qui la perdita del super e' reale e confrontabile;
+- il problema non e' un artefatto evidente di censura;
+- program0 ibrido e' semplicemente meglio tarato per questo caso.
+
+
+20.5 Conclusione scientifica sui casi high
+------------------------------------------
+
+La conclusione corretta non e':
+
+"mp_super perde sempre in high."
+
+La conclusione corretta e':
+
+- in balanced/high mp_program0 e' realmente migliore;
+- in skewed/high e peak/high gli specialisti hanno wait inferiore, ma
+  throughput molto piu' basso e censura molto piu' alta;
+- serve una metrica multi-obiettivo o una durata maggiore;
+- con un solo seed non si puo' dichiarare significativita' statistica.
+
+
+21. COSA E' STATO RAGGIUNTO
+===========================
+
+21.1 Risultati software
+-----------------------
+
+- controller MP modulare;
+- sette meccanismi di controllo;
+- controller fixed configurabile;
+- baseline program0;
+- baseline tuned;
+- baseline RBL;
+- controller ibrido mp_program0;
+- meta-controller mp_super;
+- popolazioni riproducibili;
+- balanced, skewed e peak;
+- profilo human_light;
+- metriche tripinfo;
+- censura;
+- contatori di attivazione;
+- pipeline batch parallela;
+- report automatici;
+- utility mappe;
+- test automatici;
+- ampia documentazione.
+
+
+21.2 Risultati concettuali
+--------------------------
+
+Il tirocinio ha mostrato che:
+
+- adattivo non significa automaticamente migliore;
+- il costo dello switch e' centrale;
+- la forma della domanda conta quanto la quantita';
+- un buon piano fisso e' una baseline seria;
+- gli specialisti funzionano in regimi specifici;
+- i moduli di sicurezza possono peggiorare se abusati;
+- la censura deve essere letta insieme al wait;
+- una soluzione ibrida puo' essere migliore di un MP puro;
+- il routing tra strategie e' una direzione promettente.
+
+
+21.3 Risultato di mp_super
+--------------------------
+
+mp_super:
+
+- e' il miglior generalista finale;
+- vince 5 gruppi su 9;
+- batte fixed_program0 sul wait in 8 gruppi;
+- riduce molto il wait in low skewed e peak;
+- mantiene censura molto piu' bassa degli specialisti nei due high difficili;
+- non ha ancora raggiunto l'obiettivo di vincere ogni categoria.
+
+
+22. LIMITI ATTUALI E LAVORO FUTURO
+==================================
+
+22.1 Un solo seed nelle campagne finali
+---------------------------------------
+
+Le run finali usano un solo seed.
+
+Conseguenza:
+
+- non esiste stima robusta della variabilita';
+- non si possono calcolare intervalli affidabili;
+- il vincitore potrebbe cambiare con popolazioni differenti.
+
+Prossimo passo:
+
+- almeno 3-5 seed;
+- riportare media, deviazione e intervalli.
+
+
+22.2 Censura alta in high
+-------------------------
+
+Peak/high e skewed/high hanno censura elevata per molti MP.
+
+Prossimi passi:
+
+- aumentare durata;
+- usare completamento fino a rete svuotata;
+- aggiungere penalita' esplicita per unfinished;
+- classificare con throughput oltre al wait.
+
+
+22.3 Obiettivo multi-metrica
+----------------------------
+
+Il ranking attuale usa wait.
+
+Possibili score:
+
+   score = wait
+           + lambda_travel * travel
+           + lambda_censor * censoring
+           - lambda_throughput * completed
+
+Oppure usare un fronte Pareto:
+
+- minimizzare wait;
+- minimizzare travel;
+- minimizzare censoring;
+- massimizzare completed.
+
+
+22.4 Load troppo locale e media globale fuorviante
+--------------------------------------------------
+
+Il load per TLS e' corretto come idea, ma:
+
+- molte lane vuote abbassano le medie aggregate;
+- nodi diversi possono richiedere riferimenti diversi;
+- movement_count non considera capacita' e lunghezza delle lane.
+
+Possibili miglioramenti:
+
+- normalizzare per capacita' di storage;
+- usare percentili locali;
+- usare rolling average;
+- distinguere corridoi centrali e periferici.
+
+
+22.5 Burstiness molto bassa nei report
+--------------------------------------
+
+Le medie finali di burstiness sono circa 0.01-0.02, molto sotto la soglia
+0.55.
+
+Possibili cause:
+
+- metrica calcolata step-to-step troppo sensibile alla scala;
+- smoothing implicito della domanda;
+- soglia troppo alta;
+- media su molti TLS inattivi.
+
+Prossimi passi:
+
+- calcolare burstiness su finestre di 10-30 secondi;
+- usare deviazione o coefficiente di variazione;
+- calibrare la soglia sui percentili osservati.
+
+
+22.6 Platoon quasi mai selezionato
+----------------------------------
+
+Nella run finale la quota platoon e' praticamente zero.
+
+Possibili cause:
+
+- punteggio troppo severo;
+- threshold 0.75;
+- pochi campioni headway validi;
+- detector virtuale non adatto a tutte le lane;
+- aggregazione su molti TLS.
+
+Prossimi passi:
+
+- loggare distribuzione degli headway;
+- usare finestre temporali;
+- verificare visivamente i detector;
+- calibrare soglia con dati osservati.
+
+
+22.7 Mode switch numerosi ma permanenza program0 alta
+-----------------------------------------------------
+
+Il super registra migliaia di mode switch aggregati, ma resta oltre il 90%
+in program0 nei casi high.
+
+Possibile spiegazione:
+
+- molti TLS cambiano per brevi episodi;
+- le soglie sono superate localmente e poi rientrano;
+- la modalita' specialistica non resta abbastanza a lungo;
+- lo streak filtra ingresso ma non garantisce una permanenza minima.
+
+Possibili miglioramenti:
+
+- minimum dwell time per modalita';
+- isteresi separata per entrata e uscita;
+- cooldown dopo un cambio;
+- soglie calibrate per tipo di nodo.
+
+
+22.8 Safe ancora da validare
+----------------------------
+
+Safe e' raro, come desiderato, ma:
+
+- deve essere verificato in scenari di vero blocco;
+- il blocco a livello intera fase puo' essere troppo severo;
+- una fase con un solo movimento critico viene esclusa completamente.
+
+Possibile miglioramento:
+
+- pressione per movimento disponibile;
+- escludere solo il movimento bloccato se la logica semaforica lo consente;
+- prevedere fallback quando tutte le fasi sono bloccate.
+
+
+22.9 Generalizzazione oltre Bologna
+-----------------------------------
+
+La versione finale e' stata tarata soprattutto su Bologna.
+
+Per dimostrare generalizzazione:
+
+- ripetere su Masa;
+- ripetere su Manhattan;
+- usare Bologna fixed;
+- usare piu' livelli di semaforizzazione;
+- confrontare reti con topologie diverse.
+
+
+22.10 Rule-based contro metodo appreso
+--------------------------------------
+
+mp_super e' rule-based:
+
+- soglie scritte e calibrate manualmente;
+- comportamento spiegabile;
+- facile da debuggare;
+- non apprende automaticamente.
+
+Un'evoluzione potrebbe usare:
+
+- decision tree supervisionato;
+- random forest;
+- gradient boosting;
+- contextual bandit;
+- reinforcement learning.
+
+Un decision tree potrebbe essere addestrato usando:
+
+- feature live;
+- vincitore specialistico come label;
+- reward basato su wait, throughput e censura.
+
+Prima di un modello appreso serve pero':
+
+- dataset con molti seed;
+- finestre temporali etichettate;
+- metriche consistenti;
+- evitare leakage dal futuro.
+
+
+23. PROCEDIMENTO MENTALE SEGUITO DURANTE IL TIROCINIO
+=====================================================
+
+Il percorso non e' stato lineare, ma ha seguito un ciclo sperimentale:
+
+1. costruire MP puro;
+2. aggiungere protezioni e correttivi teoricamente utili;
+3. osservare che accendere tutto peggiora;
+4. isolare ogni modulo;
+5. costruire scenario pack;
+6. rendere i run riproducibili;
+7. correggere mappe e transizioni;
+8. introdurre baseline corrette;
+9. rendere i guidatori piu' realistici;
+10. scoprire che la domanda uniforme nasconde le differenze;
+11. creare skewed e peak;
+12. scoprire che spillback non si attiva;
+13. aggiungere contatori e migliorare lo score;
+14. scoprire che program0 e' molto forte;
+15. smettere di assumere che MP puro debba vincere;
+16. creare mp_program0;
+17. osservare che specialisti diversi vincono regimi diversi;
+18. creare mp_super;
+19. retarare soglie dopo ogni campagna;
+20. leggere wait insieme a censura e completamenti;
+21. riconoscere i limiti del risultato finale.
+
+Questo e' il contributo metodologico piu' importante:
+
+- ogni modifica nasce da un problema osservato;
+- ogni ipotesi viene trasformata in scenario;
+- i moduli vengono isolati;
+- i risultati negativi guidano il passo successivo;
+- la spiegabilita' viene mantenuta.
+
+
+24. GUIDA AI FILE PRINCIPALI
+============================
+
+runner.py
+---------
+
+Contiene:
+
+- tutti i flag CLI;
+- validazione dei parametri;
+- avvio SUMO;
+- costruzione controller;
+- ciclo di simulazione;
+- tripinfo;
+- sidecar stats;
+- output singolo.
+
+
+src/controllers/max_pressure.py
+-------------------------------
+
+Contiene:
+
+- stato per TLS;
+- fase e movimenti;
+- pressione;
+- transizioni;
+- spillback;
+- downstream;
+- fairness;
+- Nmin;
+- platoon;
+- mp_program0;
+- mp_super;
+- runtime stats.
+
+
+src/controllers/fixed_time.py
+-----------------------------
+
+Contiene:
+
+- selezione programID;
+- copia e tuning delle fasi;
+- fixed_program0;
+- fixed_tuned.
+
+
+generate_population.py
+----------------------
+
+Contiene:
+
+- lettura route;
+- RouteInfo;
+- generazione seedata;
+- uniform;
+- edge_weighted;
+- uniform departure;
+- peaked departure;
+- YAML finale.
+
+
+src/population.py
+-----------------
+
+Contiene:
+
+- tipi di veicolo;
+- emission class;
+- human_light;
+- validazione route;
+- inserimento TraCI.
+
+
+src/metrics.py
+--------------
+
+Contiene:
+
+- VehicleMetrics;
+- parsing tripinfo;
+- censura;
+- aggregazione;
+- CSV per veicolo.
+
+
+utils/run_ablation.py
+---------------------
+
+Contiene:
+
+- demand preset;
+- population preset;
+- scenari;
+- scenario pack;
+- baseline;
+- parallelismo;
+- progresso;
+- esecuzione;
+- aggregazione;
+- report.
+
+
+utils/show_ablation_table.py
+----------------------------
+
+Mostra:
+
+- ranking per gruppo;
+- wait;
+- delta;
+- travel;
+- time loss;
+- censura;
+- completati.
+
+
+utils/show_ablation_winners.py
+------------------------------
+
+Mostra:
+
+- vincitore per gruppo;
+- classifica per numero di vittorie.
+
+
+tests/test_generate_population.py
+---------------------------------
+
+Verifica:
+
+- partenze ordinate;
+- partenze nella finestra;
+- preferenza delle route lunghe con edge_weighted.
+
+
+tests/test_run_ablation.py
+--------------------------
+
+Verifica:
+
+- override domanda;
+- preset distinti;
+- case id;
+- baseline classici;
+- mp_program0;
+- mp_super;
+- alias legacy;
+- piu' population set.
+
+
+25. GLOSSARIO ESSENZIALE
+========================
+
+TraCI:
+
+- interfaccia Python per controllare SUMO durante la simulazione.
+
+TLS:
+
+- traffic light system, cioe' sistema semaforico.
+
+Phase:
+
+- stato simultaneo delle luci di un TLS.
+
+Movement:
+
+- collegamento da una lane in ingresso a una lane in uscita.
+
+Queue:
+
+- numero di veicoli fermi su una lane.
+
+Pressure:
+
+- differenza tra coda in ingresso e coda in uscita.
+
+Max-Pressure:
+
+- controllo che sceglie la fase con pressione maggiore.
+
+Lost time:
+
+- tempo di transizione senza servizio pieno, tipicamente giallo e all-red.
+
+LTA:
+
+- lost-time-aware, margine che considera il costo dello switch.
+
+Nmin:
+
+- servizio minimo dinamico dopo un cambio.
+
+Fairness:
+
+- bonus che impedisce di trascurare troppo una fase.
+
+Spillback:
+
+- coda che riempie la lane a valle e rischia di bloccare l'incrocio.
+
+Downstream:
+
+- parte della rete subito dopo l'incrocio.
+
+Platoon:
+
+- gruppo di veicoli con headway ridotto.
+
+Headway:
+
+- tempo tra due passaggi consecutivi.
+
+EMA:
+
+- exponential moving average, filtro che smussa un segnale.
+
+Program0:
+
+- programma semaforico statico con identificativo 0.
+
+Hybrid:
+
+- controller che combina comportamento statico e MP.
+
+Meta-controller:
+
+- sistema che sceglie quale strategia usare.
+
+Rule-based:
+
+- decisione basata su regole e soglie esplicite.
+
+Balanced:
+
+- route e partenze uniformi.
+
+Skewed:
+
+- route sbilanciate, partenze uniformi.
+
+Peak:
+
+- route sbilanciate e partenze a picchi.
+
+Censoring:
+
+- percentuale di viaggi non terminati.
+
+Ablation:
+
+- confronto controllato tra varianti che cambiano una o poche componenti.
+
+
+26. RIASSUNTO FINALE DA USARE IN UNA PRESENTAZIONE
+===================================================
+
+Versione breve:
+
+Il tirocinio e' partito dall'implementazione di un controller
+Max-Pressure puro per SUMO. Al controller sono stati aggiunti, uno alla
+volta, anti-spillback, lost-time-aware, fairness, Nmin dinamico, penalita'
+downstream e platoon extension. I primi test hanno mostrato che attivare
+tutto non migliora automaticamente il traffico: alcuni moduli erano troppo
+aggressivi, altri non si attivavano e il piano statico program0 di Bologna
+era molto piu' forte del previsto.
+
+Per rendere gli esperimenti affidabili e' stata costruita una pipeline di
+ablation con run numerate, parallelismo, progress tracking, report automatici,
+metriche tripinfo e censura. Sono stati aggiunti traffico balanced, skewed e
+peak, domanda calibrata per mappa e un profilo di guida human_light.
+
+Poiche' nessun MP specializzato vinceva in ogni regime, e' stato creato
+mp_program0, che usa il piano fisso in basso carico e passa a MP quando il
+carico cresce. Successivamente e' stato creato mp_super, un meta-controller
+rule-based che legge in tempo reale load, imbalance, wait imbalance,
+burstiness, platoon e saturazione downstream e sceglie tra program0, MP base,
+LTA, Nmin, fairness, platoon e safe.
+
+Nell'ultima campagna completa su Bologna, con 180 casi, mp_super vince 5
+gruppi su 9 e batte fixed_program0 sul wait in 8 gruppi su 9. Nei casi
+skewed/high e peak/high gli specialisti hanno wait inferiore, ma censura
+vicina al 50%, mentre mp_super completa molti piu' viaggi. Il risultato
+principale non e' quindi che un MP vince sempre, ma che la strategia migliore
+dipende dal regime e che una soluzione ibrida, spiegabile e regime-aware e'
+piu' promettente di un MP puro universale.
+
+
+27. FLUSSO COMPLETO DI UNA SIMULAZIONE, PASSO PER PASSO
+=======================================================
+
+Questa sezione descrive il percorso reale dei dati nel codice finale. Serve
+a collegare i singoli file e a capire dove viene presa ogni decisione.
+
+
+27.1 Scelta dell'esperimento
+----------------------------
+
+Un esperimento batch parte da utils/run_ablation.py.
+
+Gli input principali sono:
+
+- mappe;
+- livelli di domanda;
+- numero di seed;
+- numero di job;
+- durata massima;
+- scenario pack;
+- eventuale sottoinsieme di scenari;
+- baseline classici;
+- profilo guidatore;
+- population set.
+
+Esempio concettuale:
+
+   mappa = Bologna
+   set = balanced, skewed, peak
+   domanda = low, medium, high
+   seed = 1
+   scenari = 20
+
+Il numero di casi e':
+
+   mappe * set * domande * seed * scenari
+
+Per la campagna finale:
+
+   1 * 3 * 3 * 1 * 20 = 180 simulazioni
+
+
+27.2 Risoluzione della domanda
+------------------------------
+
+run_ablation non usa sempre i valori generici 2000/4000/7000.
+
+La funzione resolve_demand_preset:
+
+1. controlla se la mappa ha un override esplicito;
+2. se la mappa termina con _rbl riusa il preset della mappa base;
+3. altrimenti applica una stima euristica dal numero di route.
+
+Per Bologna:
+
+   low = 1500
+   medium = 3000
+   high = 5000
+
+Per una mappa non calibrata, heuristic_demand_preset conta le route e sceglie
+un valore medium. Low vale circa il 60% del medium, high circa il 140%.
+
+Questa euristica non stima direttamente la capacita' stradale. E' un modo
+pratico per evitare di assegnare 7000 veicoli a una mappa minuscola.
+
+
+27.3 Risoluzione della distribuzione di traffico
+------------------------------------------------
+
+Se viene passato --population-set:
+
+- i flag custom di route sampling vengono ignorati;
+- ogni nome viene convertito nel relativo PopulationPreset;
+- balanced, skewed e peak producono popolazioni separate.
+
+La chiave di cache e':
+
+   effective_map, population_set, demand, seed
+
+Questo significa che tutti gli scenari di controllo confrontati nello stesso
+gruppo usano esattamente la stessa popolazione.
+
+E' una proprieta' sperimentale fondamentale:
+
+- cambia il controller;
+- non cambiano veicoli, route, partenze e seed.
+
+
+27.4 Generazione della popolazione
+----------------------------------
+
+run_ablation chiama generate_population.py.
+
+Il generatore:
+
+1. apre il file .rou.xml;
+2. legge ogni route e il numero di edge;
+3. inizializza random.Random con il seed;
+4. estrae un tempo di partenza;
+5. estrae una route;
+6. estrae un tipo di veicolo;
+7. crea vehicle_id progressivi;
+8. ordina i record per depart;
+9. salva il file YAML.
+
+Ordinare per depart non cambia la distribuzione, ma rende:
+
+- il file leggibile;
+- l'inserimento in SUMO ordinato;
+- il debug piu' semplice.
+
+
+27.5 Costruzione del caso
+-------------------------
+
+Ogni caso riceve un identificativo.
+
+Con population set:
+
+   bologna__peak__high__seed1__mp_super
+
+Senza population set:
+
+   bologna__high__seed1__mp_base
+
+Il case id viene usato per:
+
+- directory;
+- progresso;
+- log;
+- riga del CSV;
+- diagnosi degli errori.
+
+
+27.6 Comando runner
+-------------------
+
+Per ogni caso viene costruito un comando equivalente a:
+
+   python runner.py
+     --map-name <mappa>
+     --population-file <yaml>
+     --controller <mp o fixed>
+     --max-steps <durata>
+     --step-length <step>
+     --output-log <csv>
+     <flag globali>
+     <flag scenario>
+
+I flag globali, come human_light, sono uguali per tutti gli scenari.
+
+I flag scenario cambiano solo il controller da testare.
+
+
+27.7 Avvio del subprocess
+-------------------------
+
+run_runner_command_with_live_progress:
+
+- imposta PYTHONUNBUFFERED=1;
+- avvia il runner con subprocess.Popen;
+- unisce stderr a stdout;
+- legge l'output senza attendere la fine;
+- scrive stdout_stderr.log;
+- cerca la stringa "Step #...";
+- aggiorna il progresso periodicamente.
+
+L'uso di selectors evita di bloccare il processo principale mentre SUMO sta
+ancora lavorando.
+
+
+27.8 Avvio di SUMO nel runner
+-----------------------------
+
+runner.py:
+
+1. risolve il file .sumocfg;
+2. sceglie sumo o sumo-gui;
+3. imposta step-length;
+4. imposta waiting-time-memory a 3000;
+5. usa --start;
+6. usa --quit-on-end;
+7. crea un file tripinfo temporaneo;
+8. apre la connessione TraCI.
+
+
+27.9 Preparazione dei tipi di veicolo
+-------------------------------------
+
+Prima dell'avvio effettivo:
+
+- la popolazione YAML viene validata;
+- ogni route_id deve esistere nella mappa;
+- viene generato vehicletypes.rou.xml;
+- sono inclusi solo i tipi realmente presenti nella popolazione;
+- human_light modifica gli attributi se richiesto.
+
+Il file vehicletypes e' globale nella directory sumo_xml_files. Nelle
+campagne parallele gli scenari usano la stessa distribuzione di tipi e lo
+stesso profilo, quindi il contenuto atteso e' equivalente.
+
+
+27.10 Inserimento dei veicoli
+-----------------------------
+
+Ogni veicolo viene aggiunto tramite traci.vehicle.add con:
+
+- vehID;
+- routeID;
+- typeID;
+- depart;
+- departLane = best;
+- departSpeed = max oppure desired.
+
+human_light usa desired.
+
+
+27.11 Attach del controller
+---------------------------
+
+TrafficController.attach_to_all_traffic_lights:
+
+1. legge tutti gli ID con getIDList;
+2. li salva nel controller;
+3. chiama on_attach.
+
+FixedTimeController.on_attach:
+
+- seleziona programID se richiesto;
+- eventualmente ricostruisce le durate delle fasi.
+
+MaxPressureController.on_attach:
+
+- legge tutte le logiche di ogni TLS;
+- seleziona la logica;
+- ricostruisce fasi e movimenti;
+- inizializza lo stato per semaforo.
+
+
+27.12 Ciclo di simulazione
+--------------------------
+
+Il ciclo continua finche':
+
+   traci.simulation.getMinExpectedNumber() > 0
+
+oppure:
+
+   simulation_time >= max_steps
+
+Ad ogni iterazione:
+
+1. traci.simulationStep;
+2. controller.step;
+3. aggiunta dei nuovi veicoli partiti all'insieme active;
+4. rimozione dei veicoli arrivati;
+5. aggiornamento delle metriche per i veicoli attivi;
+6. controllo max_steps.
+
+Il controller opera dopo l'avanzamento dello step. La decisione influenza
+quindi lo stato semaforico usato negli step successivi.
+
+
+27.13 Chiusura e tripinfo
+-------------------------
+
+Alla fine:
+
+1. vengono lette le runtime stats del controller;
+2. TraCI viene chiuso nel blocco finally;
+3. dopo la chiusura viene analizzato tripinfo;
+4. gli eventuali campi legacy raccolti online vengono uniti al CSV tecnico;
+5. il file temporaneo viene cancellato.
+
+La sequenza chiusura -> parsing evita XML incompleti.
+
+
+27.14 Output del runner
+-----------------------
+
+Il runner produce:
+
+- vehicle_metrics.csv;
+- controller_stats.json;
+- run_summary.json.
+
+vehicle_metrics.csv e' per singolo veicolo.
+
+controller_stats.json contiene:
+
+- media dei contatori;
+- contatori per ripetizione;
+- tipo di controller.
+
+run_summary.json contiene:
+
+- metriche aggregate;
+- completati;
+- incompleti;
+- censura.
+
+
+27.15 Ritorno all'ablation
+--------------------------
+
+run_ablation:
+
+1. legge vehicle_metrics.csv;
+2. legge run_summary.json;
+3. legge controller_stats.json;
+4. crea una riga run_results;
+5. registra wall_seconds;
+6. marca status ok o fail.
+
+Se il runner fallisce:
+
+- il batch non perde le altre simulazioni;
+- viene creata una riga con metriche a zero;
+- lo status resta fail;
+- il log del caso rimane disponibile.
+
+
+27.16 Aggregazione
+------------------
+
+Le righe ok sono raggruppate per:
+
+   mappa, population_set, domanda, scenario
+
+Per ogni gruppo vengono calcolati:
+
+- media;
+- deviazione standard;
+- P95;
+- contatori medi;
+- completati;
+- censura.
+
+Con un solo seed:
+
+- runs = 1;
+- la deviazione standard vale zero;
+- non esiste informazione sulla variabilita' tra popolazioni.
+
+
+27.17 Delta dalla baseline
+--------------------------
+
+La baseline viene scelta in ordine:
+
+1. quella specificata esplicitamente;
+2. fixed_program0 se presente;
+3. fixed_tuned se presente;
+4. mp_base.
+
+Delta wait:
+
+   100 * (wait_scenario - wait_baseline) / wait_baseline
+
+Valore negativo:
+
+- scenario migliore della baseline.
+
+Valore positivo:
+
+- scenario peggiore.
+
+
+27.18 Report leggibili
+----------------------
+
+summary.md ordina ogni gruppo per wait.
+
+table.txt aggiunge una tabella terminale.
+
+winners.txt seleziona il minimo wait di ogni gruppo e conta le vittorie.
+
+Importante:
+
+- il criterio winner non include censura;
+- il report contiene censura, ma non la usa nell'ordinamento.
+
+
+28. MACCHINA A STATI DETTAGLIATA DEL CONTROLLER MP
+==================================================
+
+28.1 Uno stato indipendente per ogni TLS
+----------------------------------------
+
+_TrafficLightData contiene:
+
+- phase_count;
+- phase_durations;
+- main_phases;
+- movements_by_phase;
+- wait_time_by_phase;
+- active_phase;
+- active_hold_seconds;
+- active_empty_seconds;
+- active_platoon_extension_seconds;
+- non_main_seconds;
+- pending_target;
+- stato mp_program0;
+- stato mp_super;
+- domanda precedente.
+
+Ogni semaforo puo' quindi essere:
+
+- in program0;
+- in una modalita' MP;
+- in una transizione;
+- in attesa della conferma di un nuovo regime.
+
+
+28.2 Selezione della logica semaforica
+--------------------------------------
+
+MP normale:
+
+- conta le fasi principali di ogni programma;
+- sceglie il programma con piu' fasi utilizzabili;
+- preferisce il programma gia' attivo in caso di parita'.
+
+mp_program0 e mp_super:
+
+- cercano esplicitamente programID "0";
+- se non esiste, usano il fallback normale.
+
+La prima implementazione del 4 marzo preferiva semplicemente il secondo
+programma disponibile. La correzione successiva evita di assumere che
+programID 1 sia sempre quello giusto.
+
+
+28.3 Stato normale senza target pendente
+-----------------------------------------
+
+Per ogni TLS:
+
+1. leggere la fase corrente;
+2. verificare che sia una fase principale;
+3. calcolare pressioni e domanda;
+4. aggiornare fairness;
+5. aggiornare Nmin;
+6. aggiornare detector platoon;
+7. applicare eventuale router;
+8. verificare minimo verde;
+9. verificare hold Nmin;
+10. verificare estensione platoon;
+11. scegliere best phase;
+12. verificare il margine;
+13. iniziare la transizione.
+
+
+28.4 Stato pending_target
+-------------------------
+
+Quando best_phase cambia:
+
+- pending_target riceve l'indice desiderato;
+- il controller non salta direttamente al verde;
+- avanza alla fase successiva della logica.
+
+Negli step successivi:
+
+- se e' gia' sul target, pulisce pending_target;
+- se arriva su un'altra fase principale, salta al target;
+- se e' in giallo/all-red aspetta la fine;
+- se la transizione dura oltre 20 secondi, forza il target.
+
+Questa logica protegge la sicurezza semaforica ma evita stalli.
+
+
+28.5 Stato non-main senza target
+--------------------------------
+
+Se SUMO si trova in una fase non principale senza pending_target:
+
+- il controller accumula non_main_seconds;
+- non calcola una decisione MP;
+- dopo 20 secondi torna alla prima fase principale valida.
+
+
+28.6 Stato program0
+-------------------
+
+In mp_program0 o mp_super:
+
+- il controller continua a osservare il traffico;
+- se la modalita' resta program0, termina lo step con continue;
+- non imposta fasi;
+- SUMO segue durate e transizioni statiche.
+
+Quindi "comportarsi come fixed_program0" non e' una simulazione approssimata:
+il controller smette realmente di sovrascrivere il programma.
+
+
+28.7 Entrata da program0 a MP
+-----------------------------
+
+mp_program0:
+
+- load >= 0.60 per 4 step locali consecutivi;
+- program0_fixed_mode diventa false;
+- lo stato MP viene resettato;
+- aumenta program0_to_mp_count.
+
+mp_super:
+
+- una modalita' MP candidata deve persistere per 4 step;
+- super_mode cambia;
+- program0_fixed_mode diventa false;
+- wait times vengono preservati.
+
+
+28.8 Uscita da MP verso program0
+--------------------------------
+
+mp_program0:
+
+- load <= 0.40 per 4 step;
+- ritorno statico.
+
+mp_super:
+
+- candidate_mode program0 deve persistere per 4 step;
+- ritorna al programma statico.
+
+
+28.9 Differenza tra phase switch e mode switch
+----------------------------------------------
+
+Phase switch:
+
+- cambia fase verde nello stesso tipo di controller;
+- e' contato da switch_margin_count o max_green_count.
+
+Mode switch:
+
+- cambia strategia tra program0, base, LTA, Nmin, fair, platoon e safe;
+- e' contato da super_mode_switch_count.
+
+Sono due fenomeni diversi.
+
+
+28.10 Ordine delle protezioni
+-----------------------------
+
+Nel ramo MP finale l'ordine e':
+
+1. minimo verde;
+2. Nmin;
+3. platoon extension;
+4. validita' pressioni;
+5. fairness;
+6. margine LTA/epsilon;
+7. cambio;
+8. max_green come safety cap.
+
+L'ordine conta:
+
+- Nmin puo' impedire una decisione di pressione;
+- platoon puo' estendere prima del confronto;
+- LTA modifica solo la soglia di switch;
+- fairness modifica lo score, non il margine.
+
+
+28.11 Caso tutte le fasi bloccate
+---------------------------------
+
+Se spillback assegna meno infinito a tutte le fasi:
+
+- il controller non cambia;
+- conserva la fase corrente;
+- aspetta che almeno una uscita venga rilasciata.
+
+E' una scelta conservativa. In un gridlock totale non esiste una strategia di
+recupero esplicita oltre all'isteresi di rilascio.
+
+
+28.12 Max green
+---------------
+
+max_green non impone un ciclo fisso.
+
+Se:
+
+- il tempo supera max_green;
+- esiste una fase alternativa finita;
+
+allora viene avviato il cambio anche se il normale margine non e' stato
+superato.
+
+Serve a evitare monopolio patologico di una fase.
+
+
+29. CATALOGO ESATTO DEGLI SCENARI FINALI
+========================================
+
+Il pack tuning_matrix_v2 contiene 18 scenari MP. Con
+--include-classic-baselines vengono aggiunti due fixed, per un totale di 20.
+
+
+29.1 mp_base
+------------
+
+Flag:
+
+   nessuno
+
+Parametri ereditati:
+
+- min_green 10;
+- max_green 120;
+- epsilon 0.
+
+Scopo:
+
+- riferimento MP puro.
+
+
+29.2 mp_program0
+----------------
+
+Flag:
+
+   --program0-hybrid
+   --program0-load-ref 3.5
+   --program0-enter-mp-load 0.60
+   --program0-exit-fixed-load 0.40
+   --program0-mode-streak 4
+
+Scopo:
+
+- statico in low;
+- MP quando il carico locale e' persistente.
+
+
+29.3 mp_super
+-------------
+
+Flag:
+
+   --super-router
+   --super-load-ref 3.5
+   --super-low-load 0.42
+   --super-high-load 0.68
+   --super-imbalance-threshold 0.60
+   --super-wait-imbalance-threshold 0.60
+   --super-burstiness-threshold 0.55
+   --super-platoon-threshold 0.75
+   --super-downstream-threshold 0.97
+   --super-mode-streak 4
+   --super-nmin-load 0.78
+   --super-lta-gain 0.60
+   --super-lta-sat-flow 0.50
+   --super-nmin-alpha 1.20
+   --super-nmin-floor 4
+   --super-nmin-min-green 4.0
+   --super-nmin-demand-gain 0.40
+   --super-nmin-empty-release-seconds 1.5
+
+Scopo:
+
+- meta-controller locale.
+
+
+29.4 mp_lta_g040_sf050
+----------------------
+
+Flag:
+
+   --lost-time-aware
+   --lost-time-sat-flow 0.50
+   --lost-time-gain 0.40
+
+Interpretazione:
+
+- LTA moderato.
+
+
+29.5 mp_lta_g060_sf050
+----------------------
+
+Flag:
+
+   --lost-time-aware
+   --lost-time-sat-flow 0.50
+   --lost-time-gain 0.60
+
+Interpretazione:
+
+- LTA piu' conservativo;
+- vincitore wait in skewed/high.
+
+
+29.6 mp_nmin_a080_f2
+--------------------
+
+Flag:
+
+   --nmin-dynamic
+   --lost-time-sat-flow 0.50
+   --nmin-alpha 0.80
+   --nmin-floor 2
+   --nmin-min-green 4.0
+   --nmin-demand-gain 0.25
+   --nmin-empty-release-seconds 1.0
+
+Interpretazione:
+
+- Nmin moderato.
+
+
+29.7 mp_nmin_a120_f4
+--------------------
+
+Flag:
+
+   --nmin-dynamic
+   --lost-time-sat-flow 0.50
+   --nmin-alpha 1.20
+   --nmin-floor 4
+   --nmin-min-green 4.0
+   --nmin-demand-gain 0.40
+   --nmin-empty-release-seconds 1.5
+
+Interpretazione:
+
+- Nmin forte;
+- vincitore wait in peak/high.
+
+
+29.8 mp_downstream_b04
+----------------------
+
+Flag:
+
+   --downstream-penalty
+   --downstream-beta 0.4
+   --downstream-alpha 0.30
+
+Interpretazione:
+
+- penalita' soft leggera;
+- nessun blocco hard.
+
+
+29.9 mp_downstream_b08
+----------------------
+
+Flag:
+
+   --downstream-penalty
+   --downstream-beta 0.8
+   --downstream-alpha 0.30
+
+Interpretazione:
+
+- penalita' soft piu' forte.
+
+
+29.10 mp_spillback_on85_off70
+-----------------------------
+
+Flag:
+
+   --spillback
+   --spillback-on 0.85
+   --spillback-off 0.70
+   --spillback-min-halts 2
+   --spillback-alpha 0.30
+
+Interpretazione:
+
+- variante piu' sensibile;
+- si attiva prima;
+- tende a bloccare piu' step.
+
+
+29.11 mp_spillback_on90_off80
+-----------------------------
+
+Flag:
+
+   --spillback
+   --spillback-on 0.90
+   --spillback-off 0.80
+   --spillback-min-halts 3
+   --spillback-alpha 0.30
+
+Interpretazione:
+
+- variante piu' prudente;
+- richiede saturazione e coda maggiori.
+
+
+29.12 mp_fair_mu3_w30
+---------------------
+
+Flag:
+
+   --fairness
+   --fairness-mu 3.0
+   --fairness-w-half 30.0
+
+Interpretazione:
+
+- bonus massimo 3;
+- meta' del bonus dopo 30 secondi.
+
+
+29.13 mp_fair_mu5_w20
+---------------------
+
+Flag:
+
+   --fairness
+   --fairness-mu 5.0
+   --fairness-w-half 20.0
+
+Interpretazione:
+
+- fairness piu' forte e rapida.
+
+
+29.14 mp_platoon_x2
+-------------------
+
+Flag:
+
+   --platoon-extension
+   --platoon-headway-threshold 2.1
+   --platoon-gap-out-seconds 2.1
+   --platoon-max-extra-green 2.0
+   --platoon-guard-occ 0.90
+
+Interpretazione:
+
+- estensione breve.
+
+
+29.15 mp_platoon_x4
+-------------------
+
+Flag:
+
+   --platoon-extension
+   --platoon-headway-threshold 2.1
+   --platoon-gap-out-seconds 2.1
+   --platoon-max-extra-green 4.0
+   --platoon-guard-occ 0.90
+
+Interpretazione:
+
+- estensione piu' lunga.
+
+
+29.16 mp_switch_eps1
+--------------------
+
+Flag:
+
+   --switch-epsilon 1.0
+
+Interpretazione:
+
+- la nuova fase deve guadagnare almeno un punto di pressione.
+
+
+29.17 mp_switch_rel005
+----------------------
+
+Flag:
+
+   --switch-epsilon-rel 0.05
+
+Interpretazione:
+
+- margine pari al 5% del valore assoluto dello score corrente.
+
+
+29.18 mp_switch_rel010
+----------------------
+
+Flag:
+
+   --switch-epsilon-rel 0.10
+
+Interpretazione:
+
+- margine relativo del 10%.
+
+
+29.19 fixed_program0
+--------------------
+
+Flag:
+
+   --fixed-program-id 0
+
+Interpretazione:
+
+- programma statico originale.
+
+
+29.20 fixed_tuned
+-----------------
+
+Flag:
+
+   --fixed-program-id 0
+   --fixed-main-green-seconds 30
+
+Interpretazione:
+
+- stessa struttura del program0;
+- tutti i verdi principali portati a 30 secondi;
+- transizioni conservate.
+
+
+29.21 Alias storici
+-------------------
+
+Per non rompere vecchi comandi:
+
+   mp_base_v2 -> mp_program0
+
+   mp_spillback_on97_off90 -> mp_spillback_on90_off80
+
+L'alias non crea un nuovo scenario. Reindirizza al nome corrente.
+
+
+30. ANALISI INGEGNERISTICA APPROFONDITA DELLA CRONOLOGIA GIT
+============================================================
+
+30.1 Fase infrastrutturale
+--------------------------
+
+Commit:
+
+- Initial commit;
+- Template.
+
+Contributo:
+
+- separazione delle responsabilita';
+- dipendenze minime;
+- mappe;
+- interfaccia astratta controller.
+
+Scelta corretta:
+
+- TrafficController ha un hook on_attach e un metodo step;
+- il runner non conosce i dettagli dell'algoritmo;
+- fixed e MP sono intercambiabili.
+
+
+30.2 Fase algoritmo minimo
+--------------------------
+
+Commit:
+
+- adds;
+- MP pure.
+
+Contributo:
+
+- definizione dei movimenti;
+- pressione;
+- switch sicuro;
+- eliminazione del template non necessario.
+
+Debito iniziale:
+
+- selezione fragile del programma;
+- nessuna misura del costo switch;
+- nessuna protezione downstream;
+- nessuna equita'.
+
+
+30.3 Fase specialisti teorici
+-----------------------------
+
+Commit:
+
+- spillback;
+- Lost time aware;
+- Fairness satura;
+- Nmin;
+- Penalita downstream;
+- platoon-extension.
+
+Metodo:
+
+- ogni idea e' stata aggiunta come toggle;
+- il nucleo MP e' rimasto unico;
+- non sono state create classi duplicate.
+
+Vantaggio:
+
+- combinazioni facili;
+- stessa implementazione base;
+- confronto controllato.
+
+Svantaggio:
+
+- MaxPressureController e' cresciuto molto;
+- molte opzioni condividono stato;
+- le interazioni diventano difficili da prevedere.
+
+
+30.4 Fase sperimentazione automatica
+------------------------------------
+
+Commit:
+
+- script;
+- fixes;
+- fixes del 28 marzo.
+
+Evoluzione:
+
+- da esecuzione seriale semplice;
+- a run directory;
+- a parallelismo;
+- a progresso live;
+- a report automatici;
+- a tuning matrix.
+
+Il commit b3f57d5 aggiunge 448 righe nette e trasforma lo script iniziale in
+un orchestratore piu' robusto.
+
+Il commit 2eaa41f aggiunge oltre 1100 righe nette, incluse:
+
+- analisi della prima campagna significativa;
+- strumenti di visualizzazione;
+- scenari isolati;
+- maggiore tracciabilita'.
+
+
+30.5 Fase robustezza delle mappe
+--------------------------------
+
+Commit:
+
+- map fixes;
+- new utils.
+
+Contributo:
+
+- Bologna fixed;
+- recupero transizioni;
+- RBL;
+- Torino;
+- documentazione matematica;
+- riproducibilita' delle mappe derivate.
+
+Questa fase mostra che il comportamento del controller non puo' essere
+separato dalla qualita' della rete SUMO.
+
+
+30.6 Fase realismo e baseline
+-----------------------------
+
+Commit:
+
+- Human-light;
+- last version.
+
+Contributo:
+
+- guidatori meno ideali;
+- program0 esplicito;
+- fixed tuned;
+- domanda per mappa;
+- skew spaziale;
+- picchi temporali;
+- runtime counters.
+
+Cambio di prospettiva:
+
+- non basta migliorare il controller;
+- bisogna migliorare l'esperimento che lo valuta.
+
+
+30.7 Fase validita' delle metriche
+----------------------------------
+
+Commit:
+
+- fixes del 23 maggio.
+
+Contributo:
+
+- tripinfo;
+- censura;
+- time loss;
+- completed;
+- test;
+- mp_program0;
+- spillback realistico.
+
+Questa e' una delle modifiche piu' importanti del progetto, perche' cambia
+la fiducia nei risultati, non solo il comportamento del controller.
+
+
+30.8 Fase meta-controller
+-------------------------
+
+Commit:
+
+- super_mp.
+
+Contributo:
+
+- 571 righe sul controller;
+- nuovi segnali;
+- routing;
+- statistiche;
+- documentazione.
+
+Il progetto passa da:
+
+   "quale variante MP e' migliore?"
+
+a:
+
+   "come riconoscere online il regime e scegliere la variante?"
+
+
+31. PERCHE' LE VARIANTI MP POSSONO PEGGIORARE IL TRAFFICO
+=========================================================
+
+31.1 L'adattivita' ha un costo
+------------------------------
+
+Un programma fisso continua il proprio ciclo.
+
+MP puo':
+
+- interrompere una progressione;
+- introdurre un giallo;
+- introdurre un all-red;
+- servire una pressione locale a scapito del corridoio.
+
+Se il traffico e' basso, il beneficio locale puo' essere inferiore al costo.
+
+
+31.2 Informazione locale
+------------------------
+
+MP osserva soprattutto:
+
+- code ferme sulle lane immediatamente in ingresso;
+- code ferme sulle lane immediatamente in uscita.
+
+Non osserva direttamente:
+
+- domanda a diversi incroci di distanza;
+- offset di corridoio;
+- destinazioni future;
+- tempi di arrivo previsti;
+- coordinamento centralizzato.
+
+Program0 puo' incorporare implicitamente una buona coordinazione temporale.
+
+
+31.3 Halting number e' una misura grezza
+----------------------------------------
+
+Due lane possono avere:
+
+- lo stesso numero di veicoli fermi;
+- lunghezze diverse;
+- capacita' diverse;
+- flussi in arrivo diversi.
+
+MP base le tratta in modo simile.
+
+
+31.4 Pressione sommata e numero di movimenti
+--------------------------------------------
+
+La pressione di fase e' una somma.
+
+Una fase con piu' movimenti puo' accumulare piu' termini di una fase con
+meno movimenti.
+
+Non viene applicata una normalizzazione esplicita per:
+
+- numero di movimenti;
+- numero di lane;
+- capacita' delle lane;
+- flusso di saturazione specifico.
+
+Questo puo' creare un bias strutturale tra fasi diverse.
+
+
+31.5 Tie e rumore in low
+------------------------
+
+In low:
+
+- molte pressioni sono zero o piccole;
+- un singolo veicolo puo' cambiare il ranking;
+- epsilon zero rende MP sensibile;
+- il min_green limita ma non elimina il fenomeno.
+
+LTA ed epsilon provano a correggere questo problema.
+
+
+31.6 LTA troppo forte
+---------------------
+
+Se il margine e' alto:
+
+- una fase urgente deve accumulare molta pressione;
+- la fase corrente resta verde troppo a lungo;
+- aumenta il max_green forcing;
+- il controller diventa lento.
+
+I contatori finali mostrano che LTA forte:
+
+- riduce gli switch per margine;
+- aumenta gli switch forzati da max_green.
+
+Esempio balanced/medium:
+
+- mp_base:
+  5762 switch normali, 1194 max-green;
+
+- LTA 0.60:
+  3228 switch normali, 2310 max-green.
+
+Quindi la prudenza sposta parte delle decisioni dal criterio intelligente al
+limite di sicurezza.
+
+
+31.7 Nmin troppo forte
+----------------------
+
+Nmin forte accumula molti hold step.
+
+Balanced/high:
+
+- Nmin moderato: 9481 hold step;
+- Nmin forte: 22520 hold step.
+
+Peak/high:
+
+- Nmin moderato: 10795;
+- Nmin forte: 21518.
+
+Il profilo forte puo' aiutare le ondate, ma puo' anche trattenere una fase
+quando la situazione e' cambiata.
+
+
+31.8 Downstream penalty troppo invasiva
+----------------------------------------
+
+Nelle run finali b04 e b08 generano molti piu' switch margin.
+
+Balanced/low:
+
+- mp_base 3683;
+- downstream b04 18684;
+- downstream b08 18918.
+
+La penalita' cambia continuamente gli score delle fasi. In questa
+implementazione puo' rendere il ranking instabile invece di stabilizzarlo.
+
+Inoltre b04 e b08 hanno spesso:
+
+- censura alta;
+- pochi completamenti;
+- wait peggiore.
+
+
+31.9 Spillback a livello di intera fase
+---------------------------------------
+
+Se una fase contiene tre movimenti e uno solo ha downstream bloccato:
+
+- tutta la fase diventa non selezionabile.
+
+E' semplice e sicuro, ma molto severo.
+
+In una fase composita puo' impedire il servizio di movimenti ancora utili.
+
+
+31.10 Fairness puo' distorcere il throughput
+--------------------------------------------
+
+Fairness risolve starvation, ma:
+
+- una fase puo' ricevere bonus pur avendo pressione inferiore;
+- mu alto e w_half basso aumentano rapidamente il bonus;
+- molte attivazioni non garantiscono prestazioni migliori.
+
+Peak/high:
+
+- fairness forte genera oltre 130 mila bonus positivi;
+- non vince;
+- resta comunque migliore di alcune varianti.
+
+
+31.11 Platoon richiede un segnale affidabile
+--------------------------------------------
+
+L'estensione e' utile solo se:
+
+- il detector vede passaggi reali;
+- l'headway rappresenta un gruppo;
+- il downstream e' libero;
+- il costo sulle altre fasi resta basso.
+
+Un falso platoon produce over-hold.
+
+Un threshold severo produce quasi nessuna attivazione.
+
+
+31.12 Accendere tutto non somma i benefici
+------------------------------------------
+
+I moduli non sono indipendenti:
+
+- LTA vuole non cambiare;
+- fairness puo' voler cambiare;
+- Nmin impedisce cambiare;
+- platoon estende;
+- spillback elimina fasi;
+- downstream modifica pressioni.
+
+La combinazione puo' produrre conflitti.
+
+Il fallimento di mp_all_on nei primi test e' quindi informativo:
+
+- piu' regole non significa piu' intelligenza;
+- serve una selezione per regime.
+
+
+32. LETTURA COMPLETA DELLA RUN FINALE, SCENARIO PER SCENARIO
+============================================================
+
+Le righe seguenti riportano:
+
+   rank - scenario - wait - travel - completati - censura
+
+I valori sono della directory locale run_0024_20260527_122000.
+
+
+32.1 Balanced low
+-----------------
+
+01 mp_super                  190.09   461.21   1500   0.00%
+02 mp_program0               194.10   463.25   1500   0.00%
+03 fixed_program0            203.37   475.54   1500   0.00%
+04 fixed_tuned               263.07   538.27   1500   0.00%
+05 mp_fair_mu5_w20           336.20   597.09   1500   0.00%
+06 mp_fair_mu3_w30           380.38   644.05   1500   0.00%
+07 mp_lta_g040_sf050         394.22   660.51   1500   0.00%
+08 mp_platoon_x2             402.29   667.56   1500   0.00%
+09 mp_spillback_on85_off70   413.57   678.58   1500   0.00%
+10 mp_switch_eps1            414.32   680.38   1500   0.00%
+11 mp_lta_g060_sf050         416.63   682.78   1497   0.20%
+12 mp_nmin_a120_f4           429.51   696.12   1500   0.00%
+13 mp_base                   431.40   696.50   1497   0.20%
+14 mp_switch_rel005          431.40   696.50   1497   0.20%
+15 mp_spillback_on90_off80   431.77   698.23   1500   0.00%
+16 mp_switch_rel010          431.84   696.58   1496   0.27%
+17 mp_platoon_x4             433.88   701.86   1500   0.00%
+18 mp_nmin_a080_f2           481.11   750.84   1499   0.07%
+19 mp_downstream_b04         562.66   865.65   1467   2.20%
+20 mp_downstream_b08         568.80   873.18   1447   3.53%
+
+Lettura:
+
+- i tre ibridi/statici sono nettamente avanti;
+- fairness forte e' il miglior MP specialistico puro;
+- downstream e' il peggiore;
+- mp_super usa quasi sempre program0 ma piccoli episodi MP migliorano ancora.
+
+
+32.2 Balanced medium
+--------------------
+
+01 mp_super                  383.35   700.17   3000   0.00%
+02 mp_program0               435.51   753.90   2995   0.17%
+03 fixed_program0            528.50   868.20   2974   0.87%
+04 fixed_tuned               535.98   873.68   3000   0.00%
+05 mp_lta_g060_sf050         615.20   921.06   2932   2.27%
+06 mp_lta_g040_sf050         616.11   923.90   2929   2.37%
+07 mp_spillback_on90_off80   622.60   934.03   2928   2.40%
+08 mp_base                   635.19   947.57   2902   3.27%
+09 mp_switch_rel005          639.17   948.57   2918   2.73%
+10 mp_spillback_on85_off70   659.85   971.74   2939   2.03%
+11 mp_platoon_x4             679.19   997.39   2927   2.43%
+12 mp_fair_mu5_w20           686.45  1003.39   2961   1.30%
+13 mp_switch_rel010          689.62  1006.20   2931   2.30%
+14 mp_platoon_x2             689.90  1004.14   2929   2.37%
+15 mp_switch_eps1            694.45  1007.02   2923   2.57%
+16 mp_fair_mu3_w30           698.28  1022.29   2996   0.13%
+17 mp_nmin_a080_f2           719.55  1042.77   2905   3.17%
+18 mp_nmin_a120_f4           738.87  1055.53   2892   3.60%
+19 mp_downstream_b04         941.51  1272.39   2484  17.20%
+20 mp_downstream_b08        1105.41  1451.36   2494  16.87%
+
+Lettura:
+
+- e' il miglior risultato relativo di super su balanced;
+- riduce il wait del 27.47% rispetto a fixed_program0;
+- termina tutti i 3000 viaggi;
+- gli specialisti puri restano molto indietro.
+
+
+32.3 Balanced high
+------------------
+
+01 mp_program0               711.30  1114.49   4724   5.52%
+02 fixed_program0            746.37  1131.61   4393  12.14%
+03 mp_super                  783.62  1202.29   4727   5.46%
+04 fixed_tuned               933.99  1334.85   4399  12.02%
+05 mp_switch_rel005          962.41  1316.15   4056  18.88%
+06 mp_fair_mu3_w30           964.77  1317.80   4010  19.80%
+07 mp_fair_mu5_w20           969.36  1332.98   4061  18.78%
+08 mp_lta_g060_sf050        1014.76  1353.41   3733  25.34%
+09 mp_switch_rel010         1031.24  1390.60   4090  18.20%
+10 mp_switch_eps1           1036.18  1388.41   3934  21.32%
+11 mp_base                  1043.29  1404.23   4021  19.58%
+12 mp_lta_g040_sf050        1070.58  1416.65   3924  21.52%
+13 mp_nmin_a080_f2          1100.00  1481.20   3878  22.44%
+14 mp_platoon_x2            1111.88  1496.04   4457  10.86%
+15 mp_platoon_x4            1129.18  1507.03   4439  11.22%
+16 mp_nmin_a120_f4          1152.05  1519.70   3911  21.78%
+17 mp_downstream_b04        1155.46  1504.76   3095  38.10%
+18 mp_downstream_b08        1179.93  1537.33   3146  37.08%
+19 mp_spillback_on85_off70  1184.05  1553.93   4035  19.30%
+20 mp_spillback_on90_off80  1194.57  1583.26   4460  10.80%
+
+Lettura:
+
+- mp_program0 combina wait minimo e throughput alto;
+- super completa tre viaggi in piu', ma aspetta circa 72 secondi in piu';
+- la nuova logica del super e' meno efficace della versione run 23 in
+  balanced/high.
+
+
+32.4 Skewed low
+---------------
+
+01 mp_super                  253.91   605.20   1500   0.00%
+02 mp_program0               276.56   632.18   1500   0.00%
+03 fixed_program0            404.60   781.50   1500   0.00%
+04 fixed_tuned               485.29   872.76   1500   0.00%
+05 mp_platoon_x4             560.87   913.07   1500   0.00%
+06 mp_lta_g060_sf050         588.07   945.66   1500   0.00%
+07 mp_fair_mu5_w20           628.78   985.52   1500   0.00%
+08 mp_switch_eps1            631.19   982.01   1500   0.00%
+09 mp_platoon_x2             644.27   994.09   1500   0.00%
+10 mp_spillback_on90_off80   646.63  1008.52   1500   0.00%
+11 mp_nmin_a120_f4           662.57  1029.44   1500   0.00%
+12 mp_lta_g040_sf050         663.69  1030.76   1500   0.00%
+13 mp_spillback_on85_off70   664.65  1027.99   1500   0.00%
+14 mp_switch_rel010          668.38  1029.63   1500   0.00%
+15 mp_base                   672.09  1033.00   1500   0.00%
+16 mp_switch_rel005          672.09  1033.00   1500   0.00%
+17 mp_fair_mu3_w30           696.63  1067.38   1500   0.00%
+18 mp_nmin_a080_f2           713.60  1078.85   1500   0.00%
+19 mp_downstream_b04         773.79  1144.17   1213  19.13%
+20 mp_downstream_b08         871.15  1243.09   1191  20.60%
+
+Lettura:
+
+- lo skew spaziale rende fixed_program0 molto peggiore di balanced/low;
+- super sfrutta piccoli interventi locali e vince;
+- downstream perde molti viaggi anche con domanda low.
+
+
+32.5 Skewed medium
+------------------
+
+01 mp_program0               678.46  1147.86   2946   1.80%
+02 mp_super                  703.57  1187.10   2948   1.73%
+03 fixed_program0            750.69  1197.59   2706   9.80%
+04 fixed_tuned              1005.80  1474.29   2681  10.63%
+05 mp_spillback_on90_off80  1042.48  1425.34   2225  25.83%
+06 mp_fair_mu5_w20          1082.15  1503.92   2362  21.27%
+07 mp_platoon_x4            1123.34  1539.08   2436  18.80%
+08 mp_lta_g060_sf050        1132.17  1554.86   2449  18.37%
+09 mp_switch_rel010         1145.11  1533.21   2134  28.87%
+10 mp_spillback_on85_off70  1154.45  1554.39   2337  22.10%
+11 mp_platoon_x2            1188.04  1607.85   2409  19.70%
+12 mp_nmin_a080_f2          1188.11  1599.25   2272  24.27%
+13 mp_base                  1190.68  1594.18   2352  21.60%
+14 mp_switch_rel005         1190.68  1594.18   2352  21.60%
+15 mp_downstream_b08        1213.36  1627.73   1839  38.70%
+16 mp_lta_g040_sf050        1230.41  1650.00   2428  19.07%
+17 mp_switch_eps1           1243.34  1654.39   2342  21.93%
+18 mp_fair_mu3_w30          1257.35  1681.15   2464  17.87%
+19 mp_downstream_b04        1271.88  1679.89   1765  41.17%
+20 mp_nmin_a120_f4          1293.62  1714.54   2347  21.77%
+
+Lettura:
+
+- i due ibridi dominano;
+- super completa due viaggi in piu', ma ha wait superiore;
+- lo specialista con terzo wait, spillback prudente, completa 721 viaggi in
+  meno del super: la posizione sul wait e' quindi ingannevole.
+
+
+32.6 Skewed high
+----------------
+
+01 mp_lta_g060_sf050         913.41  1270.90   2590  48.20%
+02 mp_switch_eps1            916.15  1276.57   2549  49.02%
+03 mp_lta_g040_sf050         920.35  1282.93   2629  47.42%
+04 mp_switch_rel010          927.17  1290.00   2606  47.88%
+05 mp_nmin_a080_f2           958.98  1340.50   2520  49.60%
+06 mp_spillback_on90_off80   969.09  1342.13   2658  46.84%
+07 mp_switch_rel005          978.49  1338.46   2524  49.52%
+08 mp_nmin_a120_f4           982.11  1360.78   2549  49.02%
+09 mp_fair_mu3_w30           994.26  1385.72   2635  47.30%
+10 mp_platoon_x4             997.03  1360.55   2515  49.70%
+11 mp_fair_mu5_w20          1014.76  1413.49   2655  46.90%
+12 mp_base                  1022.53  1383.52   2564  48.72%
+13 mp_platoon_x2            1035.22  1404.03   2552  48.96%
+14 mp_spillback_on85_off70  1051.78  1422.77   2552  48.96%
+15 mp_super                 1103.28  1675.92   4025  19.50%
+16 mp_program0              1203.84  1801.20   3958  20.84%
+17 fixed_program0           1220.73  1749.21   3705  25.90%
+18 fixed_tuned              1318.84  1822.56   3497  30.06%
+19 mp_downstream_b04        1387.15  1814.11   1953  60.94%
+20 mp_downstream_b08        1470.80  1890.74   1979  60.42%
+
+Lettura:
+
+- i primi 14 scenari hanno quasi tutti censura vicina al 50%;
+- super e gli statici completano molti piu' viaggi;
+- la classifica si divide in due famiglie con throughput molto diverso;
+- il confronto richiede una metrica multi-obiettivo.
+
+
+32.7 Peak low
+-------------
+
+01 mp_super                  408.26   815.46   1500   0.00%
+02 mp_program0               461.79   862.80   1500   0.00%
+03 fixed_program0            698.90  1117.52   1494   0.40%
+04 mp_platoon_x2             699.90  1085.75   1477   1.53%
+05 mp_lta_g060_sf050         702.98  1083.76   1500   0.00%
+06 mp_spillback_on90_off80   727.88  1117.24   1500   0.00%
+07 fixed_tuned               727.91  1149.55   1496   0.27%
+08 mp_fair_mu5_w20           734.72  1122.66   1500   0.00%
+09 mp_base                   735.16  1123.70   1481   1.27%
+10 mp_switch_rel005          735.16  1123.70   1481   1.27%
+11 mp_nmin_a080_f2           738.86  1135.70   1469   2.07%
+12 mp_fair_mu3_w30           745.92  1133.50   1500   0.00%
+13 mp_lta_g040_sf050         754.59  1136.76   1496   0.27%
+14 mp_switch_rel010          764.56  1150.86   1500   0.00%
+15 mp_spillback_on85_off70   774.91  1164.03   1493   0.47%
+16 mp_switch_eps1            783.82  1158.47   1500   0.00%
+17 mp_platoon_x4             807.72  1193.21   1495   0.33%
+18 mp_nmin_a120_f4           830.31  1226.94   1500   0.00%
+19 mp_downstream_b08         901.22  1287.45   1189  20.73%
+20 mp_downstream_b04         914.44  1309.67   1218  18.80%
+
+Lettura:
+
+- il vantaggio super rispetto a fixed e' circa 41.6%;
+- peak low non e' "poco traffico facile": la concentrazione temporale
+  aumenta molto le attese;
+- il router ibrido gestisce meglio le ondate senza perdere completamenti.
+
+
+32.8 Peak medium
+----------------
+
+01 mp_super                  892.89  1442.77   2863   4.57%
+02 mp_program0               901.63  1446.07   2817   6.10%
+03 mp_spillback_on90_off80   960.20  1333.49   2025  32.50%
+04 fixed_program0            998.77  1498.38   2604  13.20%
+05 mp_lta_g060_sf050        1025.85  1411.90   2097  30.10%
+06 mp_switch_rel010         1074.89  1467.94   2136  28.80%
+07 fixed_tuned              1180.15  1678.68   2558  14.73%
+08 mp_platoon_x4            1189.89  1647.06   2538  15.40%
+09 mp_platoon_x2            1198.61  1635.07   2289  23.70%
+10 mp_spillback_on85_off70  1225.68  1638.96   2228  25.73%
+11 mp_fair_mu3_w30          1232.26  1687.30   2442  18.60%
+12 mp_switch_rel005         1251.21  1668.80   2312  22.93%
+13 mp_base                  1255.09  1681.07   2363  21.23%
+14 mp_fair_mu5_w20          1257.18  1682.38   2265  24.50%
+15 mp_nmin_a080_f2          1258.73  1696.21   2190  27.00%
+16 mp_downstream_b04        1261.47  1680.03   1698  43.40%
+17 mp_switch_eps1           1270.02  1706.02   2398  20.07%
+18 mp_downstream_b08        1278.09  1713.73   1764  41.20%
+19 mp_lta_g040_sf050        1334.27  1763.13   2364  21.20%
+20 mp_nmin_a120_f4          1348.05  1805.12   2437  18.77%
+
+Perche' spillback ha travel inferiore ma non e' migliore:
+
+- travel 1333.49 contro 1442.77 del super;
+- completa solo 2025 viaggi contro 2863;
+- censura 32.50% contro 4.57%;
+- il campione dei completati e' diverso.
+
+
+32.9 Peak high
+--------------
+
+01 mp_nmin_a120_f4          1026.65  1439.58   2436  51.28%
+02 mp_switch_rel005         1091.06  1528.69   2641  47.18%
+03 mp_nmin_a080_f2          1142.85  1612.85   2575  48.50%
+04 mp_platoon_x2            1164.34  1600.79   2666  46.68%
+05 mp_base                  1184.75  1626.46   2648  47.04%
+06 mp_platoon_x4            1212.00  1654.93   2596  48.08%
+07 mp_switch_rel010         1217.70  1667.71   2601  47.98%
+08 mp_fair_mu5_w20          1239.25  1706.02   2700  46.00%
+09 mp_spillback_on90_off80  1245.05  1689.43   2644  47.12%
+10 mp_fair_mu3_w30          1251.64  1710.88   2683  46.34%
+11 mp_spillback_on85_off70  1257.58  1712.07   2761  44.78%
+12 mp_switch_eps1           1288.36  1732.54   2684  46.32%
+13 mp_super                 1334.64  1986.79   3919  21.62%
+14 mp_lta_g040_sf050        1351.09  1805.60   2720  45.60%
+15 fixed_program0           1355.56  1939.49   3579  28.42%
+16 mp_lta_g060_sf050        1404.11  1843.71   2590  48.20%
+17 mp_program0              1432.36  2081.83   3911  21.78%
+18 fixed_tuned              1435.63  1960.38   3206  35.88%
+19 mp_downstream_b08        1468.84  1914.02   1939  61.22%
+20 mp_downstream_b04        1484.79  1908.73   1872  62.56%
+
+Lettura:
+
+- Nmin forte ottiene il minimo wait ma lascia 2564 viaggi incompleti;
+- super completa 1483 viaggi in piu';
+- super batte fixed sul wait e sulla censura;
+- il suo travel e' superiore a fixed perche' completa un insieme piu'
+  ampio e difficile di viaggi;
+- il vincitore dipende dall'obiettivo scelto.
+
+
+33. ANALISI DEI CONTATORI DI ATTIVAZIONE
+========================================
+
+33.1 Perche' sono stati aggiunti
+--------------------------------
+
+Due scenari con risultati identici possono significare:
+
+- il modulo non si e' mai attivato;
+- il modulo si e' attivato ma non ha cambiato la decisione;
+- il modulo ha cambiato decisioni con effetti compensati.
+
+I contatori distinguono almeno in parte questi casi.
+
+
+33.2 Switch margin e max green
+------------------------------
+
+switch_margin_count:
+
+- numero di cambi avviati dal confronto tra score.
+
+switch_max_green_count:
+
+- cambi avviati dal limite max_green.
+
+LTA riduce il primo e aumenta spesso il secondo.
+
+Questo indica che un LTA troppo forte:
+
+- evita decisioni normali;
+- arriva piu' spesso al limite forzato.
+
+
+33.3 Nmin hold
+--------------
+
+Il contatore cresce per ogni step in cui Nmin impedisce lo switch.
+
+Pattern:
+
+- Nmin forte ha da due a dieci volte piu' hold del moderato;
+- l'attivazione cresce con la domanda;
+- l'effetto e' realmente presente, non un flag inattivo.
+
+
+33.4 Spillback
+--------------
+
+Balanced/low:
+
+- variante 0.85:
+  15 block event, 541 block step;
+
+- variante 0.90:
+  3 event, 341 step.
+
+Skewed/high:
+
+- variante 0.85:
+  999 event, 118434 block step;
+
+- variante 0.90:
+  759 event, 91510 block step.
+
+Peak/high:
+
+- variante 0.85:
+  875 event, 98645 block step;
+
+- variante 0.90:
+  838 event, 88326 block step.
+
+Conclusione:
+
+- spillback ora si attiva;
+- nei regimi high si attiva moltissimo;
+- il problema finale non e' piu' "non funziona";
+- il problema e' "e' troppo invasivo come strategia permanente".
+
+
+33.5 Downstream
+---------------
+
+Non esiste un contatore separato per l'applicazione della penalita', perche'
+viene calcolata ad ogni pressione quando il flag e' attivo.
+
+Il forte aumento degli switch e il peggioramento indicano che:
+
+- beta modifica frequentemente il ranking;
+- la penalita' non sta solo proteggendo eventi rari;
+- influenza continuamente il controller.
+
+
+33.6 Fairness
+-------------
+
+Il bonus viene contato quando e' positivo.
+
+Esempi:
+
+- balanced/low:
+  circa 7-9 mila bonus;
+
+- balanced/high:
+  oltre 110 mila;
+
+- peak/high:
+  oltre 130 mila.
+
+Fairness e' quindi attiva e sempre piu' presente con il carico.
+
+
+33.7 Platoon
+-------------
+
+Gli specialisti platoon si attivano:
+
+- balanced/low:
+  172 step per x2, 203 per x4;
+
+- balanced/high:
+  654 per x2, 1140 per x4;
+
+- peak/high:
+  527 per x2, 842 per x4.
+
+La variante x4 non solo puo' estendere piu' a lungo, ma accumula piu' step
+di estensione.
+
+Nel super, invece, la modalita' platoon finale e' quasi assente. Il detector
+funziona negli specialisti, ma la soglia del router e la priorita' delle
+altre regole rendono raro il routing verso platoon.
+
+
+33.8 Safe nel super
+-------------------
+
+Il super usa spillback solo in safe.
+
+Peak/high:
+
+- 161 block event;
+- 13910 block step.
+
+Sono valori molto inferiori allo spillback puro:
+
+- 838-875 event;
+- 88-99 mila block step.
+
+La modifica "safe ultima risorsa" ha quindi un effetto concreto:
+
+- protezione ancora disponibile;
+- frequenza molto ridotta.
+
+
+33.9 Perche' i contatori non sono percentuali dirette
+-----------------------------------------------------
+
+I contatori sono sommati su:
+
+- tutti i TLS;
+- tutti gli step;
+- tutta la simulazione.
+
+Non sono:
+
+- numero di secondi globali;
+- numero di decisioni del sistema come entita' unica.
+
+Per ottenere percentuali di modalita' del super si divide ogni mode_step
+count per la somma dei mode_step count.
+
+
+34. CONFRONTO CONTROLLATO TRA RUN 22, 23 E 24
+==============================================
+
+34.1 Perche' il confronto e' particolarmente valido
+----------------------------------------------------
+
+Le tre run usano:
+
+- stessa mappa;
+- stessi population set;
+- stesso seed;
+- stessa domanda;
+- stessi 7000 step;
+- stessi specialisti;
+- stessi fixed.
+
+I risultati degli scenari diversi da mp_super sono identici tra le tre run.
+
+Questo e' atteso perche':
+
+- la popolazione e' deterministica dato il seed;
+- SUMO produce lo stesso caso;
+- i flag specialistici non cambiano.
+
+Quindi le differenze di mp_super isolano le modifiche al router.
+
+
+34.2 Run 22: router aggressivo
+------------------------------
+
+Soglie piu' basse:
+
+- entra prima nei rami MP;
+- safe piu' accessibile;
+- imbalance piu' facile;
+- streak 3.
+
+Vittorie:
+
+- 6 su 9.
+
+Punti forti:
+
+- tutti i low;
+- tutti i medium.
+
+Punti deboli:
+
+- high specialistici.
+
+
+34.3 Run 23: router piu' conservativo
+-------------------------------------
+
+Soglie alzate:
+
+- safe ridotto;
+- LTA e Nmin piu' strutturati;
+- streak 4.
+
+Effetto positivo:
+
+- balanced/high passa da 729.46 a 682.14;
+- diventa vincitore.
+
+Effetti negativi:
+
+- balanced/medium:
+  379.90 -> 462.68;
+
+- skewed/medium:
+  597.24 -> 731.41;
+
+- peak/medium:
+  874.14 -> 957.08;
+
+- peak/high:
+  1299.60 -> 1426.84.
+
+Conclusione:
+
+- migliorare high balanced ha danneggiato il medio;
+- una singola retaratura globale non risolve tutti i regimi.
+
+
+34.4 Run 24: nuove feature
+--------------------------
+
+Sono introdotti esplicitamente:
+
+- wait_imbalance;
+- burstiness;
+- safe a 0.97;
+- separazione LTA/Nmin piu' chiara.
+
+Effetti rispetto a run 23:
+
+- balanced/low:
+  197.90 -> 190.09;
+
+- balanced/medium:
+  462.68 -> 383.35;
+
+- peak/low:
+  445.51 -> 408.26;
+
+- peak/medium:
+  957.08 -> 892.89;
+
+- skewed/medium:
+  731.41 -> 703.57.
+
+Peggioramenti:
+
+- balanced/high:
+  682.14 -> 783.62;
+
+- skewed/high:
+  1086.54 -> 1103.28;
+
+Miglioramento parziale:
+
+- peak/high:
+  1426.84 -> 1334.64.
+
+
+34.5 Significato
+----------------
+
+Le feature nuove recuperano il medio e i picchi low.
+
+Tuttavia:
+
+- le soglie assolute sono ancora difficili da calibrare;
+- la media delle feature e' molto bassa;
+- il router resta spesso statico;
+- balanced/high perde il buon equilibrio della run 23.
+
+Una possibile evoluzione non e' semplicemente alzare o abbassare tutto.
+
+Serve:
+
+- isteresi per feature;
+- finestre temporali;
+- soglie calibrate per percentili;
+- un obiettivo che includa throughput.
+
+
+35. LAVORO OPERATIVO SU SERVER E WORKSTATION LOCALE
+===================================================
+
+35.1 Uso del server
+-------------------
+
+Durante il progetto le campagne lunghe sono state eseguite anche sul server:
+
+   pccabri2.mat.unimo.it
+
+La directory di lavoro usata era:
+
+   ~/sumo-traffic-control
+
+Il codice veniva sincronizzato con la versione locale prima dei run.
+
+
+35.2 Avvio con nohup
+--------------------
+
+I batch venivano avviati con nohup per:
+
+- non dipendere dalla sessione SSH;
+- continuare dopo la disconnessione;
+- salvare tutto in un log.
+
+Struttura tipica:
+
+   cd ~/sumo-traffic-control
+
+   nohup ./.venv/bin/python utils/run_ablation.py \
+     ... \
+     > logs/ablation/<nome>.log 2>&1 &
+
+Il PID restituito dalla shell permetteva di controllare o fermare il job.
+
+
+35.3 Importanza della directory corrente
+----------------------------------------
+
+I comandi usano path relativi:
+
+- ./.venv;
+- utils/run_ablation.py;
+- logs/ablation.
+
+Devono quindi essere lanciati dalla root della repository.
+
+Entrare in logs/ e rilanciare lo stesso comando senza tornare alla root
+causerebbe errori di path.
+
+
+35.4 Controllo del progresso
+----------------------------
+
+Metodi usati:
+
+- cat logs/ablation/progress.txt;
+- tail del file nohup;
+- controllo dei processi;
+- lettura latest_run.txt;
+- ispezione delle directory run.
+
+Un valore come 64/66 fail segnala:
+
+- processo batch vivo ma casi runner falliti;
+- oppure incompatibilita' tra codice e comando;
+- non necessariamente un blocco di SUMO.
+
+
+35.5 Aggiornamento non allineato
+--------------------------------
+
+Quando un comando contiene flag nuovi, il server deve avere:
+
+- parser aggiornato;
+- scenario pack aggiornato;
+- controller aggiornato;
+- test e utility coerenti.
+
+Se viene aggiornato solo un file, possono verificarsi:
+
+- argomento non riconosciuto;
+- scenario inesistente;
+- colonne mancanti;
+- fallimenti immediati di tutti i casi.
+
+
+35.6 Esecuzione locale ad alta potenza
+--------------------------------------
+
+La workstation locale usata per le prove complete aveva:
+
+- Ryzen 9 9950X3D;
+- Radeon 9070 XT.
+
+La GPU non e' il fattore principale.
+
+Con jobs 16:
+
+- molti processi SUMO lavorano insieme;
+- la CPU viene saturata;
+- le ventole aumentano;
+- il tempo totale si riduce;
+- il rumore e il consumo aumentano.
+
+
+35.7 Limitazione dei thread interni
+-----------------------------------
+
+Sono stati usati:
+
+   OMP_NUM_THREADS=1
+   MKL_NUM_THREADS=1
+   OPENBLAS_NUM_THREADS=1
+
+Scopo:
+
+- evitare che ogni processo apra altri thread;
+- mantenere jobs come vero limite di parallelismo;
+- ridurre oversubscription.
+
+
+35.8 Arresto dei test
+---------------------
+
+Alcune run sono state fermate per:
+
+- rumore;
+- temperatura percepita;
+- scelta di rimandare il batch completo;
+- configurazioni da correggere.
+
+Questo spiega directory con solo config_resolved.yaml, per esempio run_0021.
+
+
+35.9 Resume
+-----------
+
+La pipeline non implementa un vero checkpoint/resume.
+
+Possiede:
+
+- output per caso;
+- progress;
+- run directory;
+- log.
+
+Ma al riavvio:
+
+- crea una nuova run;
+- non rileva automaticamente i casi gia' completati;
+- non riprende la coda residua.
+
+Una futura funzione resume dovrebbe:
+
+1. leggere config_resolved;
+2. leggere run_results;
+3. verificare output validi;
+4. ricostruire solo i casi mancanti;
+5. mantenere lo stesso run_id;
+6. evitare duplicati.
+
+
+35.10 Accesso remoto durante questa ricostruzione
+-------------------------------------------------
+
+Per il presente documento e' stato tentato accesso SSH in sola lettura.
+
+L'autenticazione non e' riuscita.
+
+Non sono stati:
+
+- modificati file remoti;
+- fermati processi;
+- avviati job;
+- cancellati risultati.
+
+
+36. RIPRODUCIBILITA', DIMENSIONE DEI BATCH E COSTI COMPUTAZIONALI
+=================================================================
+
+36.1 Formula del numero di run
+------------------------------
+
+   N = mappe * set * domande * seed * scenari
+
+Esempi:
+
+- Bologna, balanced/skewed/peak, tre domande, un seed, 20 scenari:
+  180;
+
+- stessa campagna con due seed:
+  360;
+
+- solo skewed/peak:
+  120 con un seed;
+
+- solo low su tre set:
+  60 con un seed.
+
+
+36.2 Step non equivalgono a veicoli
+-----------------------------------
+
+7000 step con step-length 1 significa:
+
+- massimo 7000 secondi simulati.
+
+Non significa:
+
+- 7000 veicoli;
+- 7000 decisioni globali;
+- durata wall-clock di 7000 secondi.
+
+
+36.3 Tempo wall-clock
+---------------------
+
+Il tempo dipende da:
+
+- dimensione rete;
+- numero veicoli attivi;
+- congestione;
+- controller;
+- numero TLS;
+- output;
+- jobs;
+- CPU.
+
+Una simulazione high congestionata puo' costare molto piu' di una low.
+
+
+36.4 Seed
+---------
+
+Il seed controlla:
+
+- route estratte;
+- depart;
+- tipi di veicolo.
+
+Con lo stesso seed:
+
+- la popolazione e' identica;
+- il confronto tra controller e' paired.
+
+Con piu' seed:
+
+- si misura robustezza;
+- si riduce il rischio di overfitting a una popolazione.
+
+
+36.5 Determinismo
+-----------------
+
+I risultati identici degli specialisti tra run 22-24 mostrano un elevato
+determinismo nella configurazione usata.
+
+Questo e' utile per il tuning, ma non sostituisce i seed multipli.
+
+
+36.6 Perche' 288000 max steps era eccessivo
+--------------------------------------------
+
+288000 secondi simulati equivalgono a:
+
+   80 ore di tempo simulato
+
+per singolo caso.
+
+In un batch con decine o centinaia di casi sarebbe sproporzionato.
+
+La domanda parte nei primi 3600 secondi. Una durata di 5400-7200:
+
+- lascia 1800-3600 secondi per smaltire;
+- e' molto piu' coerente con l'esperimento.
+
+
+36.7 Perche' 4000 puo' essere corto
+-----------------------------------
+
+Con partenze fino a 3600:
+
+- restano solo 400 secondi dopo l'ultima partenza;
+- i viaggi lunghi non terminano;
+- la censura cresce.
+
+4000 e' utile per:
+
+- test veloce;
+- attivazione di feature;
+- sanity check.
+
+Non e' ideale per una valutazione finale.
+
+
+36.8 Perche' 7000 e' un compromesso
+------------------------------------
+
+Con 7000:
+
+- la finestra post-domanda e' 3400 secondi;
+- low e medium spesso si svuotano;
+- high difficile resta censurato;
+- il costo computazionale resta gestibile.
+
+
+37. DECISIONI PROGETTUALI, ALTERNATIVE SCARTATE E COMPROMESSI
+=============================================================
+
+37.1 Un solo controller modulare
+--------------------------------
+
+Scelta:
+
+- una classe MaxPressureController;
+- feature abilitate da flag.
+
+Alternativa:
+
+- una sottoclasse per ogni variante.
+
+Vantaggio della scelta:
+
+- meno duplicazione;
+- formule condivise;
+- scenario pack semplice.
+
+Costo:
+
+- classe molto grande;
+- molte combinazioni;
+- maggiore complessita' interna.
+
+
+37.2 Rule-based invece di rete neurale
+--------------------------------------
+
+Scelta:
+
+- mp_super rule-based.
+
+Motivi:
+
+- pochi dati;
+- necessita' di spiegabilita';
+- soglie leggibili;
+- debug possibile;
+- nessun training separato.
+
+Una rete neurale avrebbe richiesto:
+
+- dataset molto maggiore;
+- definizione del reward;
+- generalizzazione;
+- validazione;
+- interpretazione piu' difficile.
+
+
+37.3 Decision tree discusso ma non implementato
+-----------------------------------------------
+
+Un tree non richiede regole scritte a mano se viene addestrato.
+
+Procedura teorica:
+
+1. registrare feature live;
+2. eseguire gli specialisti;
+3. stabilire chi produce il reward migliore;
+4. usare il vincitore come label;
+5. addestrare il tree;
+6. esportare le soglie apprese.
+
+Non e' stato implementato perche' mancavano dati temporali sufficienti.
+
+
+37.4 Route skew non manuale
+---------------------------
+
+Scelta:
+
+- non scegliere a mano le route piu' trafficate ad ogni run;
+- definire una distribuzione;
+- lasciare al seed l'estrazione.
+
+Vantaggio:
+
+- riproducibilita';
+- meno bias manuale;
+- piu' variabilita' con seed diversi.
+
+Limite:
+
+- edge_weighted favorisce route lunghe, non necessariamente i veri OD di
+  Bologna;
+- non e' una domanda calibrata da dati reali.
+
+
+37.5 Safe mantenuto ma raro
+---------------------------
+
+Scelta:
+
+- non eliminare safe;
+- alzare la soglia;
+- richiedere carico e criticita' aggiuntiva.
+
+Motivo:
+
+- una rete puo' entrare davvero in spillback;
+- togliere ogni protezione sarebbe rischioso;
+- usarla normalmente peggiora.
+
+
+37.6 fixed_base rimosso dai test standard
+-----------------------------------------
+
+Scelta:
+
+- mantenerlo come legacy;
+- non includerlo nei baseline classici.
+
+Motivo:
+
+- baseline ambiguo;
+- program0 e tuned sono piu' interpretabili;
+- meno scenari inutili.
+
+
+37.7 Campi legacy estranei all'obiettivo
+----------------------------------------
+
+metrics.py conserva due campi SUMO legacy relativi a emissioni e consumo.
+Non sono feature del controller, non sono criteri del ranking e non sono
+stati usati per interpretare i risultati. La valutazione del progetto e'
+interamente focalizzata su efficienza, flusso e completamento dei viaggi.
+
+
+37.8 Una sola metrica per winners
+---------------------------------
+
+Scelta attuale:
+
+- winner = minimo wait.
+
+Vantaggio:
+
+- semplice;
+- coerente con obiettivo iniziale.
+
+Costo:
+
+- ignora throughput;
+- crea ranking discutibili in high.
+
+E' una parte da migliorare prima di una valutazione definitiva.
+
+
+38. LIMITI SPECIFICI DELL'IMPLEMENTAZIONE CORRENTE
+==================================================
+
+38.1 Nessuna normalizzazione della pressione
+--------------------------------------------
+
+La pressione e' una somma grezza.
+
+Possibile miglioramento:
+
+- dividere per movimenti;
+- pesare per lane;
+- pesare per sat flow;
+- usare queue ratio.
+
+
+38.2 Nessun coordinamento tra TLS
+---------------------------------
+
+Ogni TLS decide localmente.
+
+Possibile miglioramento:
+
+- pressione di rete;
+- messaggi tra incroci;
+- offset adattivi;
+- informazioni sui plotoni a monte.
+
+
+38.3 Load basato solo su halting
+--------------------------------
+
+Veicoli in movimento lento ma non classificati come halting possono essere
+sottostimati.
+
+Possibile miglioramento:
+
+- occupancy;
+- vehicle count;
+- speed;
+- density;
+- combinazione multi-feature.
+
+
+38.4 Burstiness step-to-step
+----------------------------
+
+Il confronto tra step consecutivi produce valori piccoli e rumorosi.
+
+Possibile miglioramento:
+
+- finestra mobile;
+- confronto con media lunga;
+- deviazione standard;
+- peak detector.
+
+
+38.5 Wait imbalance dipende da phase demand
+-------------------------------------------
+
+Il timer:
+
+- cresce solo se la fase ha domanda;
+- si azzera se la domanda sparisce;
+- si azzera quando la fase e' corrente.
+
+Non misura direttamente il waiting time dei singoli veicoli.
+
+
+38.6 Platoon solo sulla fase corrente
+-------------------------------------
+
+Il detector viene aggiornato per le lane della fase corrente.
+
+Questo e' adatto all'estensione, ma limita la capacita' del router di
+prevedere un platoon su una fase ancora rossa.
+
+Possibile miglioramento:
+
+- tracciare tutte le lane in ingresso;
+- prevedere arrivo alla stop line;
+- selezionare una fase futura.
+
+
+38.7 Downstream score della fase corrente
+-----------------------------------------
+
+Il super snapshot misura il massimo downstream della fase corrente.
+
+Non confronta direttamente:
+
+- downstream di tutte le fasi candidate;
+- rischio relativo tra alternative.
+
+
+38.8 Safe usa parametri globali
+-------------------------------
+
+Quando il super entra in safe:
+
+- abilita hard spillback;
+- abilita downstream penalty.
+
+I parametri effettivi non sono tutti duplicati nel profilo super. Alcuni
+restano i default generali del controller.
+
+Questo rende la modalita' safe meno indipendente di LTA e Nmin.
+
+
+38.9 Phase-level hard block
+---------------------------
+
+Il blocco non e' movement-level nella decisione finale.
+
+Possibile miglioramento:
+
+- sommare solo i movimenti disponibili;
+- usare penalita' molto alta;
+- distinguere fasi con movimenti separabili.
+
+
+38.10 File vehicletypes condiviso
+---------------------------------
+
+Il runner genera un file globale.
+
+Nelle campagne correnti il contenuto e' coerente, perche':
+
+- stessa distribuzione;
+- stesso profilo.
+
+Con batch paralleli diversi o profili differenti si potrebbe creare una
+race condition.
+
+Possibile miglioramento:
+
+- file vType per run;
+- additional file temporaneo;
+- directory isolata.
+
+
+38.11 Nessun test unitario diretto del controller
+-------------------------------------------------
+
+I test presenti coprono:
+
+- popolazione;
+- preset;
+- scenario selection.
+
+Non coprono direttamente:
+
+- pressione;
+- LTA;
+- Nmin;
+- state transition;
+- super routing.
+
+La dipendenza da TraCI rende i test piu' complessi, ma si potrebbero usare:
+
+- mock;
+- funzioni pure estratte;
+- test di integrazione su una mappa minima.
+
+
+38.12 Un solo seed finale
+-------------------------
+
+E' il limite sperimentale piu' importante.
+
+Le differenze piccole, per esempio:
+
+- super 892.89;
+- mp_program0 901.63;
+
+potrebbero non essere stabili con altri seed.
+
+
+39. INTERPRETAZIONE DEL CONTRIBUTO SCIENTIFICO DEL TIROCINIO
+============================================================
+
+39.1 Tesi iniziale troppo semplice
+----------------------------------
+
+Ipotesi iniziale:
+
+   MP dinamico deve essere migliore del fisso.
+
+I dati la smentiscono nella forma universale.
+
+
+39.2 Risultato piu' interessante
+--------------------------------
+
+Il risultato reale e':
+
+   la superiorita' dipende dal regime, dalla domanda, dal costo degli switch,
+   dalla topologia e dal criterio di valutazione.
+
+
+39.3 Contributo algoritmico
+---------------------------
+
+Sono stati implementati e integrati:
+
+- MP;
+- LTA;
+- Nmin;
+- fairness;
+- spillback;
+- downstream;
+- platoon;
+- ibrido statico/dinamico;
+- meta-controller.
+
+
+39.4 Contributo sperimentale
+----------------------------
+
+Sono stati introdotti:
+
+- ablation;
+- seed;
+- population set;
+- domanda calibrata;
+- baseline esplicite;
+- metriche finali;
+- censura;
+- activation counters.
+
+
+39.5 Contributo metodologico
+----------------------------
+
+Il tirocinio dimostra un processo:
+
+1. implementare;
+2. misurare;
+3. scoprire che una feature non si attiva;
+4. aggiungere osservabilita';
+5. correggere la definizione;
+6. testare stress;
+7. evitare conclusioni basate su una sola metrica.
+
+
+39.6 Come presentare i risultati senza forzarli
+-----------------------------------------------
+
+Non dire:
+
+   "MP vince sempre."
+
+Dire:
+
+   "Il MP puro non e' universalmente superiore, ma le varianti ibride
+   regime-aware migliorano nettamente il piano fisso in gran parte dei
+   regimi testati."
+
+Non dire:
+
+   "Nmin e' il migliore in peak/high."
+
+Dire:
+
+   "Nmin minimizza il wait sui viaggi completati, ma con censura superiore
+   al 50%; mp_super completa molti piu' viaggi."
+
+
+39.7 Evidenza piu' forte
+------------------------
+
+Le evidenze piu' solide della run finale sono nei gruppi con censura bassa:
+
+- balanced/low;
+- balanced/medium;
+- skewed/low;
+- skewed/medium;
+- peak/low;
+- peak/medium.
+
+In questi gruppi:
+
+- super o program0 ibrido sono primi;
+- la maggior parte dei viaggi termina;
+- i confronti sono piu' credibili.
+
+
+39.8 Evidenza piu' debole
+-------------------------
+
+Skewed/high e peak/high:
+
+- forte censura;
+- gruppi completati differenti;
+- un solo seed.
+
+Sono stress test utili, ma non conclusioni definitive.
+
+
+39.9 Risultato finale formulato correttamente
+---------------------------------------------
+
+La formulazione piu' precisa e':
+
+"Il progetto ha sviluppato una piattaforma modulare per il controllo
+Max-Pressure e ha mostrato che l'integrazione tra program0 e strategie MP
+specializzate puo' superare il programma statico nella maggior parte dei
+regimi osservati. Il meta-controller finale e' il miglior generalista, ma la
+selezione ottimale nei regimi high richiede ancora metriche multi-obiettivo,
+piu' seed e una migliore calibrazione temporale delle feature."
+
+
+40. TRACCIA ESTESA PER SPIEGARE IL PROGETTO ORALMENTE
+=====================================================
+
+40.1 Apertura
+-------------
+
+"Il progetto parte da SUMO e TraCI. Ho costruito un controller
+Max-Pressure che legge le code sulle lane e sceglie dinamicamente tra le
+fasi gia' presenti nella mappa. Non creo nuove fasi: riuso i verdi, i gialli
+e gli all-red definiti dalla rete."
+
+
+40.2 MP base
+------------
+
+"Per ogni movimento calcolo coda in ingresso meno coda in uscita. Sommo i
+movimenti della fase. Dopo il minimo verde cambio solo se la fase migliore
+supera quella corrente di un margine."
+
+
+40.3 Moduli
+-----------
+
+"Ho poi aggiunto moduli separati: LTA per considerare il costo del giallo,
+Nmin per garantire servizio dopo lo switch, fairness contro starvation,
+downstream e spillback per la congestione a valle e platoon per non spezzare
+gruppi compatti."
+
+
+40.4 Prima lezione
+------------------
+
+"I primi test hanno mostrato che accendere tutte le feature peggiora. LTA e
+Nmin erano troppo conservativi, downstream troppo aggressivo e spillback
+non si attivava. Ho quindi isolato le feature in una tuning matrix."
+
+
+40.5 Pipeline
+-------------
+
+"Per rendere il confronto riproducibile ho costruito una pipeline che genera
+le popolazioni con seed, esegue i controller in parallelo, salva ogni caso,
+calcola report e registra i fallimenti."
+
+
+40.6 Realismo
+-------------
+
+"Ho aggiunto un profilo guidatore human_light e tre tipi di domanda:
+balanced uniforme, skewed concentrato su alcune route e peak anche
+concentrato nel tempo."
+
+
+40.7 Metriche
+-------------
+
+"Ho corretto le metriche usando tripinfo finale. Oltre a wait e travel
+registro time loss, completati, incompleti e censura. Questo e' importante
+perche' un wait basso puo' essere falso se molti viaggi non finiscono."
+
+
+40.8 Baseline
+-------------
+
+"Il baseline serio e' fixed_program0, cioe' il piano statico originale della
+mappa. Su Bologna e' molto forte, soprattutto in low. fixed_tuned porta i
+verdi principali a 30 secondi, ma spesso perde la taratura originale."
+
+
+40.9 Perche' MP puro perde
+--------------------------
+
+"MP paga il costo dello switch, usa informazione locale e puo' rompere una
+buona coordinazione statica. In low le pressioni sono piccole e rumorose,
+quindi adattarsi non e' sempre conveniente."
+
+
+40.10 mp_program0
+-----------------
+
+"Per questo ho creato mp_program0: sotto una soglia lascia realmente
+scorrere program0, sopra la soglia passa a MP. Usa isteresi e richiede piu'
+step consecutivi per non oscillare."
+
+
+40.11 mp_super
+--------------
+
+"Poi ho osservato che LTA vinceva skewed/high e Nmin peak/high. Ho creato
+mp_super, che per ogni semaforo legge load, imbalance, wait imbalance,
+burstiness, platoon e downstream e sceglie il ramo."
+
+
+40.12 Risultato
+---------------
+
+"Nella campagna finale ci sono 180 casi: tre domande, tre distribuzioni e 20
+controller. mp_super vince 5 gruppi su 9 e batte fixed_program0 sul wait in
+8 gruppi su 9."
+
+
+40.13 Precisazione high
+-----------------------
+
+"Nei due high piu' difficili gli specialisti hanno wait minore, ma censura
+intorno al 50%. mp_super completa circa 1400-1500 viaggi in piu'. Quindi non
+posso scegliere il vincitore guardando solo il wait."
+
+
+40.14 Conclusione
+-----------------
+
+"La conclusione non e' che MP vince sempre. La conclusione e' che un MP
+ibrido e regime-aware e' piu' promettente del MP puro, e che una valutazione
+seria deve considerare insieme attesa, throughput e censura."
+
+
+40.15 Se viene chiesto cosa manca
+---------------------------------
+
+"Mancano piu' seed, una durata maggiore per gli high, un ranking
+multi-obiettivo, feature su finestre temporali e una validazione su altre
+mappe. Il passo successivo potrebbe essere calibrare il rule-based con dati
+o addestrare un decision tree spiegabile."
+
+
+FINE DEL DOCUMENTO
+==================

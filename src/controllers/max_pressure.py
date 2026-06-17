@@ -76,15 +76,17 @@ class MaxPressureController(TrafficController):
         program0_mode_streak: int = 3,
         super_router: bool = False,
         super_load_ref: float = 3.5,
-        super_low_load: float = 0.42,
-        super_high_load: float = 0.68,
-        super_imbalance_threshold: float = 0.60,
-        super_wait_imbalance_threshold: float = 0.60,
-        super_burstiness_threshold: float = 0.55,
-        super_platoon_threshold: float = 0.75,
+        super_low_load: float = 0.38,
+        super_program0_exit_load: float = 0.28,
+        super_high_load: float = 0.62,
+        super_imbalance_threshold: float = 0.50,
+        super_wait_imbalance_threshold: float = 0.50,
+        super_burstiness_threshold: float = 0.10,
+        super_platoon_threshold: float = 0.50,
         super_downstream_threshold: float = 0.97,
+        super_safe_enabled: bool = True,
         super_mode_streak: int = 4,
-        super_nmin_load: float = 0.78,
+        super_nmin_load: float = 0.72,
         super_lta_gain: float = 0.60,
         super_lta_sat_flow: float = 0.50,
         super_nmin_alpha: float = 1.20,
@@ -131,12 +133,17 @@ class MaxPressureController(TrafficController):
         self.super_router = super_router
         self.super_load_ref = super_load_ref
         self.super_low_load = super_low_load
+        self.super_program0_exit_load = min(
+            super_low_load,
+            max(0.0, super_program0_exit_load),
+        )
         self.super_high_load = super_high_load
         self.super_imbalance_threshold = super_imbalance_threshold
         self.super_wait_imbalance_threshold = super_wait_imbalance_threshold
         self.super_burstiness_threshold = super_burstiness_threshold
         self.super_platoon_threshold = super_platoon_threshold
         self.super_downstream_threshold = super_downstream_threshold
+        self.super_safe_enabled = super_safe_enabled
         self.super_mode_streak = super_mode_streak
         self.super_nmin_load = super_nmin_load
         self.super_lta_gain = super_lta_gain
@@ -425,7 +432,9 @@ class MaxPressureController(TrafficController):
             headway = self._lane_headway(in_lane, sim_time)
             if headway is None:
                 continue
-            score = max(0.0, min(1.0, 1.0 - (headway / threshold)))
+            # Match the standalone platoon controller: a valid compact arrival
+            # is one whose measured headway is within the configured limit.
+            score = 1.0 if headway <= threshold else 0.0
             if score > best_score:
                 best_score = score
         return best_score
@@ -460,19 +469,31 @@ class MaxPressureController(TrafficController):
             downstream_score=self._phase_downstream_score(tl_data, current_phase),
         )
 
-    def _select_super_mode(self, snapshot: _RegimeSnapshot) -> str:
+    def _select_super_mode(
+        self,
+        snapshot: _RegimeSnapshot,
+        current_mode: str = "program0",
+    ) -> str:
         bursty = snapshot.burstiness >= self.super_burstiness_threshold
         wait_starved = snapshot.wait_imbalance >= self.super_wait_imbalance_threshold
         imbalanced = snapshot.imbalance >= self.super_imbalance_threshold
         platoon = snapshot.platoon_score >= self.super_platoon_threshold
 
         if (
-            snapshot.downstream_score >= self.super_downstream_threshold
+            self.super_safe_enabled
+            and snapshot.downstream_score >= self.super_downstream_threshold
             and snapshot.load >= self.super_nmin_load
             and (bursty or wait_starved)
         ):
             return "safe"
-        if snapshot.load < self.super_low_load:
+        # A lower exit threshold prevents short load dips from immediately
+        # returning an active MP branch to program0.
+        program0_threshold = (
+            self.super_low_load
+            if current_mode == "program0"
+            else self.super_program0_exit_load
+        )
+        if snapshot.load < program0_threshold:
             return "program0"
         if snapshot.load >= self.super_nmin_load:
             if bursty:
@@ -1043,7 +1064,7 @@ class MaxPressureController(TrafficController):
                     downstream_penalty_enabled=False,
                 )
                 snapshot = self._regime_snapshot(tl_data, current_phase, phase_demand, sim_time)
-                candidate_mode = self._select_super_mode(snapshot)
+                candidate_mode = self._select_super_mode(snapshot, tl_data.super_mode)
                 committed = self._apply_super_mode(tl_id, tl_data, current_phase, phase_demand, candidate_mode)
                 self._record_super_snapshot(snapshot, tl_data.super_mode)
                 if committed:
