@@ -1,0 +1,1061 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.2 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global}
+    \entry{anderson2018cyclebased}{article}{}
+      \name{author}{4}{}{%
+        {{hash=86d643b89aa5073a70d1460f05d28d69}{%
+           family={Anderson},
+           familyi={A\bibinitperiod},
+           given={Leah},
+           giveni={L\bibinitperiod}}}%
+        {{hash=866a348e075b878d5c7d0dcc7c80950a}{%
+           family={Pumir},
+           familyi={P\bibinitperiod},
+           given={Thomas},
+           giveni={T\bibinitperiod}}}%
+        {{hash=93782a52d31b38b91cd387f8a3208931}{%
+           family={Triantafyllos},
+           familyi={T\bibinitperiod},
+           given={Dimitrios},
+           giveni={D\bibinitperiod}}}%
+        {{hash=22fce57660cf7cfb60f22c85ea5ceeb5}{%
+           family={Bayen},
+           familyi={B\bibinitperiod},
+           given={Alexandre\bibnamedelima M.},
+           giveni={A\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+      }
+      \strng{namehash}{77aaf079cbee94efae95af0af3e7c2a3}
+      \strng{fullhash}{55c029c566363ddd257260f315862c84}
+      \strng{bibnamehash}{77aaf079cbee94efae95af0af3e7c2a3}
+      \strng{authorbibnamehash}{77aaf079cbee94efae95af0af3e7c2a3}
+      \strng{authornamehash}{77aaf079cbee94efae95af0af3e7c2a3}
+      \strng{authorfullhash}{55c029c566363ddd257260f315862c84}
+      \field{labelalpha}{And+18}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Networks and Heterogeneous Media}
+      \field{number}{2}
+      \field{title}{Stability and Implementation of a Cycle-Based Max Pressure Controller for Signalized Traffic Networks}
+      \field{volume}{13}
+      \field{year}{2018}
+      \field{pages}{241\bibrangedash 260}
+      \range{pages}{20}
+      \verb{doi}
+      \verb 10.3934/nhm.2018011
+      \endverb
+    \endentry
+    \entry{behrisch2011sumo}{inproceedings}{}
+      \name{author}{4}{}{%
+        {{hash=1c9ff405f088e3a55884b1330deced62}{%
+           family={Behrisch},
+           familyi={B\bibinitperiod},
+           given={Michael},
+           giveni={M\bibinitperiod}}}%
+        {{hash=9310c4c9aa1598550d0932677c088e50}{%
+           family={Bieker},
+           familyi={B\bibinitperiod},
+           given={Laura},
+           giveni={L\bibinitperiod}}}%
+        {{hash=41bf4800dcf028820a93322a7128a622}{%
+           family={Erdmann},
+           familyi={E\bibinitperiod},
+           given={Jakob},
+           giveni={J\bibinitperiod}}}%
+        {{hash=e31a4d713bacf1b05d3efb654bc1145b}{%
+           family={Krajzewicz},
+           familyi={K\bibinitperiod},
+           given={Daniel},
+           giveni={D\bibinitperiod}}}%
+      }
+      \strng{namehash}{c3a236322a4bcb1eb5a001b749befb2f}
+      \strng{fullhash}{8b8c9e16c696640d9b3e9a458e8f2b53}
+      \strng{bibnamehash}{c3a236322a4bcb1eb5a001b749befb2f}
+      \strng{authorbibnamehash}{c3a236322a4bcb1eb5a001b749befb2f}
+      \strng{authornamehash}{c3a236322a4bcb1eb5a001b749befb2f}
+      \strng{authorfullhash}{8b8c9e16c696640d9b3e9a458e8f2b53}
+      \field{labelalpha}{Beh+11}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the Third International Conference on Advances in System Simulation}
+      \field{title}{{SUMO} -- Simulation of Urban MObility: An Overview}
+      \field{urlday}{13}
+      \field{urlmonth}{6}
+      \field{urlyear}{2026}
+      \field{year}{2011}
+      \field{urldateera}{ce}
+      \field{pages}{63\bibrangedash 68}
+      \range{pages}{6}
+      \verb{urlraw}
+      \verb https://sumo.dlr.de/pdf/simul_2011_3_40_50150.pdf
+      \endverb
+      \verb{url}
+      \verb https://sumo.dlr.de/pdf/simul_2011_3_40_50150.pdf
+      \endverb
+    \endentry
+    \entry{cesme2012gapout}{article}{}
+      \name{author}{2}{}{%
+        {{hash=d982a3af6a847e83bc9ba78182d77afc}{%
+           family={Cesme},
+           familyi={C\bibinitperiod},
+           given={Burak},
+           giveni={B\bibinitperiod}}}%
+        {{hash=e3e164b724148bc0392f4a68bcf53996}{%
+           family={Furth},
+           familyi={F\bibinitperiod},
+           given={Peter\bibnamedelima G.},
+           giveni={P\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
+      }
+      \strng{namehash}{5361cc2d66f3f56bfeab63174c9ce857}
+      \strng{fullhash}{5361cc2d66f3f56bfeab63174c9ce857}
+      \strng{bibnamehash}{5361cc2d66f3f56bfeab63174c9ce857}
+      \strng{authorbibnamehash}{5361cc2d66f3f56bfeab63174c9ce857}
+      \strng{authornamehash}{5361cc2d66f3f56bfeab63174c9ce857}
+      \strng{authorfullhash}{5361cc2d66f3f56bfeab63174c9ce857}
+      \field{labelalpha}{CF12}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Record}
+      \field{number}{1}
+      \field{title}{Multiheadway Gap-Out Logic for Actuated Control on Multilane Approaches}
+      \field{volume}{2311}
+      \field{year}{2012}
+      \field{pages}{117\bibrangedash 123}
+      \range{pages}{7}
+      \verb{doi}
+      \verb 10.3141/2311-11
+      \endverb
+    \endentry
+    \entry{sumodocs2026}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f30a3cfb89966d23efca40f849b9cb2b}{%
+           family={{Eclipse SUMO Project}},
+           familyi={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{fullhash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{bibnamehash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{authorbibnamehash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{authornamehash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{authorfullhash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \field{extraname}{1}
+      \field{labelalpha}{Ecl26}
+      \field{sortinit}{E}
+      \field{sortinithash}{8da8a182d344d5b9047633dfc0cc9131}
+      \field{extraalpha}{1}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{SUMO} Documentation}
+      \field{urlday}{13}
+      \field{urlmonth}{6}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://sumo.dlr.de/docs/
+      \endverb
+      \verb{url}
+      \verb https://sumo.dlr.de/docs/
+      \endverb
+    \endentry
+    \entry{tracidocs2026}{online}{}
+      \name{author}{1}{}{%
+        {{hash=f30a3cfb89966d23efca40f849b9cb2b}{%
+           family={{Eclipse SUMO Project}},
+           familyi={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{fullhash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{bibnamehash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{authorbibnamehash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{authornamehash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \strng{authorfullhash}{f30a3cfb89966d23efca40f849b9cb2b}
+      \field{extraname}{2}
+      \field{labelalpha}{Ecl26}
+      \field{sortinit}{E}
+      \field{sortinithash}{8da8a182d344d5b9047633dfc0cc9131}
+      \field{extraalpha}{2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{{TraCI} Documentation}
+      \field{urlday}{13}
+      \field{urlmonth}{6}
+      \field{urlyear}{2026}
+      \field{year}{2026}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://sumo.dlr.de/docs/TraCI.html
+      \endverb
+      \verb{url}
+      \verb https://sumo.dlr.de/docs/TraCI.html
+      \endverb
+    \endentry
+    \entry{gartner1983opac}{article}{}
+      \name{author}{1}{}{%
+        {{hash=0d2048bf35cd42191159fff57da28f29}{%
+           family={Gartner},
+           familyi={G\bibinitperiod},
+           given={Nathan\bibnamedelima H.},
+           giveni={N\bibinitperiod\bibinitdelim H\bibinitperiod}}}%
+      }
+      \strng{namehash}{0d2048bf35cd42191159fff57da28f29}
+      \strng{fullhash}{0d2048bf35cd42191159fff57da28f29}
+      \strng{bibnamehash}{0d2048bf35cd42191159fff57da28f29}
+      \strng{authorbibnamehash}{0d2048bf35cd42191159fff57da28f29}
+      \strng{authornamehash}{0d2048bf35cd42191159fff57da28f29}
+      \strng{authorfullhash}{0d2048bf35cd42191159fff57da28f29}
+      \field{labelalpha}{Gar83}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Record}
+      \field{title}{{OPAC}: A Demand-Responsive Strategy for Traffic Signal Control}
+      \field{volume}{906}
+      \field{year}{1983}
+      \field{pages}{75\bibrangedash 81}
+      \range{pages}{7}
+    \endentry
+    \entry{gregoire2014unknownrouting}{inproceedings}{}
+      \name{author}{4}{}{%
+        {{hash=770e002b585d6b964ca55873e806e816}{%
+           family={Gregoire},
+           familyi={G\bibinitperiod},
+           given={Jean},
+           giveni={J\bibinitperiod}}}%
+        {{hash=7fe896e8ed8d5f30af73e472ebedcec9}{%
+           family={Frazzoli},
+           familyi={F\bibinitperiod},
+           given={Emilio},
+           giveni={E\bibinitperiod}}}%
+        {{hash=e1b899aa831b0ed225393f7ead37e614}{%
+           family={La\bibnamedelima Fortelle},
+           familyi={L\bibinitperiod\bibinitdelim F\bibinitperiod},
+           given={Arnaud},
+           giveni={A\bibinitperiod},
+           prefix={de},
+           prefixi={d\bibinitperiod}}}%
+        {{hash=460bcc0124751ceb5661357a4c319c04}{%
+           family={Wongpiromsarn},
+           familyi={W\bibinitperiod},
+           given={Tichakorn},
+           giveni={T\bibinitperiod}}}%
+      }
+      \strng{namehash}{22f99d37141e836c7e480f5c0a7ec0e5}
+      \strng{fullhash}{a7c3a8a9f1387c59145c86bac7f394d2}
+      \strng{bibnamehash}{22f99d37141e836c7e480f5c0a7ec0e5}
+      \strng{authorbibnamehash}{22f99d37141e836c7e480f5c0a7ec0e5}
+      \strng{authornamehash}{22f99d37141e836c7e480f5c0a7ec0e5}
+      \strng{authorfullhash}{a7c3a8a9f1387c59145c86bac7f394d2}
+      \field{extraname}{1}
+      \field{labelalpha}{Gre+14}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 19th IFAC World Congress}
+      \field{title}{Back-Pressure Traffic Signal Control with Unknown Routing Rates}
+      \field{urlday}{17}
+      \field{urlmonth}{6}
+      \field{urlyear}{2026}
+      \field{year}{2014}
+      \field{urldateera}{ce}
+      \field{pages}{11332\bibrangedash 11337}
+      \range{pages}{6}
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/1401.3357
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/1401.3357
+      \endverb
+    \endentry
+    \entry{gregoire2015capacity}{article}{}
+      \name{author}{5}{}{%
+        {{hash=7fbcb937b251bceed975dc1a2c99a6c1}{%
+           family={Gregoire},
+           familyi={G\bibinitperiod},
+           given={Julien},
+           giveni={J\bibinitperiod}}}%
+        {{hash=5ed5234cf4325577d2dbc966a0fb291a}{%
+           family={Qian},
+           familyi={Q\bibinitperiod},
+           given={Xiaoyan},
+           giveni={X\bibinitperiod}}}%
+        {{hash=7fe896e8ed8d5f30af73e472ebedcec9}{%
+           family={Frazzoli},
+           familyi={F\bibinitperiod},
+           given={Emilio},
+           giveni={E\bibinitperiod}}}%
+        {{hash=e1b899aa831b0ed225393f7ead37e614}{%
+           family={La\bibnamedelima Fortelle},
+           familyi={L\bibinitperiod\bibinitdelim F\bibinitperiod},
+           given={Arnaud},
+           giveni={A\bibinitperiod},
+           prefix={de},
+           prefixi={d\bibinitperiod}}}%
+        {{hash=460bcc0124751ceb5661357a4c319c04}{%
+           family={Wongpiromsarn},
+           familyi={W\bibinitperiod},
+           given={Tichakorn},
+           giveni={T\bibinitperiod}}}%
+      }
+      \strng{namehash}{eaeceacc7da3c14d1b0ba9e3dbf44888}
+      \strng{fullhash}{ae34ee913c67f29288672d657906c0cf}
+      \strng{bibnamehash}{eaeceacc7da3c14d1b0ba9e3dbf44888}
+      \strng{authorbibnamehash}{eaeceacc7da3c14d1b0ba9e3dbf44888}
+      \strng{authornamehash}{eaeceacc7da3c14d1b0ba9e3dbf44888}
+      \strng{authorfullhash}{ae34ee913c67f29288672d657906c0cf}
+      \field{extraname}{2}
+      \field{labelalpha}{Gre+15}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Control of Network Systems}
+      \field{number}{2}
+      \field{title}{Capacity-Aware Backpressure Traffic Signal Control}
+      \field{volume}{2}
+      \field{year}{2015}
+      \field{pages}{164\bibrangedash 173}
+      \range{pages}{10}
+      \verb{doi}
+      \verb 10.1109/TCNS.2014.2378871
+      \endverb
+    \endentry
+    \entry{kouvelas2014maximum}{article}{}
+      \name{author}{4}{}{%
+        {{hash=8c86d4ef498bde76c956a39929cda6b6}{%
+           family={Kouvelas},
+           familyi={K\bibinitperiod},
+           given={Anastasios},
+           giveni={A\bibinitperiod}}}%
+        {{hash=2be14215c616a940130d004a6a320b65}{%
+           family={Lioris},
+           familyi={L\bibinitperiod},
+           given={Jennie},
+           giveni={J\bibinitperiod}}}%
+        {{hash=dd62b58f0a44ac1697ce4602fdf2aae1}{%
+           family={Fayazi},
+           familyi={F\bibinitperiod},
+           given={S.\bibnamedelimi Alireza},
+           giveni={S\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=0690707bf7b98342cce0da056d121d00}{%
+           family={Varaiya},
+           familyi={V\bibinitperiod},
+           given={Pravin},
+           giveni={P\bibinitperiod}}}%
+      }
+      \strng{namehash}{a19cbf9be13c2ad4eb37d1601e680d28}
+      \strng{fullhash}{70389717d2048c77bc7b48144d7e021b}
+      \strng{bibnamehash}{a19cbf9be13c2ad4eb37d1601e680d28}
+      \strng{authorbibnamehash}{a19cbf9be13c2ad4eb37d1601e680d28}
+      \strng{authornamehash}{a19cbf9be13c2ad4eb37d1601e680d28}
+      \strng{authorfullhash}{70389717d2048c77bc7b48144d7e021b}
+      \field{labelalpha}{Kou+14}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Record}
+      \field{number}{1}
+      \field{title}{Maximum Pressure Controller for Stabilizing Queues in Signalized Arterial Networks}
+      \field{volume}{2421}
+      \field{year}{2014}
+      \field{pages}{133\bibrangedash 141}
+      \range{pages}{9}
+      \verb{doi}
+      \verb 10.3141/2421-15
+      \endverb
+    \endentry
+    \entry{le2015decentralized}{article}{}
+      \name{author}{6}{}{%
+        {{hash=fbbcff77bbd9e7c2305592aa2cf7da1d}{%
+           family={Le},
+           familyi={L\bibinitperiod},
+           given={Tien\bibnamedelima Mai},
+           giveni={T\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=d31e0ae87df220ae331e025217a67254}{%
+           family={Kovacs},
+           familyi={K\bibinitperiod},
+           given={Peter},
+           giveni={P\bibinitperiod}}}%
+        {{hash=3f76d697bf09c8c482f2f1420e659cfb}{%
+           family={Walton},
+           familyi={W\bibinitperiod},
+           given={Neil},
+           giveni={N\bibinitperiod}}}%
+        {{hash=04998ac3b06a6bbaf6bba8ac32d35a6c}{%
+           family={Vu},
+           familyi={V\bibinitperiod},
+           given={Hai\bibnamedelima L.},
+           giveni={H\bibinitperiod\bibinitdelim L\bibinitperiod}}}%
+        {{hash=62f9600e2b4841f48e956846952d2afc}{%
+           family={Andrew},
+           familyi={A\bibinitperiod},
+           given={Lachlan\bibnamedelimb L.\bibnamedelimi H.},
+           giveni={L\bibinitperiod\bibinitdelim L\bibinitperiod\bibinitdelim H\bibinitperiod}}}%
+        {{hash=6876735e46b11d7fc0c4938d42a85323}{%
+           family={Hoogendoorn},
+           familyi={H\bibinitperiod},
+           given={Serge\bibnamedelima P.},
+           giveni={S\bibinitperiod\bibinitdelim P\bibinitperiod}}}%
+      }
+      \strng{namehash}{2732cf0219776392373c78c83df4441f}
+      \strng{fullhash}{66d27d1620d31786ade6958e71e349ee}
+      \strng{bibnamehash}{2732cf0219776392373c78c83df4441f}
+      \strng{authorbibnamehash}{2732cf0219776392373c78c83df4441f}
+      \strng{authornamehash}{2732cf0219776392373c78c83df4441f}
+      \strng{authorfullhash}{66d27d1620d31786ade6958e71e349ee}
+      \field{labelalpha}{Le+15}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{Decentralized Signal Control for Urban Road Networks}
+      \field{volume}{58}
+      \field{year}{2015}
+      \field{pages}{431\bibrangedash 450}
+      \range{pages}{20}
+      \verb{doi}
+      \verb 10.1016/j.trc.2014.11.009
+      \endverb
+    \endentry
+    \entry{levin2023review}{article}{}
+      \name{author}{1}{}{%
+        {{hash=8d6cb12f8c695d82f26b2a3721ce6546}{%
+           family={Levin},
+           familyi={L\bibinitperiod},
+           given={Michael\bibnamedelima W.},
+           giveni={M\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+      }
+      \strng{namehash}{8d6cb12f8c695d82f26b2a3721ce6546}
+      \strng{fullhash}{8d6cb12f8c695d82f26b2a3721ce6546}
+      \strng{bibnamehash}{8d6cb12f8c695d82f26b2a3721ce6546}
+      \strng{authorbibnamehash}{8d6cb12f8c695d82f26b2a3721ce6546}
+      \strng{authornamehash}{8d6cb12f8c695d82f26b2a3721ce6546}
+      \strng{authorfullhash}{8d6cb12f8c695d82f26b2a3721ce6546}
+      \field{labelalpha}{Lev23}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Transportation Engineering, Part A: Systems}
+      \field{number}{4}
+      \field{title}{Max-Pressure Traffic Signal Timing: A Summary of Methodological and Experimental Results}
+      \field{volume}{149}
+      \field{year}{2023}
+      \field{pages}{03123001}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1061/JTEPBS.TEENG-7578
+      \endverb
+    \endentry
+    \entry{levin2020cyclical}{article}{}
+      \name{author}{3}{}{%
+        {{hash=8d6cb12f8c695d82f26b2a3721ce6546}{%
+           family={Levin},
+           familyi={L\bibinitperiod},
+           given={Michael\bibnamedelima W.},
+           giveni={M\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+        {{hash=28be05c3ccde18cf3d3f5d36142b4da8}{%
+           family={Hu},
+           familyi={H\bibinitperiod},
+           given={Jeffrey},
+           giveni={J\bibinitperiod}}}%
+        {{hash=65356275804607c34ef29b547345de35}{%
+           family={Odell},
+           familyi={O\bibinitperiod},
+           given={Michael},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{5bcb90e9e72af178d1c5da96822f8fc3}
+      \strng{fullhash}{5bcb90e9e72af178d1c5da96822f8fc3}
+      \strng{bibnamehash}{5bcb90e9e72af178d1c5da96822f8fc3}
+      \strng{authorbibnamehash}{5bcb90e9e72af178d1c5da96822f8fc3}
+      \strng{authornamehash}{5bcb90e9e72af178d1c5da96822f8fc3}
+      \strng{authorfullhash}{5bcb90e9e72af178d1c5da96822f8fc3}
+      \field{labelalpha}{LHO20}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{Max-Pressure Signal Control with Cyclical Phase Structure}
+      \field{volume}{120}
+      \field{year}{2020}
+      \field{pages}{102828}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.trc.2020.102828
+      \endverb
+    \endentry
+    \entry{li2019positionweighted}{article}{}
+      \name{author}{2}{}{%
+        {{hash=502de95c3193f5c283f4ef712520a97e}{%
+           family={Li},
+           familyi={L\bibinitperiod},
+           given={Li},
+           giveni={L\bibinitperiod}}}%
+        {{hash=6e905faf14be286572dced15663be930}{%
+           family={Jabari},
+           familyi={J\bibinitperiod},
+           given={Saif\bibnamedelima Eddin},
+           giveni={S\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
+      }
+      \strng{namehash}{93425cba8a3d4a6ed37eab57d95c4292}
+      \strng{fullhash}{93425cba8a3d4a6ed37eab57d95c4292}
+      \strng{bibnamehash}{93425cba8a3d4a6ed37eab57d95c4292}
+      \strng{authorbibnamehash}{93425cba8a3d4a6ed37eab57d95c4292}
+      \strng{authornamehash}{93425cba8a3d4a6ed37eab57d95c4292}
+      \strng{authorfullhash}{93425cba8a3d4a6ed37eab57d95c4292}
+      \field{labelalpha}{LJ19}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part B: Methodological}
+      \field{title}{Position Weighted Backpressure Intersection Control for Urban Networks}
+      \field{volume}{128}
+      \field{year}{2019}
+      \field{pages}{435\bibrangedash 461}
+      \range{pages}{27}
+      \verb{doi}
+      \verb 10.1016/j.trb.2019.08.005
+      \endverb
+    \endentry
+    \entry{liu2022delay}{article}{}
+      \name{author}{2}{}{%
+        {{hash=33104fd0f457a2964af323817a9d2016}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Hao},
+           giveni={H\bibinitperiod}}}%
+        {{hash=aed388c7f2bee006d4c8cdb6b21575a0}{%
+           family={Gayah},
+           familyi={G\bibinitperiod},
+           given={Vikash\bibnamedelima V.},
+           giveni={V\bibinitperiod\bibinitdelim V\bibinitperiod}}}%
+      }
+      \strng{namehash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{fullhash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{bibnamehash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{authorbibnamehash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{authornamehash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{authorfullhash}{28a9ad89387d4012522df6ca9a75bd89}
+      \field{extraname}{1}
+      \field{labelalpha}{LG22}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{A Novel Max Pressure Algorithm Based on Traffic Delay}
+      \field{volume}{143}
+      \field{year}{2022}
+      \field{pages}{103803}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.trc.2022.103803
+      \endverb
+    \endentry
+    \entry{liu2024nmp}{article}{}
+      \name{author}{2}{}{%
+        {{hash=33104fd0f457a2964af323817a9d2016}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Hao},
+           giveni={H\bibinitperiod}}}%
+        {{hash=aed388c7f2bee006d4c8cdb6b21575a0}{%
+           family={Gayah},
+           familyi={G\bibinitperiod},
+           given={Vikash\bibnamedelima V.},
+           giveni={V\bibinitperiod\bibinitdelim V\bibinitperiod}}}%
+      }
+      \strng{namehash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{fullhash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{bibnamehash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{authorbibnamehash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{authornamehash}{28a9ad89387d4012522df6ca9a75bd89}
+      \strng{authorfullhash}{28a9ad89387d4012522df6ca9a75bd89}
+      \field{extraname}{2}
+      \field{labelalpha}{LG24}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{{N-MP}: A Network-State-Based Max Pressure Algorithm Incorporating Regional Perimeter Control}
+      \field{volume}{168}
+      \field{year}{2024}
+      \field{pages}{104725}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.trc.2024.104725
+      \endverb
+    \endentry
+    \entry{mercader2020practical}{article}{}
+      \name{author}{3}{}{%
+        {{hash=dcd9f9544a98698e67da768099171246}{%
+           family={Mercader},
+           familyi={M\bibinitperiod},
+           given={Pablo},
+           giveni={P\bibinitperiod}}}%
+        {{hash=9f5a828539aefeeca3eaf17bb7f9d0c3}{%
+           family={Uwayid},
+           familyi={U\bibinitperiod},
+           given={Wajdi},
+           giveni={W\bibinitperiod}}}%
+        {{hash=7e126b91b7f3489a6004ffe6c32b611b}{%
+           family={Haddad},
+           familyi={H\bibinitperiod},
+           given={Jack},
+           giveni={J\bibinitperiod}}}%
+      }
+      \strng{namehash}{dbfa5dc6adb0b83ee49fd5ab9b497694}
+      \strng{fullhash}{dbfa5dc6adb0b83ee49fd5ab9b497694}
+      \strng{bibnamehash}{dbfa5dc6adb0b83ee49fd5ab9b497694}
+      \strng{authorbibnamehash}{dbfa5dc6adb0b83ee49fd5ab9b497694}
+      \strng{authornamehash}{dbfa5dc6adb0b83ee49fd5ab9b497694}
+      \strng{authorfullhash}{dbfa5dc6adb0b83ee49fd5ab9b497694}
+      \field{labelalpha}{MUH20}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{Max-Pressure Traffic Controller Based on Travel Times: An Experimental Analysis}
+      \field{volume}{110}
+      \field{year}{2020}
+      \field{pages}{275\bibrangedash 290}
+      \range{pages}{16}
+      \verb{doi}
+      \verb 10.1016/j.trc.2019.10.002
+      \endverb
+    \endentry
+    \entry{noaeen2021spillback}{article}{}
+      \name{author}{4}{}{%
+        {{hash=5f48b3a51d4946d68974ce81457ca581}{%
+           family={Noaeen},
+           familyi={N\bibinitperiod},
+           given={Mohammad},
+           giveni={M\bibinitperiod}}}%
+        {{hash=890bb5dcad56c3f36e79aa3684400d66}{%
+           family={Mohajerpoor},
+           familyi={M\bibinitperiod},
+           given={Reza},
+           giveni={R\bibinitperiod}}}%
+        {{hash=a8cac77ee14d9ace9096364bb2cb445e}{%
+           family={Far},
+           familyi={F\bibinitperiod},
+           given={Behrouz\bibnamedelima H.},
+           giveni={B\bibinitperiod\bibinitdelim H\bibinitperiod}}}%
+        {{hash=442dacee83b5aab3ea2b0d3f4a06c1a8}{%
+           family={Ramezani},
+           familyi={R\bibinitperiod},
+           given={Mohsen},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{73c0c35364d96e06f52001c7d0af8850}
+      \strng{fullhash}{fa6aa2a1ed6fc66940ff891357b5d7ad}
+      \strng{bibnamehash}{73c0c35364d96e06f52001c7d0af8850}
+      \strng{authorbibnamehash}{73c0c35364d96e06f52001c7d0af8850}
+      \strng{authornamehash}{73c0c35364d96e06f52001c7d0af8850}
+      \strng{authorfullhash}{fa6aa2a1ed6fc66940ff891357b5d7ad}
+      \field{labelalpha}{Noa+21}
+      \field{sortinit}{N}
+      \field{sortinithash}{22369a73d5f88983a108b63f07f37084}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{Real-Time Decentralized Traffic Signal Control for Congested Urban Networks Considering Queue Spillbacks}
+      \field{volume}{133}
+      \field{year}{2021}
+      \field{pages}{103407}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.trc.2021.103407
+      \endverb
+    \endentry
+    \entry{robertson1991scoot}{article}{}
+      \name{author}{2}{}{%
+        {{hash=a29c1b804366674f4f00b1603897879e}{%
+           family={Robertson},
+           familyi={R\bibinitperiod},
+           given={Dennis\bibnamedelima I.},
+           giveni={D\bibinitperiod\bibinitdelim I\bibinitperiod}}}%
+        {{hash=9507b900ae976b148da3dab33d80a63a}{%
+           family={Bretherton},
+           familyi={B\bibinitperiod},
+           given={Robert\bibnamedelima D.},
+           giveni={R\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+      }
+      \strng{namehash}{f2b022f067132ddcca0bdebc4ffa3a4a}
+      \strng{fullhash}{f2b022f067132ddcca0bdebc4ffa3a4a}
+      \strng{bibnamehash}{f2b022f067132ddcca0bdebc4ffa3a4a}
+      \strng{authorbibnamehash}{f2b022f067132ddcca0bdebc4ffa3a4a}
+      \strng{authornamehash}{f2b022f067132ddcca0bdebc4ffa3a4a}
+      \strng{authorfullhash}{f2b022f067132ddcca0bdebc4ffa3a4a}
+      \field{labelalpha}{RB91}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Vehicular Technology}
+      \field{number}{1}
+      \field{title}{Optimizing Networks of Traffic Signals in Real Time: The {SCOOT} Method}
+      \field{volume}{40}
+      \field{year}{1991}
+      \field{pages}{11\bibrangedash 15}
+      \range{pages}{5}
+    \endentry
+    \entry{sun2018simulation}{article}{}
+      \name{author}{2}{}{%
+        {{hash=68b0f8df7c61f1c8d518f735f9c7adae}{%
+           family={Sun},
+           familyi={S\bibinitperiod},
+           given={Xiaolei},
+           giveni={X\bibinitperiod}}}%
+        {{hash=76a7ec1c01f4b1051b61e6bda9c7ed14}{%
+           family={Yin},
+           familyi={Y\bibinitperiod},
+           given={Yafeng},
+           giveni={Y\bibinitperiod}}}%
+      }
+      \strng{namehash}{8d60881e8ab5493ea7a3f55d29fd2d13}
+      \strng{fullhash}{8d60881e8ab5493ea7a3f55d29fd2d13}
+      \strng{bibnamehash}{8d60881e8ab5493ea7a3f55d29fd2d13}
+      \strng{authorbibnamehash}{8d60881e8ab5493ea7a3f55d29fd2d13}
+      \strng{authornamehash}{8d60881e8ab5493ea7a3f55d29fd2d13}
+      \strng{authorfullhash}{8d60881e8ab5493ea7a3f55d29fd2d13}
+      \field{labelalpha}{SY18}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Record}
+      \field{number}{18}
+      \field{title}{A Simulation Study on Max Pressure Control of Signalized Intersections}
+      \field{volume}{2672}
+      \field{year}{2018}
+      \field{pages}{117\bibrangedash 127}
+      \range{pages}{11}
+      \verb{doi}
+      \verb 10.1177/0361198118786840
+      \endverb
+    \endentry
+    \entry{tassiulas1992stability}{article}{}
+      \name{author}{2}{}{%
+        {{hash=acb31cf00e69058062ec17d39718365f}{%
+           family={Tassiulas},
+           familyi={T\bibinitperiod},
+           given={Leandros},
+           giveni={L\bibinitperiod}}}%
+        {{hash=1f8986070c636ef93230cc22e3534227}{%
+           family={Ephremides},
+           familyi={E\bibinitperiod},
+           given={Anthony},
+           giveni={A\bibinitperiod}}}%
+      }
+      \strng{namehash}{ed8663a5c2f14c00001134528a28fcaa}
+      \strng{fullhash}{ed8663a5c2f14c00001134528a28fcaa}
+      \strng{bibnamehash}{ed8663a5c2f14c00001134528a28fcaa}
+      \strng{authorbibnamehash}{ed8663a5c2f14c00001134528a28fcaa}
+      \strng{authornamehash}{ed8663a5c2f14c00001134528a28fcaa}
+      \strng{authorfullhash}{ed8663a5c2f14c00001134528a28fcaa}
+      \field{labelalpha}{TE92}
+      \field{sortinit}{T}
+      \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Automatic Control}
+      \field{number}{12}
+      \field{title}{Stability Properties of Constrained Queueing Systems and Scheduling Policies for Maximum Throughput in Multihop Radio Networks}
+      \field{volume}{37}
+      \field{year}{1992}
+      \field{pages}{1936\bibrangedash 1948}
+      \range{pages}{13}
+      \verb{doi}
+      \verb 10.1109/9.182479
+      \endverb
+    \endentry
+    \entry{varaiya2013maxpressure}{article}{}
+      \name{author}{1}{}{%
+        {{hash=0690707bf7b98342cce0da056d121d00}{%
+           family={Varaiya},
+           familyi={V\bibinitperiod},
+           given={Pravin},
+           giveni={P\bibinitperiod}}}%
+      }
+      \strng{namehash}{0690707bf7b98342cce0da056d121d00}
+      \strng{fullhash}{0690707bf7b98342cce0da056d121d00}
+      \strng{bibnamehash}{0690707bf7b98342cce0da056d121d00}
+      \strng{authorbibnamehash}{0690707bf7b98342cce0da056d121d00}
+      \strng{authornamehash}{0690707bf7b98342cce0da056d121d00}
+      \strng{authorfullhash}{0690707bf7b98342cce0da056d121d00}
+      \field{labelalpha}{Var13}
+      \field{sortinit}{V}
+      \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{Max Pressure Control of a Network of Signalized Intersections}
+      \field{volume}{36}
+      \field{year}{2013}
+      \field{pages}{177\bibrangedash 195}
+      \range{pages}{19}
+      \verb{doi}
+      \verb 10.1016/j.trc.2013.08.014
+      \endverb
+    \endentry
+    \entry{wang2022switching}{article}{}
+      \name{author}{4}{}{%
+        {{hash=d629ba40b56b1f3070362206453e1639}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Xu},
+           giveni={X\bibinitperiod}}}%
+        {{hash=76a7ec1c01f4b1051b61e6bda9c7ed14}{%
+           family={Yin},
+           familyi={Y\bibinitperiod},
+           given={Yafeng},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=d1d912509d266eb94dfcd8d6e4984992}{%
+           family={Feng},
+           familyi={F\bibinitperiod},
+           given={Yan},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=8e3433e07a34959b18695fcdb8e52139}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Henry\bibnamedelima X.},
+           giveni={H\bibinitperiod\bibinitdelim X\bibinitperiod}}}%
+      }
+      \strng{namehash}{c231b80e9ea8c07cfe58905c8148087d}
+      \strng{fullhash}{0e164e5601c7ad7883e6f4534b414223}
+      \strng{bibnamehash}{c231b80e9ea8c07cfe58905c8148087d}
+      \strng{authorbibnamehash}{c231b80e9ea8c07cfe58905c8148087d}
+      \strng{authornamehash}{c231b80e9ea8c07cfe58905c8148087d}
+      \strng{authorfullhash}{0e164e5601c7ad7883e6f4534b414223}
+      \field{labelalpha}{Wan+22}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{Learning the Max Pressure Control for Urban Traffic Networks Considering the Phase Switching Loss}
+      \field{volume}{140}
+      \field{year}{2022}
+      \field{pages}{103670}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.trc.2022.103670
+      \endverb
+    \endentry
+    \entry{wegener2008traci}{inproceedings}{}
+      \name{author}{6}{}{%
+        {{hash=81ce21879b4d52a0a7e93ad8e0fbff40}{%
+           family={Wegener},
+           familyi={W\bibinitperiod},
+           given={Axel},
+           giveni={A\bibinitperiod}}}%
+        {{hash=fc5eb2faa3e040af7b0cbed161d14421}{%
+           family={Piórkowski},
+           familyi={P\bibinitperiod},
+           given={Micha{ł}},
+           giveni={M\bibinitperiod}}}%
+        {{hash=756ed0cd8aa667ed054955df57db4330}{%
+           family={Raya},
+           familyi={R\bibinitperiod},
+           given={Maxim},
+           giveni={M\bibinitperiod}}}%
+        {{hash=66401896b0dbbc92a38ed61f7c6b8f41}{%
+           family={Hellbrück},
+           familyi={H\bibinitperiod},
+           given={Horst},
+           giveni={H\bibinitperiod}}}%
+        {{hash=8276067a708cc914fecdb2734aeee196}{%
+           family={Fischer},
+           familyi={F\bibinitperiod},
+           given={Stefan},
+           giveni={S\bibinitperiod}}}%
+        {{hash=2b954638b586f9eb53d1c8d19f5689d0}{%
+           family={Hubaux},
+           familyi={H\bibinitperiod},
+           given={Jean-Pierre},
+           giveni={J\bibinithyphendelim P\bibinitperiod}}}%
+      }
+      \strng{namehash}{0d9a3c73b9d10f1240a082cc7fdc53ee}
+      \strng{fullhash}{0ffa919a4448f1d9fe945c65ea72e1a6}
+      \strng{bibnamehash}{0d9a3c73b9d10f1240a082cc7fdc53ee}
+      \strng{authorbibnamehash}{0d9a3c73b9d10f1240a082cc7fdc53ee}
+      \strng{authornamehash}{0d9a3c73b9d10f1240a082cc7fdc53ee}
+      \strng{authorfullhash}{0ffa919a4448f1d9fe945c65ea72e1a6}
+      \field{labelalpha}{Weg+08}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 11th Communications and Networking Simulation Symposium}
+      \field{title}{{TraCI}: An Interface for Coupling Road Traffic and Network Simulators}
+      \field{year}{2008}
+      \field{pages}{155\bibrangedash 163}
+      \range{pages}{9}
+      \verb{doi}
+      \verb 10.1145/1400713.1400740
+      \endverb
+    \endentry
+    \entry{wongpiromsarn2012distributed}{inproceedings}{}
+      \name{author}{5}{}{%
+        {{hash=460bcc0124751ceb5661357a4c319c04}{%
+           family={Wongpiromsarn},
+           familyi={W\bibinitperiod},
+           given={Tichakorn},
+           giveni={T\bibinitperiod}}}%
+        {{hash=a8b112ac1bdd503f20ba08f709448a80}{%
+           family={Uthaicharoenpong},
+           familyi={U\bibinitperiod},
+           given={Tawit},
+           giveni={T\bibinitperiod}}}%
+        {{hash=b2eccb185095fccfeb40fdffd8b2105f}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Yu},
+           giveni={Y\bibinitperiod}}}%
+        {{hash=7fe896e8ed8d5f30af73e472ebedcec9}{%
+           family={Frazzoli},
+           familyi={F\bibinitperiod},
+           given={Emilio},
+           giveni={E\bibinitperiod}}}%
+        {{hash=14a9b11e39986371f0822e81e032bd12}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Danwei},
+           giveni={D\bibinitperiod}}}%
+      }
+      \strng{namehash}{409b192eabd580a27f6553b44b5796e1}
+      \strng{fullhash}{9713ba929940a5b0278907b446469c65}
+      \strng{bibnamehash}{409b192eabd580a27f6553b44b5796e1}
+      \strng{authorbibnamehash}{409b192eabd580a27f6553b44b5796e1}
+      \strng{authornamehash}{409b192eabd580a27f6553b44b5796e1}
+      \strng{authorfullhash}{9713ba929940a5b0278907b446469c65}
+      \field{labelalpha}{Won+12}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 15th International IEEE Conference on Intelligent Transportation Systems}
+      \field{title}{Distributed Traffic Signal Control for Maximum Network Throughput}
+      \field{year}{2012}
+      \field{pages}{588\bibrangedash 595}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1109/ITSC.2012.6338817
+      \endverb
+    \endentry
+    \entry{wu2018fairness}{article}{}
+      \name{author}{3}{}{%
+        {{hash=63463a62ef7fb4386064daf3d8d7c1a6}{%
+           family={Wu},
+           familyi={W\bibinitperiod},
+           given={Xiaoguang},
+           giveni={X\bibinitperiod}}}%
+        {{hash=8e3433e07a34959b18695fcdb8e52139}{%
+           family={Liu},
+           familyi={L\bibinitperiod},
+           given={Henry\bibnamedelima X.},
+           giveni={H\bibinitperiod\bibinitdelim X\bibinitperiod}}}%
+        {{hash=de018512ab867bed93b4e5406befb2ff}{%
+           family={Gettman},
+           familyi={G\bibinitperiod},
+           given={Douglas},
+           giveni={D\bibinitperiod}}}%
+      }
+      \strng{namehash}{9c4107c84f0553bf66640dda8e143a41}
+      \strng{fullhash}{9c4107c84f0553bf66640dda8e143a41}
+      \strng{bibnamehash}{9c4107c84f0553bf66640dda8e143a41}
+      \strng{authorbibnamehash}{9c4107c84f0553bf66640dda8e143a41}
+      \strng{authornamehash}{9c4107c84f0553bf66640dda8e143a41}
+      \strng{authorfullhash}{9c4107c84f0553bf66640dda8e143a41}
+      \field{labelalpha}{WLG18}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{IEEE Transactions on Vehicular Technology}
+      \field{number}{2}
+      \field{title}{Delay-Based Traffic Signal Control for Throughput Optimality and Fairness at an Isolated Intersection}
+      \field{volume}{67}
+      \field{year}{2018}
+      \field{pages}{896\bibrangedash 909}
+      \range{pages}{14}
+      \verb{doi}
+      \verb 10.1109/TVT.2017.2760820
+      \endverb
+    \endentry
+    \entry{xu2024smoothing}{article}{}
+      \name{author}{3}{}{%
+        {{hash=83d75015b6cb623dd582e5026091a7fb}{%
+           family={Xu},
+           familyi={X\bibinitperiod},
+           given={Te},
+           giveni={T\bibinitperiod}}}%
+        {{hash=9d721e6c1b661b2b8753c692d0788369}{%
+           family={Barman},
+           familyi={B\bibinitperiod},
+           given={Simanta},
+           giveni={S\bibinitperiod}}}%
+        {{hash=8d6cb12f8c695d82f26b2a3721ce6546}{%
+           family={Levin},
+           familyi={L\bibinitperiod},
+           given={Michael\bibnamedelima W.},
+           giveni={M\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
+      }
+      \strng{namehash}{d92845b7e29f98425a4fa643e971937e}
+      \strng{fullhash}{d92845b7e29f98425a4fa643e971937e}
+      \strng{bibnamehash}{d92845b7e29f98425a4fa643e971937e}
+      \strng{authorbibnamehash}{d92845b7e29f98425a4fa643e971937e}
+      \strng{authornamehash}{d92845b7e29f98425a4fa643e971937e}
+      \strng{authorfullhash}{d92845b7e29f98425a4fa643e971937e}
+      \field{labelalpha}{XBL24}
+      \field{sortinit}{X}
+      \field{sortinithash}{1965c258adceecf23ce3d67b05113442}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Transportation Research Part C: Emerging Technologies}
+      \field{title}{Smoothing-{MP}: A Novel Max-Pressure Signal Control Considering Signal Coordination to Smooth Traffic in Urban Networks}
+      \field{volume}{166}
+      \field{year}{2024}
+      \field{pages}{104760}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.trc.2024.104760
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

@@ -21,6 +21,27 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Tesi LaTeX
+
+Per compilare `tesi/tesi.tex` servono gli strumenti LaTeX del progetto.
+
+Su Linux e macOS:
+
+```bash
+bash install_latex_deps.sh
+```
+
+Su Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install_latex_deps.ps1
+```
+
+Note:
+- su macOS lo script usa Homebrew e installa `MacTeX` senza GUI;
+- su Windows lo script usa `winget` e MiKTeX, che scarica automaticamente i pacchetti mancanti;
+- dopo l'installazione, apri un nuovo terminale prima di compilare.
+
 ## 1) Genera una popolazione
 
 Esempio su Manhattan 3x3:

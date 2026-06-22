@@ -1,0 +1,791 @@
+\documentclass[12pt,a4paper,oneside]{report}
+
+% =========================================================
+% LINGUA, CODIFICA, FONT
+% =========================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+
+% Font stile Times/Times New Roman, compatibile con pdfLaTeX
+\usepackage{newtxtext}
+\usepackage{newtxmath}
+
+% Migliora la resa tipografica e la giustificazione
+\usepackage{microtype}
+
+% =========================================================
+% IMPAGINAZIONE
+% =========================================================
+\usepackage[
+    a4paper,
+    left=2.7cm,
+    right=2.7cm,
+    top=2.6cm,
+    bottom=2.6cm,
+    includeheadfoot
+]{geometry}
+
+% Interlinea: le linee guida indicano 1.15 o 1.5.
+% Uso 1.15 per una versione PDF più compatta e uniforme.
+\usepackage{setspace}
+\setstretch{1.15}
+
+% Rientro dei paragrafi
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+\usepackage{indentfirst}
+
+% Pagine bianche senza intestazioni/numeri
+\usepackage{emptypage}
+
+% =========================================================
+% NUMERAZIONE PAGINE
+% =========================================================
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+
+% Numero pagina centrato: stabile in lettura PDF/oneside.
+\fancyfoot[C]{\thepage}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[C]{\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+% =========================================================
+% TITOLI DEI CAPITOLI E SEZIONI
+% =========================================================
+\usepackage{titlesec}
+
+% Capitoli nello stile: "1 Introduzione", senza scritta "Capitolo"
+\titleformat{\chapter}[hang]
+    {\normalfont\huge\bfseries}
+    {\thechapter}
+    {1em}
+    {}
+
+\titlespacing*{\chapter}{0pt}{-5pt}{25pt}
+
+% Profondità numerazione e indice
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{2}
+
+% =========================================================
+% FIGURE, TABELLE, DIDASCALIE
+% =========================================================
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+
+\usepackage{float}
+\usepackage{subcaption}
+
+\usepackage{caption}
+\DeclareCaptionLabelSeparator{dot}{. }
+
+% Didascalie simili alla tesi di esempio: Figura 1. ...
+\captionsetup{
+    font=small,
+    labelfont=it,
+    textfont=it,
+    labelsep=dot
+}
+
+% Tabelle
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% =========================================================
+% MATEMATICA E UNITÀ DI MISURA
+% =========================================================
+\usepackage{amsmath}
+\let\Bbbk\relax
+\usepackage{amssymb}
+
+% Equazioni numerate per capitolo: (2.1), (2.2), ...
+\numberwithin{equation}{chapter}
+
+% siunitx non è sempre presente nella distribuzione TeX installata localmente.
+% Se vuoi usarlo, installa texlive-science oppure riattiva questo blocco.
+\IfFileExists{siunitx.sty}{
+    \usepackage{siunitx}
+    \sisetup{
+        locale=DE,
+        detect-all,
+        per-mode=symbol
+    }
+}{}
+
+% =========================================================
+% ELENCHI
+% =========================================================
+\usepackage{enumitem}
+\setlist{
+    noitemsep,
+    topsep=4pt
+}
+
+% =========================================================
+% CODICE
+% =========================================================
+\usepackage{xcolor}
+\usepackage{listings}
+
+\lstdefinestyle{tesiCode}{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    captionpos=b,
+    tabsize=4,
+    showstringspaces=false
+}
+
+\lstset{style=tesiCode}
+
+\renewcommand{\lstlistingname}{Listato}
+\renewcommand{\lstlistlistingname}{Elenco dei listati}
+
+% =========================================================
+% BIBLIOGRAFIA
+% =========================================================
+% Crea un file bibliografia.bib nella stessa cartella del main.tex
+\usepackage{csquotes}
+\usepackage[
+    backend=biber,
+    style=alphabetic,
+    sorting=nyt
+]{biblatex}
+
+\addbibresource{bibliografia.bib}
+
+% Per usare riferimenti stile [CabLZ16], sostituire:
+% style=numeric
+% con:
+% style=alphabetic
+
+% =========================================================
+% LINK E RIFERIMENTI INCROCIATI
+% =========================================================
+\usepackage{xurl}
+
+\usepackage[
+    hidelinks
+]{hyperref}
+
+\usepackage[italian,nameinlink,noabbrev]{cleveref}
+
+\crefname{chapter}{capitolo}{capitoli}
+\Crefname{chapter}{Capitolo}{Capitoli}
+\crefname{section}{paragrafo}{paragrafi}
+\Crefname{section}{Paragrafo}{Paragrafi}
+\crefname{figure}{figura}{figure}
+\Crefname{figure}{Figura}{Figure}
+\crefname{table}{tabella}{tabelle}
+\Crefname{table}{Tabella}{Tabelle}
+\crefname{equation}{equazione}{equazioni}
+\Crefname{equation}{Equazione}{Equazioni}
+\crefname{lstlisting}{listato}{listati}
+\Crefname{lstlisting}{Listato}{Listati}
+
+% =========================================================
+% DATI FRONTESPIZIO
+% =========================================================
+\usepackage{etoolbox}
+
+\newcommand{\TesiTitolo}{Controllo semaforico adattivo mediante strategie Max-Pressure: progettazione e valutazione tramite simulazione}
+\newcommand{\TesiCandidato}{Jakub Pawel Homoncik}
+\newcommand{\TesiRelatore}{Prof. Giacomo Cabri}
+
+% Lascia vuoto se non hai correlatori
+\newcommand{\TesiCorrelatori}{}
+% Esempio:
+% \newcommand{\TesiCorrelatori}{Prof.ssa Manuela Montangero}
+
+\newcommand{\TesiAnnoAccademico}{2025--2026}
+
+\hypersetup{
+    pdftitle={\TesiTitolo},
+    pdfauthor={\TesiCandidato},
+    pdfsubject={Controllo semaforico adattivo},
+    pdfkeywords={Sistemi di trasporto intelligenti, Controllo semaforico adattivo, Simulazione, Max-Pressure, SUMO}
+}
+
+% Finche' le sezioni sono vuote, questo segnaposto crea un paragrafo
+% invisibile e permette a LaTeX di interrompere correttamente la pagina.
+% I richiami possono essere rimossi man mano che viene inserito il testo.
+\newcommand{\tesischeletro}{\mbox{}\par}
+
+% I capitoli successivi a Manhattan restano nel sorgente come traccia di
+% lavoro, ma non vengono compilati finche' non sono stati redatti.
+\newif\ifcapitolifuturi
+\capitolifuturitrue
+
+% =========================================================
+% FRONTESPIZIO
+% =========================================================
+\newcommand{\frontespizio}{
+    \begin{titlepage}
+        \thispagestyle{empty}
+        \centering
+
+        {\Large\bfseries
+        UNIVERSITÀ DEGLI STUDI DI\par
+        MODENA E REGGIO EMILIA
+        \par}
+
+        \vspace{1cm}
+
+        {\large
+        Dipartimento di Scienze Fisiche, Informatiche e Matematiche
+        \par}
+
+        \vspace{0.5cm}
+
+        {\large
+        Corso di Laurea in Informatica
+        \par}
+
+        \vfill
+
+        {\LARGE\bfseries
+        \TesiTitolo
+        \par}
+
+        \vfill
+
+        \begin{minipage}[t]{0.45\textwidth}
+            \raggedright
+            \textbf{Relatore:}\par\vspace{0.2cm}
+            \TesiRelatore
+
+            \ifdefempty{\TesiCorrelatori}
+            {}
+            {
+                \par\vspace{0.8cm}
+                \textbf{Correlatori:}\par\vspace{0.2cm}
+                \TesiCorrelatori
+            }
+        \end{minipage}
+        \hfill
+        \begin{minipage}[t]{0.45\textwidth}
+            \raggedleft
+            \textbf{Candidato:}\par\vspace{0.2cm}
+            \TesiCandidato
+        \end{minipage}
+
+        \vfill
+
+        {\large
+        Anno Accademico \TesiAnnoAccademico
+        \par}
+
+    \end{titlepage}
+
+    \cleardoublepage
+}
+
+% =========================================================
+% ESEMPIO DI USO DOPO \begin{document}
+% =========================================================
+\begin{document}
+
+\hypersetup{pageanchor=false}
+\frontespizio
+\hypersetup{pageanchor=true}
+\pagenumbering{roman}
+
+\chapter*{Sommario}
+\addcontentsline{toc}{chapter}{Sommario}
+
+Il controllo semaforico a tempi fissi non utilizza informazioni sul traffico
+osservato e può quindi assegnare il verde a direzioni poco richieste mentre si
+formano code su altri accessi. Questa tesi studia strategie di controllo
+adattivo basate sul principio Max-Pressure, nel quale ogni incrocio seleziona
+la fase da servire confrontando le code a monte e a valle dei movimenti
+consentiti. Il lavoro comprende la progettazione di una piattaforma
+sperimentale riproducibile basata su SUMO e TraCI, l'implementazione di un
+controller Max-Pressure e di sette estensioni specialistiche, e la costruzione
+di una pipeline di ablation capace di generare popolazioni, eseguire batch
+paralleli e produrre automaticamente metriche e report.
+
+La prima valutazione completa riguarda una rete sintetica Manhattan \(8
+\times 8\), tre livelli di domanda e cinque seed. I 135 casi sperimentali sono
+terminati senza errori e con censura nulla. Rispetto al programma semaforico
+statico nativo, il miglior controller riduce il tempo medio di attesa del
+\(64{,}26\%\) nel traffico leggero, del \(60{,}09\%\) nel traffico medio e del
+\(53{,}05\%\) nel traffico elevato. I risultati mostrano inoltre che
+l'aggiunta di una regola specialistica non produce necessariamente un
+beneficio: alcune estensioni migliorano soltanto in specifici regimi, altre
+rimangono inattive oppure introducono un costo superiore al vantaggio
+ottenuto. Questa osservazione motiva la successiva applicazione alla rete
+reale di Bologna e lo studio di controller capaci di adattare la propria
+modalità operativa al regime locale di traffico.
+
+\chapter*{Parole chiave}
+\addcontentsline{toc}{chapter}{Parole chiave}
+
+\begin{itemize}
+    \item Sistemi di trasporto intelligenti;
+    \item Controllo semaforico adattivo;
+    \item Simulazione;
+    \item Max-Pressure;
+    \item SUMO.
+\end{itemize}
+
+\cleardoublepage
+\tableofcontents
+\cleardoublepage
+
+\pagenumbering{arabic}
+\chapter{Introduzione}
+\label{chap:introduzione}
+
+La regolazione semaforica decide come distribuire tra flussi in conflitto una
+risorsa limitata, il diritto di attraversare un incrocio. Una scelta
+apparentemente locale può propagarsi lungo la rete:
+un verde troppo breve lascia una coda residua, un verde inutile sottrae tempo
+agli altri accessi e una coda che raggiunge l'incrocio precedente può impedire
+movimenti altrimenti non conflittuali. Per questo motivo il controllo dei
+semafori costituisce un problema centrale nei sistemi di trasporto
+intelligenti.
+
+Questo capitolo introduce il problema affrontato, gli obiettivi e i contributi
+del lavoro. La trattazione rimane volutamente ad alto livello, le formulazioni
+matematiche, le scelte implementative e il protocollo sperimentale vengono
+sviluppati nei capitoli successivi.
+
+\section{Contesto e motivazioni}
+
+I piani semaforici a tempi fissi sono semplici, prevedibili e poco costosi da
+gestire. Associano a ciascuna fase una durata definita in anticipo e
+ripetono ciclicamente la stessa sequenza. La loro efficacia dipende tuttavia
+dalla corrispondenza tra il profilo di domanda usato durante la progettazione e
+il traffico effettivamente presente. Quando la domanda cambia nello spazio o
+nel tempo, il piano può continuare a servire una direzione vuota mentre su un
+altro accesso si accumulano veicoli.
+
+Il controllo adattivo cerca invece di usare osservazioni correnti della rete
+per modificare il servizio offerto. Tra le strategie decentralizzate, il
+Max-Pressure è particolarmente interessante perché non richiede una previsione
+completa della domanda né un unico ottimizzatore centrale. Ogni intersezione
+confronta le code a monte e a valle dei movimenti consentiti e assegna il verde
+alla fase con pressione maggiore. Questa famiglia deriva dalle politiche di
+backpressure per reti di code \cite{tassiulas1992stability}, nel traffico
+urbano, la letteratura ha mostrato importanti proprietà di stabilità e
+throughput in opportune ipotesi modellistiche
+\cite{varaiya2013maxpressure,wongpiromsarn2012distributed,levin2023review}.
+
+Il passaggio dalla teoria a una simulazione microscopica realistica introduce
+però costi e vincoli che il modello ideale tende a semplificare: giallo e
+tempo di sgombero, minimo e massimo verde, capacità finita delle corsie,
+spillback, arrivi a plotoni e necessità di non trascurare movimenti deboli. Ne
+segue che ``scegliere sempre la pressione massima'' non è, da solo, una
+specifica sufficiente per un controller utilizzabile.
+
+\section{Problema affrontato}
+
+Il lavoro affronta due problemi collegati. Il primo è ingegneristico: costruire
+una piattaforma con cui implementare, eseguire e confrontare in modo
+riproducibile controller semaforici diversi su reti SUMO sintetiche e reali. Il
+secondo è sperimentale: stabilire in quali condizioni il Max-Pressure di base
+o le sue estensioni migliorino effettivamente il flusso rispetto a un programma
+statico.
+
+L'indicatore principale è il tempo di attesa, affiancato da tempo di viaggio,
+perdita di tempo, velocità, numero di viaggi completati e censura. Il lavoro
+non persegue obiettivi ambientali: consumi di carburante ed emissioni non sono
+utilizzati per selezionare o valutare i controller. In questo modo l'analisi
+rimane allineata alla domanda di ricerca, concentrata sull'efficienza degli
+incroci e del flusso veicolare.
+
+Una difficoltà metodologica importante è evitare conclusioni ottenute da un
+solo seed o da una simulazione interrotta prima che tutti i veicoli completino
+il viaggio. Un controller può mostrare una bassa attesa media semplicemente
+perché i veicoli più problematici sono ancora nella rete. Per questo la
+piattaforma registra esplicitamente la quota di viaggi non conclusi e considera
+la censura una condizione necessaria per interpretare correttamente le altre
+metriche.
+
+\section{Obiettivi della tesi}
+
+Gli obiettivi sono i seguenti:
+
+\begin{enumerate}
+    \item implementare un controller Max-Pressure decentralizzato compatibile
+    con le logiche semaforiche presenti nelle mappe SUMO;
+    \item introdurre estensioni mirate a switching loss, minimo verde dinamico,
+    fairness, capacità downstream, spillback e arrivi a plotoni;
+    \item realizzare una pipeline di ablation che generi popolazioni
+    riproducibili, esegua casi in parallelo e produca report confrontabili;
+    \item definire metriche capaci di distinguere un reale miglioramento da un
+    risultato condizionato da viaggi incompleti;
+    \item valutare separatamente le varianti su una rete Manhattan regolare,
+    prima di affrontare la maggiore eterogeneità della rete di Bologna;
+    \item ricavare dai risultati indicazioni progettuali per controller capaci
+    di adattarsi a regimi di traffico differenti.
+\end{enumerate}
+
+\section{Contributi del lavoro}
+
+Il lavoro è partito da una base software composta dal collegamento con SUMO, da
+un runner, da un generatore di popolazioni e da un controller fisso, che sono
+stati poi integrati ed estesi con:
+
+\begin{itemize}
+    \item un'implementazione completa del Max-Pressure, comprensiva di macchina
+    a stati per preservare giallo e all-red;
+    \item sette famiglie di estensioni parametriche e relativi contatori di
+    attivazione;
+    \item una rappresentazione uniforme degli scenari sperimentali e dei
+    profili di guida;
+    \item una pipeline batch con preflight, cache delle popolazioni,
+    parallelismo, tracciamento del progresso e report automatici;
+    \item il calcolo esplicito di throughput e censura a partire dai file
+    \texttt{tripinfo};
+    \item una campagna finale su Manhattan $8\times8$ composta da 135
+    simulazioni valide, tre livelli di domanda e cinque seed;
+    \item l'estensione successiva della metodologia a distribuzioni spaziali
+    non uniformi e a controller ibridi per la rete reale di Bologna.
+\end{itemize}
+
+Il contributo non consiste quindi soltanto in un algoritmo, ma in un processo
+sperimentale osservabile. I contatori interni consentono di verificare se una
+variante ha prodotto un risultato perché il suo meccanismo si è attivato o se,
+al contrario, è rimasta operativamente identica al Max-Pressure di base.
+
+\section{Organizzazione della tesi}
+
+Il \cref{chap:stato-arte} presenta il controllo semaforico adattivo, il
+Max-Pressure e gli strumenti di simulazione. La parte successiva della tesi
+definisce requisiti e architettura della piattaforma, descrive
+l'implementazione del controller e delle estensioni, formalizza il protocollo
+sperimentale e analizza prima la campagna Manhattan $8\times8$, poi
+l'applicazione alla rete reale di Bologna.
+
+
+\chapter{Contesto e stato dell'arte}
+\label{chap:stato-arte}
+
+Per collocare il contributo è utile distinguere tre livelli:
+le strategie di controllo già note in letteratura, gli strumenti software
+utilizzati e le componenti effettivamente sviluppate durante il tirocinio. Il
+capitolo procede dal controllo a tempi fissi al Max-Pressure, ne discute le
+principali estensioni e conclude descrivendo lo stato iniziale del progetto.
+
+\section{Controllo semaforico urbano}
+
+Un'intersezione semaforizzata è descritta da un insieme di movimenti, per
+esempio attraversamento rettilineo o svolta, e da un insieme di fasi. Una fase
+abilita contemporaneamente movimenti compatibili. Il controller deve decidere
+quanto a lungo mantenere la fase corrente e quando avviare la transizione verso
+la successiva. La qualità della decisione dipende sia dal criterio di scelta
+sia dai vincoli fisici: un cambio di fase richiede intervalli durante i quali
+la capacità utile si riduce.
+
+\subsection{Controllo a tempi fissi}
+
+Nel controllo a tempi fissi la sequenza, la durata delle fasi e l'eventuale
+offset rispetto agli altri incroci sono definiti a priori. Il principale
+vantaggio è la prevedibilità. Un piano ben calibrato può coordinare corridoi e
+creare onde verdi; inoltre non dipende dall'affidabilità di sensori o
+comunicazioni.
+
+Il limite è la scarsa reattività. Una volta fissato il ciclo, il verde viene
+assegnato anche in assenza di domanda e non può essere trasferito
+immediatamente a una coda inattesa. Il confronto sperimentale deve tuttavia
+essere formulato con cautela: battere un particolare piano statico non equivale
+a dimostrare la superiorità rispetto a ogni possibile piano ottimizzato. Nella
+campagna Manhattan il riferimento è il \emph{program0} nativo della mappa, non
+un piano coordinato ottimizzato a posteriori sui casi di test.
+
+\subsection{Controllo attuato e adattivo}
+
+I controller attuati usano rivelatori per prolungare o terminare una fase sulla
+base della presenza veicolare. Regole di \emph{gap-out}, ad esempio, chiudono il
+verde quando l'intervallo tra passaggi supera una soglia
+\cite{cesme2012gapout}. I sistemi adattivi operano a un livello più ampio:
+stimano lo stato corrente e aggiornano durate, cicli o selezione delle fasi.
+OPAC e SCOOT sono esempi storici di strategie sensibili alla domanda
+\cite{gartner1983opac,robertson1991scoot}.
+
+Le soluzioni centralizzate possono coordinare una rete, ma richiedono più
+informazioni, comunicazione e capacità di calcolo. Le soluzioni decentralizzate
+riducono tale dipendenza e risultano naturalmente scalabili. Il Max-Pressure
+appartiene a quest'ultima famiglia: l'azione di ciascun semaforo dipende
+principalmente dalle code sulle corsie incidenti.
+
+\section{Strategie Max-Pressure}
+
+Il Max-Pressure deriva dalle politiche di backpressure impiegate per
+stabilizzare reti di code \cite{tassiulas1992stability}. Applicato al traffico,
+confronta la quantità di veicoli che desidera attraversare l'incrocio con la
+capacità residua delle
+corsie riceventi. L'intuizione è servire i movimenti che riducono maggiormente
+il differenziale di coda senza trasferire indiscriminatamente congestione a
+valle.
+
+\subsection{Principio di funzionamento}
+
+Sia $\mathcal{M}$ l'insieme dei movimenti di un semaforo. Un movimento
+$m=(i,j)$ collega una corsia in ingresso $i$ a una corsia in uscita $j$. Nella
+forma adottata nel progetto, la pressione del movimento è
+
+\begin{equation}
+    p_{ij}(t)=q_i(t)-q_j(t),
+    \label{eq:movement-pressure}
+\end{equation}
+
+in cui $q_i$ e $q_j$ sono le code osservate all'istante $t$. Se
+$\mathcal{M}_\phi$ è l'insieme dei movimenti abilitati dalla fase principale
+$\phi$, la pressione della fase è
+
+\begin{equation}
+    P_\phi(t)=\sum_{(i,j)\in\mathcal{M}_\phi}p_{ij}(t).
+    \label{eq:phase-pressure}
+\end{equation}
+
+Il candidato naturale è quindi
+
+\begin{equation}
+    \phi^*(t)=\arg\max_{\phi\in\Phi}P_\phi(t).
+    \label{eq:mp-choice}
+\end{equation}
+
+La sottrazione della coda downstream distingue il Max-Pressure da una politica
+che osserva soltanto gli ingressi: un movimento perde priorità se conduce a
+una corsia già occupata. Formulazioni più generali includono turning ratio,
+pesi, portate di saturazione o stime dei tassi di svolta; alcuni lavori hanno
+studiato anche versioni che non richiedono routing rates noti a priori
+\cite{gregoire2014unknownrouting}. La scelta semplificata adottata è coerente
+con l'obiettivo di ottenere un controller locale interpretabile e applicabile
+alle mappe disponibili.
+
+\subsection{Pressione dei movimenti e delle fasi}
+
+La pressione non coincide con la sola lunghezza della coda. Una fase può avere
+molti veicoli in ingresso ma una pressione modesta quando anche le uscite sono
+congestionate. Al contrario, una coda più corta può risultare prioritaria se
+può essere scaricata verso corsie libere. Il punteggio di fase somma i
+movimenti consentiti; ciò permette di valutare con un unico valore configurazioni
+semaforiche che servono più approcci contemporaneamente.
+
+In una rete regolare il calcolo è completamente locale e può essere ripetuto a
+ogni passo. Le proprietà teoriche di throughput del Max-Pressure sono state
+studiate in reti di intersezioni e in implementazioni decentralizzate
+\cite{varaiya2013maxpressure,wongpiromsarn2012distributed,le2015decentralized,kouvelas2014maximum}.
+Studi di simulazione mostrano tuttavia che parametri, sensori e struttura della
+rete influenzano le prestazioni osservate \cite{sun2018simulation,mercader2020practical}.
+
+\subsection{Proprietà e limiti del controllo locale}
+
+L'uso di informazioni locali rende l'algoritmo scalabile e robusto alla
+mancanza di un coordinatore centrale. Una variazione di domanda modifica
+immediatamente i differenziali di coda, senza richiedere la stima preventiva di
+un intero profilo giornaliero.
+
+Esistono però quattro limiti principali. Primo, il criterio ideale non
+attribuisce automaticamente un costo al cambio di fase. Secondo, le code
+misurate non descrivono sempre la capacità fisica residua di una corsia.
+Terzo, massimizzare il servizio complessivo può ritardare ripetutamente un
+movimento debole. Quarto, decisioni localmente corrette possono non produrre
+coordinamento lungo un corridoio. La revisione di Levin evidenzia proprio la
+distanza tra proprietà teoriche e dettagli necessari per implementazioni
+pratiche \cite{levin2023review}; per questo la letteratura recente studia
+anche versioni cicliche, cycle-based, coordinate o basate sullo stato regionale
+della rete \cite{anderson2018cyclebased,levin2020cyclical,xu2024smoothing,liu2024nmp}.
+
+\section{Estensioni del Max-Pressure}
+
+Le varianti studiate nel progetto non sono controller indipendenti dal punto di
+vista concettuale. Ognuna modifica il punteggio o il momento della decisione
+per affrontare un limite specifico. Questo rende possibile una valutazione per
+ablation: si mantiene il nucleo Max-Pressure e si osserva il contributo della
+singola estensione.
+
+\subsection{Costo delle transizioni semaforiche}
+
+Durante giallo e all-red nessuna delle direzioni principali utilizza pienamente
+l'intersezione. Cambi troppo frequenti possono quindi ridurre la capacità
+nonostante ogni scelta sia localmente giustificata. Le strategie
+\emph{lost-time-aware} introducono una soglia: la nuova fase deve offrire un
+guadagno sufficiente a compensare il servizio perso durante la transizione.
+La considerazione esplicita dello switching loss è un tema rilevante anche in
+formulazioni apprese del Max-Pressure \cite{wang2022switching}; le versioni
+cicliche e cycle-based affrontano un problema affine vincolando gli
+aggiornamenti a una struttura più vicina ai piani semaforici tradizionali
+\cite{anderson2018cyclebased,levin2020cyclical}.
+
+Un minimo verde svolge una funzione simile, ma in modo temporale: impedisce di
+rivalutare immediatamente la fase appena attivata. Un massimo verde costituisce
+invece una salvaguardia contro permanenze eccessive e forza periodicamente una
+nuova decisione.
+
+\subsection{Prevenzione dello spillback}
+
+Lo spillback si verifica quando la coda occupa la corsia fino a bloccare
+l'intersezione a monte. In questa condizione il solo conteggio dei veicoli
+fermi può reagire troppo tardi o non distinguere correttamente la capacità
+residua. Le strategie capacity-aware usano occupazione, lunghezza della corsia
+o stime di capacità per evitare di inviare veicoli verso un'uscita quasi piena
+\cite{gregoire2015capacity,noaeen2021spillback}. Altri approcci pesano anche
+la posizione dei veicoli lungo l'arco, così da rappresentare meglio la
+propagazione spaziale dello spillback \cite{li2019positionweighted}.
+
+Nel progetto vengono valutate due forme. La penalità downstream riduce in modo
+continuo il punteggio dei movimenti diretti verso corsie occupate. Il blocco
+anti-spillback è invece una protezione discreta: oltre una soglia di
+attivazione una fase viene esclusa, e torna disponibile soltanto sotto una
+soglia di rilascio. L'isteresi evita oscillazioni quando l'occupazione si trova
+vicino al limite.
+
+\subsection{Fairness e prevenzione della starvation}
+
+Una politica orientata al throughput può continuare a favorire flussi forti.
+Per limitare la starvation, al punteggio di una fase può essere aggiunto un
+bonus crescente con il tempo trascorso dall'ultimo servizio. Il bonus non
+sostituisce la pressione, ma rende progressivamente più competitivo un
+movimento trascurato. Il compromesso tra throughput, ritardo e fairness è
+discusso anche in varianti delay-based del Max-Pressure
+\cite{wu2018fairness,liu2022delay}.
+
+\subsection{Gestione dei plotoni di veicoli}
+
+I veicoli non raggiungono necessariamente l'incrocio in modo uniforme. Il
+rilascio di un semaforo a monte può generare un plotone, cioè una sequenza di
+passaggi con headway ridotto. Interrompere il verde a metà del plotone spreca
+parte dell'opportunità di servizio e può ricreare rapidamente una coda. La
+platoon extension osserva gli intervalli di passaggio vicino alla stop line e,
+entro un limite massimo, prolunga la fase quando il flusso rimane compatto.
+Questa logica è affine ai criteri di gap-out dei controller attuati, ma viene
+integrata nella decisione Max-Pressure.
+
+\section{Simulazione microscopica del traffico}
+
+La valutazione di un controller richiede di rappresentare non soltanto flussi
+aggregati, ma anche partenze, accelerazioni, cambi di corsia e interazioni tra
+veicoli. Per questo il progetto impiega una simulazione microscopica.
+
+\subsection{SUMO}
+
+SUMO, \emph{Simulation of Urban MObility}, è un simulatore open source,
+microscopico e a passi discreti, progettato per reti stradali di dimensione
+urbana \cite{behrisch2011sumo,sumodocs2026}. Le reti sono descritte tramite file
+XML contenenti archi, corsie, connessioni, incroci e programmi semaforici. La
+simulazione produce informazioni per veicolo e consente di eseguire esperimenti
+senza interfaccia grafica, requisito essenziale per campagne batch.
+
+Nel progetto SUMO gestisce la dinamica veicolare e la validità delle transizioni
+semaforiche. Il codice Python non sostituisce il simulatore: ne modifica le
+azioni attraverso un'interfaccia di controllo e raccoglie le osservazioni
+necessarie.
+
+\subsection{Interfaccia TraCI}
+
+TraCI, \emph{Traffic Control Interface}, espone un protocollo con cui un
+processo esterno può interrogare e comandare una simulazione SUMO
+\cite{wegener2008traci,tracidocs2026}. A ogni passo il controller legge, tra le
+altre grandezze, veicoli fermi, occupazione delle corsie, stato delle fasi e
+passaggi su rivelatori virtuali. Può quindi richiedere il passaggio a una fase
+o a un programma semaforico differente.
+
+Questa separazione è utile scientificamente: il modello del traffico rimane
+quello di SUMO, mentre la politica di controllo è implementata in Python e può
+essere modificata senza rigenerare la rete.
+
+\section{Situazione iniziale del progetto}
+
+Per chiarezza metodologica è opportuno distinguere quanto era già disponibile
+da quanto è stato realizzato nel lavoro. La ricostruzione è stata effettuata
+attraverso la cronologia Git e il confronto tra il commit iniziale
+dell'applicazione e la versione finale.
+
+\subsection{Componenti software già disponibili}
+
+La base iniziale comprendeva:
+
+\begin{itemize}
+    \item un runner capace di avviare SUMO e avanzare la simulazione;
+    \item la classe astratta comune ai controller;
+    \item un controller a tempi fissi;
+    \item un generatore di popolazioni YAML;
+    \item strutture per veicoli, tipi e metriche elementari;
+    \item utility per risolvere i percorsi delle mappe;
+    \item una raccolta di reti sintetiche e reali, tra cui Manhattan e Bologna.
+\end{itemize}
+
+Era quindi già presente l'infrastruttura minima per inserire veicoli e
+interagire con i semafori. Non erano invece disponibili un Max-Pressure
+completo, le varianti specialistiche, una campagna automatizzata di ablation e
+la verifica esplicita dei viaggi non conclusi.
+
+\subsection{Limiti della soluzione iniziale}
+
+L'esecuzione di una singola simulazione non è sufficiente per un confronto
+sperimentale. Mancavano una matrice dichiarativa dei casi, isolamento degli
+output, esecuzione parallela, controllo preventivo delle configurazioni,
+aggregazione su seed e report delle differenze rispetto a una baseline. La
+sola media sui veicoli arrivati, inoltre, poteva nascondere un'elevata censura.
+
+Dal lato del controllo, un template intelligente non risolveva il problema
+della mappatura tra segnali SUMO, corsie e movimenti, né la gestione sicura di
+giallo e all-red. Questi aspetti sono risultati più complessi del calcolo della
+sola pressione e hanno richiesto una macchina a stati esplicita.
+
+\subsection{Contributi sviluppati nella tesi}
+
+L'evoluzione del repository mostra una progressione incrementale: prima il
+Max-Pressure puro, quindi spillback, lost-time-aware, fairness, Nmin, penalità
+downstream e plotoni; successivamente la pipeline di ablation, la correzione
+delle metriche e i controller ibridi per Bologna. La scelta di aggiungere una
+funzione alla volta ha permesso di attribuire i risultati e di individuare
+estensioni inattive o controproducenti. I capitoli seguenti descrivono questa
+architettura e l'implementazione risultante.
+
+% Traccia dei capitoli successivi mostrata solo nell'indice della versione
+% parziale consegnata al relatore.
+\addtocontents{toc}{\protect\contentsline {chapter}{\protect\numberline {3}Requisiti e progettazione del sistema}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {3.1}Requisiti funzionali}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {3.2}Requisiti non funzionali}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {3.3}Architettura generale}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {3.4}Flusso di esecuzione di una simulazione}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {3.5}Scelte progettuali}{}{}}
+\addtocontents{toc}{\protect\contentsline {chapter}{\protect\numberline {4}Implementazione dei controller Max-Pressure}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.1}Rappresentazione dei semafori}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.2}Controller Max-Pressure di base}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.3}Macchina a stati del controller}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.4}Lost-Time-Aware}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.5}Minimo verde dinamico Nmin}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.6}Fairness}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.7}Penalità downstream}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.8}Anti-spillback}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.9}Platoon extension}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.10}Margini e stabilità dello switch}{}{}}
+\addtocontents{toc}{\protect\contentsline {section}{\protect\numberline {4.11}Contatori di attivazione}{}{}}
+
+\cleardoublepage
+\chapter*{Appendici}
+\addtocontents{toc}{\protect\contentsline {chapter}{Appendici}{}{}}
+
+% Appendici lasciate intenzionalmente vuote in questa versione parziale.
+
+\cleardoublepage
+\chapter*{Riferimenti bibliografici}
+\addtocontents{toc}{\protect\contentsline {chapter}{Riferimenti bibliografici}{}{}}
+\printbibliography[heading=none]
+
+\end{document}
