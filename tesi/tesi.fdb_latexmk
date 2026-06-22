@@ -1,14 +1,14 @@
 # Fdb version 4
-["biber tesi"] 1781704888.35096 "tesi.bcf" "tesi.bbl" "tesi" 1781705047.9945 0
+["biber tesi"] 1781781802.41339 "tesi.bcf" "tesi.bbl" "tesi" 1781787416.03679 0
   "bibliografia.bib" 1781704750.1375 9334 d585f164020890748c92156c49e3d7df ""
-  "tesi.bcf" 1781705047.9244 110355 6f07fd278c0167f9d6af06bfdf8f0142 "pdflatex"
+  "tesi.bcf" 1781787415.96561 110355 6f07fd278c0167f9d6af06bfdf8f0142 "pdflatex"
   (generated)
   "tesi.bbl"
   "tesi.blg"
   (rewritten before read)
-["pdflatex"] 1781705046.2538 "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" "tesi.pdf" "tesi" 1781705047.99469 0
+["pdflatex"] 1781787414.29908 "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" "tesi.pdf" "tesi" 1781787416.03698 0
   "/etc/texmf/web2c/texmf.cnf" 1781181955.21747 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" 1781704874.07544 131868 847ac45dcebed5c4c8df34decbba59a5 ""
+  "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" 1781787055.95227 131930 2d5b2ca6efeae9f86e1e6a228d0c37b4 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf-pc.enc" 1698694482 3136 bbe665bd0bb471a2da1e8fd326cff9fa ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc" 1698694482 2914 fdbc4a54b9bc76f4551b5303f2737d33 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ot1-tlf.enc" 1422827479 2083 60e36f8eac802fcaf19eabe2633b406e ""
@@ -321,12 +321,12 @@
   "figures/sumo_bologna_overview.png" 1781699660.39016 74688 e5e5a81172ae12b8215a19ac3ab1bb1d ""
   "figures/sumo_manhattan_intersection.png" 1781699039.83708 6992 151f138ffd1164ad7ba19b3aa01fc00c ""
   "figures/sumo_manhattan_overview.png" 1781698623.78454 8521 05cf8b9af90bcb78b00ac690d2526870 ""
-  "tesi.aux" 1781705047.9054 36010 044f0cc5111593a94b5f783ea524e95f "pdflatex"
-  "tesi.bbl" 1781704888.73448 42570 3af3843833d38382e354eea41129148a "biber tesi"
-  "tesi.out" 1781705047.92323 29402 788ae14869271f485c1a43d5f9489cb1 "pdflatex"
-  "tesi.run.xml" 1781705047.92564 2313 39f255d0c0a315c7cad3c120f97dc340 "pdflatex"
-  "tesi.tex" 1781704874.07544 131868 847ac45dcebed5c4c8df34decbba59a5 ""
-  "tesi.toc" 1781705047.92564 14106 1eede3e8a5eabf383aedb35fb616298d "pdflatex"
+  "tesi.aux" 1781787415.94661 36016 27da990a26954f102d18aef95f236828 "pdflatex"
+  "tesi.bbl" 1781781802.85033 42570 3af3843833d38382e354eea41129148a "biber tesi"
+  "tesi.out" 1781787415.96403 29402 788ae14869271f485c1a43d5f9489cb1 "pdflatex"
+  "tesi.run.xml" 1781787415.96645 2313 39f255d0c0a315c7cad3c120f97dc340 "pdflatex"
+  "tesi.tex" 1781787055.95227 131930 2d5b2ca6efeae9f86e1e6a228d0c37b4 ""
+  "tesi.toc" 1781787415.96645 14106 1eede3e8a5eabf383aedb35fb616298d "pdflatex"
   (generated)
   "tesi.aux"
   "tesi.bcf"

@@ -207,7 +207,7 @@
 % =========================================================
 \usepackage{etoolbox}
 
-\newcommand{\TesiTitolo}{Controllo semaforico adattivo mediante strategie Max-Pressure: progettazione e valutazione sperimentale}
+\newcommand{\TesiTitolo}{Controllo semaforico adattivo mediante strategie Max-Pressure: progettazione e valutazione tramite simulazione}
 \newcommand{\TesiCandidato}{Jakub Pawel Homoncik}
 \newcommand{\TesiRelatore}{Prof. Giacomo Cabri}
 
@@ -222,7 +222,7 @@
     pdftitle={\TesiTitolo},
     pdfauthor={\TesiCandidato},
     pdfsubject={Controllo semaforico adattivo},
-    pdfkeywords={Sistemi di trasporto intelligenti, Controllo semaforico adattivo, Simulazione del traffico urbano, Max-Pressure, SUMO}
+    pdfkeywords={Sistemi di trasporto intelligenti, Controllo semaforico adattivo, Simulazione, Max-Pressure, SUMO}
 }
 
 % Finche' le sezioni sono vuote, questo segnaposto crea un paragrafo
@@ -313,7 +313,7 @@
 \addcontentsline{toc}{chapter}{Sommario}
 
 Il controllo semaforico a tempi fissi non utilizza informazioni sul traffico
-osservato e può quindi assegnare verde a direzioni poco richieste mentre si
+osservato e può quindi assegnare il verde a direzioni poco richieste mentre si
 formano code su altri accessi. Questa tesi studia strategie di controllo
 adattivo basate sul principio Max-Pressure, nel quale ogni incrocio seleziona
 la fase da servire confrontando le code a monte e a valle dei movimenti
@@ -323,7 +323,7 @@ controller Max-Pressure e di sette estensioni specialistiche, e la costruzione
 di una pipeline di ablation capace di generare popolazioni, eseguire batch
 paralleli e produrre automaticamente metriche e report.
 
-La prima valutazione completa considera una rete sintetica Manhattan \(8
+La prima valutazione completa riguarda una rete sintetica Manhattan \(8
 \times 8\), tre livelli di domanda e cinque seed. I 135 casi sperimentali sono
 terminati senza errori e con censura nulla. Rispetto al programma semaforico
 statico nativo, il miglior controller riduce il tempo medio di attesa del
@@ -342,7 +342,7 @@ modalità operativa al regime locale di traffico.
 \begin{itemize}
     \item Sistemi di trasporto intelligenti;
     \item Controllo semaforico adattivo;
-    \item Simulazione del traffico urbano;
+    \item Simulazione;
     \item Max-Pressure;
     \item SUMO.
 \end{itemize}
@@ -355,9 +355,9 @@ modalità operativa al regime locale di traffico.
 \chapter{Introduzione}
 \label{chap:introduzione}
 
-La regolazione semaforica determina come una risorsa limitata, il diritto di
-passaggio attraverso un incrocio, viene distribuita tra flussi tra loro
-conflittuali. Una scelta apparentemente locale può propagarsi lungo la rete:
+La regolazione semaforica decide come distribuire tra flussi in conflitto una
+risorsa limitata, il diritto di attraversare un incrocio. Una scelta
+apparentemente locale può propagarsi lungo la rete:
 un verde troppo breve lascia una coda residua, un verde inutile sottrae tempo
 agli altri accessi e una coda che raggiunge l'incrocio precedente può impedire
 movimenti altrimenti non conflittuali. Per questo motivo il controllo dei
@@ -365,14 +365,14 @@ semafori costituisce un problema centrale nei sistemi di trasporto
 intelligenti.
 
 Questo capitolo introduce il problema affrontato, gli obiettivi e i contributi
-del lavoro. La trattazione rimane volutamente ad alto livello; le formulazioni
+del lavoro. La trattazione rimane volutamente ad alto livello, le formulazioni
 matematiche, le scelte implementative e il protocollo sperimentale vengono
 sviluppati nei capitoli successivi.
 
 \section{Contesto e motivazioni}
 
 I piani semaforici a tempi fissi sono semplici, prevedibili e poco costosi da
-gestire. Essi associano a ciascuna fase una durata definita in anticipo e
+gestire. Associano a ciascuna fase una durata definita in anticipo e
 ripetono ciclicamente la stessa sequenza. La loro efficacia dipende tuttavia
 dalla corrispondenza tra il profilo di domanda usato durante la progettazione e
 il traffico effettivamente presente. Quando la domanda cambia nello spazio o
@@ -385,7 +385,7 @@ Max-Pressure è particolarmente interessante perché non richiede una previsione
 completa della domanda né un unico ottimizzatore centrale. Ogni intersezione
 confronta le code a monte e a valle dei movimenti consentiti e assegna il verde
 alla fase con pressione maggiore. Questa famiglia deriva dalle politiche di
-backpressure per reti di code \cite{tassiulas1992stability}; nel traffico
+backpressure per reti di code \cite{tassiulas1992stability}, nel traffico
 urbano, la letteratura ha mostrato importanti proprietà di stabilità e
 throughput in opportune ipotesi modellistiche
 \cite{varaiya2013maxpressure,wongpiromsarn2012distributed,levin2023review}.
@@ -409,9 +409,9 @@ statico.
 L'indicatore principale è il tempo di attesa, affiancato da tempo di viaggio,
 perdita di tempo, velocità, numero di viaggi completati e censura. Il lavoro
 non persegue obiettivi ambientali: consumi di carburante ed emissioni non sono
-utilizzati per selezionare o valutare i controller. Tale delimitazione mantiene
-coerente l'analisi con la domanda di ricerca, cioè massimizzare l'efficienza
-degli incroci e del flusso veicolare.
+utilizzati per selezionare o valutare i controller. In questo modo l'analisi
+rimane allineata alla domanda di ricerca, concentrata sull'efficienza degli
+incroci e del flusso veicolare.
 
 Una difficoltà metodologica importante è evitare conclusioni ottenute da un
 solo seed o da una simulazione interrotta prima che tutti i veicoli completino
@@ -442,9 +442,9 @@ Gli obiettivi sono i seguenti:
 
 \section{Contributi del lavoro}
 
-Il progetto di partenza forniva il collegamento fondamentale con SUMO, un
-runner, un generatore di popolazioni e un controller fisso. Su questa base sono
-stati sviluppati:
+Il lavoro è partito da una base software composta dal collegamento con SUMO, da
+un runner, da un generatore di popolazioni e da un controller fisso, che sono
+stati poi integrati ed estesi con:
 
 \begin{itemize}
     \item un'implementazione completa del Max-Pressure, comprensiva di macchina
@@ -484,7 +484,7 @@ mappa reale e discute i risultati conclusivi.
 \chapter{Contesto e stato dell'arte}
 \label{chap:stato-arte}
 
-Per collocare correttamente il contributo è necessario distinguere tre livelli:
+Per collocare il contributo è utile distinguere tre livelli:
 le strategie di controllo già note in letteratura, gli strumenti software
 utilizzati e le componenti effettivamente sviluppate durante il tirocinio. Il
 capitolo procede dal controllo a tempi fissi al Max-Pressure, ne discute le
@@ -492,7 +492,7 @@ principali estensioni e conclude descrivendo lo stato iniziale del progetto.
 
 \section{Controllo semaforico urbano}
 
-Un'intersezione semaforizzata è descritta da un insieme di movimenti, ad
+Un'intersezione semaforizzata è descritta da un insieme di movimenti, per
 esempio attraversamento rettilineo o svolta, e da un insieme di fasi. Una fase
 abilita contemporaneamente movimenti compatibili. Il controller deve decidere
 quanto a lungo mantenere la fase corrente e quando avviare la transizione verso
@@ -535,8 +535,9 @@ principalmente dalle code sulle corsie incidenti.
 \section{Strategie Max-Pressure}
 
 Il Max-Pressure deriva dalle politiche di backpressure impiegate per
-stabilizzare reti di code \cite{tassiulas1992stability}. Applicato al traffico, confronta la quantità di
-veicoli che desidera attraversare l'incrocio con la capacità residua delle
+stabilizzare reti di code \cite{tassiulas1992stability}. Applicato al traffico,
+confronta la quantità di veicoli che desidera attraversare l'incrocio con la
+capacità residua delle
 corsie riceventi. L'intuizione è servire i movimenti che riducono maggiormente
 il differenziale di coda senza trasferire indiscriminatamente congestione a
 valle.
@@ -579,7 +580,7 @@ alle mappe disponibili.
 
 \subsection{Pressione dei movimenti e delle fasi}
 
-La pressione non rappresenta la sola lunghezza della coda. Una fase può avere
+La pressione non coincide con la sola lunghezza della coda. Una fase può avere
 molti veicoli in ingresso ma una pressione modesta quando anche le uscite sono
 congestionate. Al contrario, una coda più corta può risultare prioritaria se
 può essere scaricata verso corsie libere. Il punteggio di fase somma i
@@ -632,7 +633,7 @@ cicliche e cycle-based affrontano un problema affine vincolando gli
 aggiornamenti a una struttura più vicina ai piani semaforici tradizionali
 \cite{anderson2018cyclebased,levin2020cyclical}.
 
-Un minimo verde assolve una funzione simile, ma in modo temporale: impedisce di
+Un minimo verde svolge una funzione simile, ma in modo temporale: impedisce di
 rivalutare immediatamente la fase appena attivata. Un massimo verde costituisce
 invece una salvaguardia contro permanenze eccessive e forza periodicamente una
 nuova decisione.
@@ -711,10 +712,10 @@ essere modificata senza rigenerare la rete.
 
 \section{Situazione iniziale del progetto}
 
-Le linee guida di tesi richiedono di distinguere quanto già disponibile da
-quanto realizzato nel lavoro. La ricostruzione è stata effettuata attraverso la
-cronologia Git e il confronto tra il commit iniziale applicativo e la versione
-finale.
+Per chiarezza metodologica è opportuno distinguere quanto era già disponibile
+da quanto è stato realizzato nel lavoro. La ricostruzione è stata effettuata
+attraverso la cronologia Git e il confronto tra il commit iniziale
+dell'applicazione e la versione finale.
 
 \subsection{Componenti software già disponibili}
 
@@ -762,11 +763,11 @@ architettura e l'implementazione risultante.
 \label{chap:progettazione}
 
 Un esperimento sui controller semaforici è credibile soltanto se la piattaforma
-impedisce confronti non omogenei e conserva abbastanza informazioni per
+evita confronti non omogenei e conserva abbastanza informazioni per
 riprodurre ogni risultato. Da questa esigenza derivano i requisiti e
 l'architettura descritti nel capitolo. La progettazione separa la politica di
 controllo dalla generazione del traffico e dalla valutazione, in modo che una
-modifica a un componente non alteri implicitamente gli altri.
+modifica di un componente non alteri implicitamente gli altri.
 
 \section{Requisiti funzionali}
 
@@ -795,24 +796,24 @@ percorsi di output.
 
 \section{Requisiti non funzionali}
 
-Oltre al risultato numerico, sono rilevanti riproducibilità, modularità e
+Oltre ai valori numerici, sono rilevanti riproducibilità, modularità e
 osservabilità. Questi requisiti hanno guidato scelte quali la serializzazione
 delle popolazioni, l'uso di configurazioni risolte e l'introduzione di contatori
 per le regole specialistiche.
 
 \subsection{Riproducibilità}
 
-Due controller devono essere confrontati sugli stessi veicoli, con uguali
-route, istanti di partenza e caratteristiche di guida. Per ogni coppia
+Due controller devono essere confrontati sugli stessi veicoli, con le stesse
+route, gli stessi istanti di partenza e le stesse caratteristiche di guida. Per ogni coppia
 mappa--domanda--seed viene quindi generato un unico file di popolazione,
 riutilizzato da tutti gli scenari. Il seed compare sia nel nome sia nel
 contenuto del file. La directory di una campagna conserva inoltre la
 configurazione effettivamente risolta, evitando che un valore predefinito
 modificato in seguito renda ambiguo un risultato precedente.
 
-La riproducibilità non implica che seed diversi producano lo stesso valore;
+La riproducibilità non implica che seed diversi producano gli stessi valori;
 serve piuttosto a rendere controllata la variabilità. Nella valutazione finale
-Manhattan ogni scenario viene eseguito sui medesimi cinque seed, consentendo
+su Manhattan ogni scenario viene eseguito sui medesimi cinque seed, consentendo
 confronti appaiati.
 
 \subsection{Modularità}
@@ -940,9 +941,9 @@ casi in:
     \item \texttt{config\_resolved.yaml}, configurazione effettiva.
 \end{itemize}
 
-Sebbene il formato generico possa contenere campi prodotti da SUMO per altre
-analisi, la tesi aggrega e interpreta esclusivamente metriche di mobilità e
-completezza dei viaggi.
+Sebbene il formato generico possa contenere campi prodotti da SUMO per analisi
+di altro tipo, la tesi aggrega e interpreta esclusivamente metriche di mobilità
+e completezza dei viaggi.
 
 \section{Flusso di esecuzione di una simulazione}
 
@@ -1070,7 +1071,7 @@ termine della transizione.
 Questa soluzione conserva le durate di sicurezza della mappa e separa due
 decisioni: \emph{quale} fase servire e \emph{come} raggiungerla. Un meccanismo
 di recupero interviene se il semaforo rimane per almeno 20 secondi in uno stato
-non principale, condizione considerata anomala. Tale salvaguardia è stata
+non principale, condizione considerata anomala. Questa salvaguardia è stata
 introdotta dopo aver osservato stalli in campagne iniziali.
 
 \section{Controller Max-Pressure di base}
@@ -1128,8 +1129,8 @@ pendente e avvia la sequenza di transizione.
 \subsection{Vincoli di minimo e massimo verde}
 
 Il valore predefinito del minimo verde è 10 secondi. Prima di tale durata la
-fase non viene rivalutata. Il massimo verde è 120 secondi e opera come safety
-cap: se esiste una fase alternativa finita, il controller può forzare il cambio
+fase non viene rivalutata. Il massimo verde è 120 secondi e opera come limite
+di sicurezza: se esiste una fase alternativa finita, il controller può forzare il cambio
 quando il limite è raggiunto. Minimo e massimo non determinano quindi un ciclo
 fisso; delimitano la frequenza delle decisioni adattive.
 
@@ -1173,7 +1174,7 @@ calcolo Nmin. Non viene quindi assunto un giallo uguale per tutti gli incroci.
 
 \subsection{Recupero dalle transizioni anomale}
 
-Due controlli evitano stalli. Se esiste un target pendente e una fase di
+Due controlli evitano possibili stalli. Se esiste un target pendente e una fase di
 transizione termina, il controller avanza o si riallinea al target. Se invece
 non esiste un target ma il semaforo rimane in una fase non principale oltre la
 soglia di 20 secondi, viene ripristinata la prima fase principale valida. Il
@@ -1274,7 +1275,7 @@ senza prevenire alcun blocco reale.
 
 \section{Anti-spillback}
 
-Il blocco hard usa due stime della saturazione downstream. La prima è
+Il blocco rigido usa due stime della saturazione downstream. La prima è
 l'occupazione filtrata $\bar{o}_j$. La seconda approssima il riempimento della
 capacità di stoccaggio:
 
@@ -1286,7 +1287,7 @@ capacità di stoccaggio:
 \end{equation}
 
 in cui $\ell_j$ è la lunghezza della corsia in metri e 7,5 metri è lo spazio
-medio di jam assunto per veicolo. Una corsia non bloccata entra nello stato di
+medio in coda assunto per veicolo. Una corsia non bloccata entra nello stato di
 blocco quando $z_j\geq\theta_{on}$ e sono presenti almeno $h_{min}$ veicoli
 fermi; rimane bloccata finché $z_j\geq\theta_{off}$. Poiché
 $\theta_{off}<\theta_{on}$, la regola possiede isteresi.
@@ -1301,15 +1302,15 @@ mai entrata in funzione.
 
 \section{Platoon extension}
 
-Per ogni corsia in ingresso alla fase attiva viene posto un rivelatore virtuale
+Per ogni corsia in ingresso alla fase attiva viene collocato un rivelatore virtuale
 a 8 metri dalla fine. Il controller registra gli istanti in cui i veicoli
 attraversano tale posizione e calcola la media degli ultimi quattro headway.
 Un plotone è riconosciuto se la media non supera la soglia configurata e
 l'ultimo passaggio non è più vecchio del tempo di gap-out.
 
-Quando il controller starebbe per rivalutare la fase, la presenza del plotone
+Quando il controller sta per rivalutare la fase, la presenza del plotone
 può prolungare il verde fino a un massimo aggiuntivo. La configurazione finale
-usa soglia e gap-out di 2,1 secondi e un massimo di 4 secondi. Un guard
+usa soglia e gap-out di 2,1 secondi e un massimo di 4 secondi. Un controllo
 downstream impedisce l'estensione solo quando sono contemporaneamente abilitate
 le misure di spillback o penalità downstream. Nello scenario standalone
 \texttt{mp\_platoon\_x4} tali moduli non sono attivi; di conseguenza il
@@ -1353,9 +1354,9 @@ di mobilità e verificare la coerenza tra configurazione e comportamento.
 \chapter{Metodologia e piattaforma sperimentale}
 \label{chap:metodologia}
 
-La qualità di una politica semaforica non può essere stabilita da una singola
-traccia. Il protocollo deve controllare domanda, seed, durata e completezza dei
-viaggi, oltre a rendere confrontabili gli output. Il capitolo definisce la
+La qualità di una politica semaforica non può essere stabilita da una sola
+simulazione. Il protocollo deve controllare domanda, seed, durata e completezza
+dei viaggi, oltre a rendere confrontabili gli output. Il capitolo definisce la
 pipeline di ablation, i modelli di domanda, le metriche e le minacce alla
 validità. La configurazione specifica di Manhattan è presentata nel
 \cref{chap:manhattan}.
@@ -1382,7 +1383,7 @@ estensioni.
 
 \section{Pipeline di ablation}
 
-\texttt{utils/run\_ablation.py} automatizza la campagna. Dati insiemi di mappe,
+\texttt{utils/run\_ablation.py} automatizza la campagna. A partire da insiemi di mappe,
 domande, distribuzioni, seed e scenari, costruisce tutti i casi, prepara gli
 input, esegue i processi e aggrega gli output. Questa automazione è stata
 necessaria perché comandi manuali lunghi avevano prodotto, nelle prime prove,
@@ -1402,7 +1403,7 @@ i preset di domanda effettivi e scrive la configurazione. Per ciascuna
 combinazione di mappa, set, domanda e seed genera una sola popolazione. Tutti i
 controller riferiti a quella combinazione ricevono lo stesso file.
 
-Gli scenari sono raccolti in pack versionati nel codice. Il pack contiene nomi
+Gli scenari sono raccolti in pack versionati nel codice. Ogni pack contiene nomi
 interpretabili e flag completi; il report non deve quindi inferire a posteriori
 quali parametri fossero stati usati.
 
@@ -1414,7 +1415,7 @@ avvia un processo SUMO e un processo Python di controllo. Il parametro
 riduce il tempo totale finché CPU, memoria e input/output non diventano il
 collo di bottiglia.
 
-Il parallelismo è tra simulazioni, non all'interno del Max-Pressure. Questa
+Il parallelismo avviene tra simulazioni, non all'interno del Max-Pressure. Questa
 scelta è adatta a una matrice di molti casi e mantiene deterministico il
 controller di ciascuna simulazione. Le directory isolate impediscono che due
 worker sovrascrivano \texttt{tripinfo}, log o metriche.
@@ -1426,7 +1427,7 @@ Ogni campagna riceve un identificativo del tipo
 risultati aggregati e una sottodirectory per ciascun caso. Il file di progresso
 riporta il totale pianificato e il conteggio di successi e fallimenti.
 
-Questa organizzazione preserva la provenienza dei risultati e permette di
+Questa organizzazione preserva la provenienza dei risultati e consente di
 confrontare campagne successive senza mescolarne i file. I report finali usati
 nel \cref{chap:manhattan} provengono interamente da una sola run completa.
 
@@ -1467,7 +1468,7 @@ pochi decimi di secondo.
 
 \section{Generazione della domanda di traffico}
 
-Una popolazione contiene identificativo, route, istante di partenza e tipo di
+Una popolazione contiene identificativo, route, istante di partenza e tipo per
 ogni veicolo. La finestra di generazione è distinta dalla durata totale della
 simulazione: dopo l'ultima partenza la simulazione prosegue finché tutti i
 veicoli completano il viaggio, salvo un limite esplicito.
@@ -1485,7 +1486,7 @@ di route. Per reti con oltre 650 route la domanda media è 4000 veicoli; low è
 il 60\% e high il 140\%, cioè rispettivamente 2400 e 5600 veicoli. Tutte le
 partenze sono collocate nell'intervallo $[0,3600]$ secondi.
 
-Questa calibrazione rende i livelli proporzionati alla varietà di percorsi
+Questa calibrazione rende i livelli proporzionati alla varietà dei percorsi
 della mappa. Non garantisce però che ``high'' produca saturazione o spillback:
 la gravità effettiva dipende anche da capacità, lunghezza delle route e
 concentrazione spaziale. Nel capitolo dei risultati tale distinzione risulta
@@ -1550,7 +1551,7 @@ appaiate e non dipendono da un diverso campione di veicoli.
 \section{Profilo di guida human-light}
 
 Il profilo \texttt{human\_light} riduce l'idealizzazione del comportamento
-senza introdurre un tuning aggressivo. La velocità iniziale usa il valore
+senza introdurre una taratura aggressiva. La velocità iniziale usa il valore
 \texttt{desired}, non sempre il massimo consentito. Per ciascun tipo vengono
 specificati tempo di reazione $\tau$, imperfezione di guida $\sigma$, intervallo
 di azione, gap alle precedenze e ritardo di partenza.
@@ -1589,7 +1590,7 @@ senza controllo adattivo.
 \subsection{Fixed tuned}
 
 La piattaforma supporta anche \texttt{fixed\_tuned}, che forza a 30 secondi le
-fasi principali del program0 mantenendo le transizioni. Questo baseline è
+fasi principali del program0 mantenendo le transizioni. Questa baseline è
 stato utile nelle campagne esplorative su Bologna, ma non viene incluso nella
 campagna Manhattan finale: il suo parametro non deriva da un'ottimizzazione
 specifica della griglia e avrebbe aggiunto un confronto non necessario al
@@ -1599,7 +1600,7 @@ primo studio per ablation.
 
 \texttt{mp\_base} usa pressione upstream--downstream, minimo verde di 10
 secondi, massimo verde di 120 secondi e margine nullo. Nessuna estensione è
-abilitata. Esso ha due ruoli: controller adattivo generale e riferimento
+abilitata. Ha due ruoli: controller adattivo generale e riferimento
 interno per stabilire se una modifica specialistica aggiunga valore.
 
 \section{Metriche}
@@ -1628,7 +1629,7 @@ e perdite di tempo.
 
 \subsection{Viaggi completati e throughput}
 
-Il throughput osservato è il numero di viaggi completati. Quando la simulazione
+Il throughput osservato coincide con il numero di viaggi completati. Quando la simulazione
 prosegue fino a svuotamento, tutti gli scenari dovrebbero completare la stessa
 popolazione. In presenza di un limite temporale, il numero di arrivi diventa
 invece una metrica essenziale: un controller che lascia veicoli bloccati non
@@ -1657,7 +1658,7 @@ loss, percentile 95 e velocità. Una variante è considerata sostanzialmente
 migliore del base se il vantaggio è coerente sui seed e non deriva da un
 numero inferiore di viaggi completati.
 
-Le attivazioni interne vengono usate come evidenza causale debole ma utile. Ad
+Le attivazioni interne vengono usate come indizio causale debole ma utile. Ad
 esempio, risultati e contatori identici tra spillback e base indicano che la
 soglia non è stata raggiunta. Non si conclude che lo spillback sia inutile in
 generale; si conclude che la campagna non ha testato il regime per cui è stato
@@ -1673,7 +1674,7 @@ conteneva TraCI e sumolib 1.20.0, PyYAML 6.0.1 e NumPy 1.26.4.
 
 Sono stati usati tre worker paralleli. I 135 casi hanno richiesto circa 7 ore e
 20 minuti di tempo reale. La GPU non è coinvolta: SUMO e il controller sono
-principalmente CPU-bound, e il parallelismo utile deriva dall'esecuzione di più
+principalmente vincolati dalla CPU, e il parallelismo utile deriva dall'esecuzione di più
 processi indipendenti.
 
 \section{Minacce alla validità}
@@ -1691,7 +1692,7 @@ mobilità veicolare. Indicatori ambientali eventualmente presenti negli output
 generici non appartengono al modello di valutazione.
 
 \textbf{Validità esterna.} Manhattan è regolare, completamente semaforizzata e
-usa domanda balanced. I risultati non si trasferiscono automaticamente a una
+usa domanda balanced. I risultati non sono trasferibili automaticamente a una
 rete reale irregolare o a traffico fortemente concentrato. La seconda parte
 della tesi affronta questa limitazione con Bologna e con i set skewed e peak.
 
@@ -1846,7 +1847,7 @@ tutte le combinazioni numeriche generate dalla pipeline.
     \label{fig:manhattan-reduction}
 \end{figure}
 
-Il migliore scenario è \texttt{mp\_nmin\_a080\_f2} in low e medium, mentre in
+Lo scenario migliore è \texttt{mp\_nmin\_a080\_f2} in low e medium, mentre in
 high è \texttt{mp\_fair\_mu5\_w20}. Il valore assoluto dell'attesa passa da
 65,85 a 23,54 secondi in low, da 66,89 a 26,70 in medium e da 67,75 a 31,81 in
 high. La censura è nulla in tutti i casi, quindi il confronto non dipende da
@@ -1896,7 +1897,7 @@ viaggio.
 
 \subsection{Fairness}
 
-La fairness è quasi neutra in low e medium e nominalmente migliore in high. I
+La fairness è quasi neutra in low e medium e risulta nominalmente migliore in high. I
 bonus positivi sono applicati in media 5584, 7951 e 9538 volte nei tre livelli;
 il meccanismo è quindi attivo. All'aumentare del carico, più fasi conservano
 domanda mentre non sono servite e il bonus può correggere squilibri persistenti.
@@ -1928,7 +1929,7 @@ ogni domanda. La spiegazione non è che il codice non venga eseguito: nessuna
 corsia raggiunge contemporaneamente il punteggio 0,90 e almeno tre veicoli
 fermi richiesti per l'attivazione.
 
-Il risultato delimita la campagna. Anche 5600 veicoli balanced costituiscono un
+Questo esito delimita la campagna. Anche 5600 veicoli balanced costituiscono un
 carico elevato per il confronto, ma non una condizione di spillback. Per
 valutare la protezione sono necessarie route più concentrate, picchi temporali,
 corsie riceventi corte o una domanda maggiore. La successiva introduzione dei
@@ -1942,7 +1943,7 @@ restano però molto vicine al base: leggermente peggiori in low, migliori di
 0,06 secondi in medium e di 0,13 in high.
 
 L'estensione massima di 4 secondi è prudente e il traffico balanced non produce
-corridoi dominanti. Inoltre, nello scenario standalone non è attivo un guard
+corridoi dominanti. Inoltre, nello scenario standalone non è attivo un controllo
 downstream effettivo. Il test mostra che il riconoscimento dei plotoni funziona,
 ma non dimostra un vantaggio sostanziale nella griglia uniforme.
 
@@ -1991,7 +1992,7 @@ decisionale, mentre la coincidenza non è dovuta a un problema di aggregazione.
 
 \section{Confronto complessivo}
 
-La campagna sostiene con chiarezza l'ipotesi principale: su Manhattan
+La campagna supporta con chiarezza l'ipotesi principale: su Manhattan
 $8\times8$ balanced, il controllo Max-Pressure riduce in modo ampio attesa,
 viaggio e time loss rispetto al program0 nativo, mantenendo censura nulla. Il
 Max-Pressure base da solo riduce l'attesa del 59,46\%, 55,93\% e 52,66\% nei
@@ -2000,15 +2001,15 @@ beneficio fondamentale.
 
 Tra le estensioni, Nmin è la scelta più efficace a domanda bassa e media,
 principalmente grazie al minimo verde più corto. A domanda alta fairness,
-platoon, Nmin e base sono raccolti entro 0,26 secondi di attesa. La classifica
+platoon, Nmin e base sono compresi entro 0,26 secondi di attesa. La classifica
 nominale non deve oscurare tale prossimità. LTA e downstream mostrano invece
 che aggiungere prudenza o informazione non produce automaticamente una politica
 migliore: una regola utile in congestione può costare capacità quando il
 fenomeno bersaglio è assente.
 
-Il piano fixed rimane quasi costante tra 65,85 e 67,75 secondi di attesa. Questo
+Il piano fixed rimane quasi costante tra 65,85 e 67,75 secondi di attesa. Ciò
 non significa che il traffico non aumenti: viaggio e time loss peggiorano e la
-velocità scende. Significa che il ciclo statico impone una componente dominante
+velocità scende. Significa piuttosto che il ciclo statico impone una componente dominante
 di ritardo anche in low, mentre il Max-Pressure evita verdi assegnati a
 movimenti con poca domanda. La rete regolare e l'assenza di offset coordinati
 favoriscono questo vantaggio locale. Non si può estendere la conclusione a un
@@ -2079,11 +2080,11 @@ questo principio è spesso sufficiente, perché gli incroci sono simili e i
 flussi sono distribuiti in modo abbastanza omogeneo. In una rete reale, invece,
 alcuni nodi hanno un ruolo molto più critico di altri; inoltre il programma
 statico della mappa può incorporare implicitamente scelte di coordinamento che
-un controllore locale non conosce.
+un controller locale non conosce.
 
 Il dato più rilevante emerso durante il lavoro è che il programma semaforico
 nativo di Bologna, indicato nei risultati come \texttt{fixed\_program0}, non è
-un baseline debole. Al contrario, si è dimostrato competitivo soprattutto con
+una baseline debole. Al contrario, si è dimostrato competitivo soprattutto con
 domanda leggera e media. Per questo la parte finale della tesi non si limita a
 verificare se Max-Pressure batta un piano fisso qualunque, ma studia come
 combinare adattività locale e riuso del piano nativo.
@@ -2130,7 +2131,7 @@ traffico Bologna può richiedere molto tempo simulato per svuotarsi dopo la fine
 della generazione dei veicoli. Un cutoff troppo breve produce censura: una
 parte dei viaggi rimane incompleta e le metriche di viaggio vengono calcolate
 solo sui veicoli arrivati. Questo può alterare il confronto, perché un
-controllore che completa meno veicoli può apparire migliore su attesa media o
+controller che completa meno veicoli può apparire migliore su attesa media o
 tempo di viaggio.
 
 Per questa ragione le campagne esplorative hanno usato la censura come metrica
@@ -2144,7 +2145,7 @@ rimangono comunque utili perché descrivono il percorso progettuale seguito.
 
 \section{Preparazione e correzione della mappa}
 
-La rete Bologna è stata utilizzata tramite i file presenti in
+La rete di Bologna è stata utilizzata tramite i file presenti in
 \path{sumo_xml_files/bologna}. Durante la fase di preparazione sono stati
 controllati i programmi semaforici, le fasi principali e la compatibilità con
 TraCI. Una parte del lavoro software è consistita nel rendere il controller
@@ -2162,10 +2163,10 @@ effettivi sono stati calibrati a 1500, 3000 e 5000 veicoli, generati tra
 
 \section{Analisi del programma semaforico program0}
 
-Il baseline \texttt{fixed\_program0} forza il programma semaforico 0 già
+La baseline \texttt{fixed\_program0} forza il programma semaforico 0 già
 presente nella mappa. Non compie decisioni online: ripete le durate e le fasi
 definite nel file SUMO. Su Bologna questo comportamento si è rivelato molto più
-forte di quanto ci si aspetterebbe da un semplice piano statico. La ragione è
+forte di quanto ci si potesse aspettare da un semplice piano statico. La ragione è
 che il programma nativo non è una sequenza artificiale uguale per tutti gli
 incroci, ma una configurazione già associata alla rete reale.
 
@@ -2186,7 +2187,7 @@ instabili. Terzo, la pressione misura code e downstream in modo reattivo, ma
 non distingue da sola fra traffico persistente, picchi temporanei e
 saturazione downstream.
 
-Il risultato pratico è che \texttt{mp\_base} rimane una baseline fondamentale
+In pratica, \texttt{mp\_base} rimane una baseline fondamentale
 ma non è sufficiente per Bologna. Nella campagna esplorativa, ad esempio, su
 domanda balanced low l'attesa media di \texttt{mp\_base} è 431 secondi contro
 203 secondi di \texttt{fixed\_program0}; in balanced medium è 635 contro 529.
@@ -2197,7 +2198,7 @@ alta e quindi con interpretazione più delicata.
 
 Ogni switch introduce tempo perso. Su una rete regolare questo costo può essere
 compensato dalla migliore scelta della fase; su Bologna, invece, se il
-controllore cambia spesso per rispondere a piccole differenze di pressione può
+controller cambia spesso per rispondere a piccole differenze di pressione può
 rompere un ciclo statico già ragionevole. Per ridurre il problema sono state
 studiate varianti con margine di switch e varianti lost-time-aware, nelle quali
 il cambio è autorizzato solo se il vantaggio di pressione supera una stima del
@@ -2216,9 +2217,9 @@ quanto guadagni. In questo regime il \texttt{program0} nativo ha spesso una
 buona prestazione perché evita oscillazioni e assegna tempi stabili.
 
 La scoperta è stata importante perché ha corretto un'ipotesi iniziale: non è
-vero che un controllore dinamico debba essere sempre più veloce di uno fisso.
+vero che un controller dinamico debba essere sempre più veloce di uno fisso.
 Se il traffico non giustifica lo switch, la decisione migliore può essere
-proprio non comportarsi da Max-Pressure. Da qui nasce \texttt{mp\_program0}.
+non applicare Max-Pressure. Da qui nasce \texttt{mp\_program0}.
 
 \subsection{Assenza di coordinamento globale}
 
@@ -2273,7 +2274,7 @@ spesso route associate ad archi importanti, creando corridoi più caricati.
 profilo temporale concentrato, con parametro di picco 0,8.
 
 Questa distinzione è cruciale per interpretare Bologna. Un controller può
-andare bene in balanced perché la pressione è distribuita, ma fallire in skewed
+funzionare bene in balanced perché la pressione è distribuita, ma fallire in skewed
 se il carico si concentra su pochi corridoi. Al contrario, Nmin può essere
 utile in peak perché un minimo verde dinamico aiuta a servire ondate compatte
 senza restare troppo a lungo su fasi vuote.
@@ -2467,7 +2468,7 @@ diagnosi: spillback che non si attiva, safe troppo presente, platoon score
 sempre nullo, program0 dominante in low, specialisti diversi vincenti nei casi
 high. In questo senso Bologna non è soltanto una seconda mappa di test, ma il
 caso che ha trasformato il progetto da confronto fra varianti Max-Pressure a
-studio di un controllore ibrido e regime-aware.
+studio di un controller ibrido e regime-aware.
 
 
 
@@ -2476,8 +2477,8 @@ studio di un controllore ibrido e regime-aware.
 
 \section{Protocollo sperimentale}
 
-La valutazione su Bologna ha un ruolo diverso rispetto a Manhattan. Qui non si
-vuole soltanto verificare se Max-Pressure funzioni, ma capire come si comporti
+La valutazione su Bologna ha un ruolo diverso rispetto a Manhattan. In questo
+caso non si vuole soltanto verificare se Max-Pressure funzioni, ma capire come si comporti
 quando compete con un programma semaforico reale già presente nella mappa. Il
 confronto usa tre livelli di domanda, tre distribuzioni spaziali e temporali
 (balanced, skewed e peak) e gli scenari principali della pipeline: programma
@@ -2488,21 +2489,21 @@ I risultati numerici riportati in questo capitolo provengono dalla campagna
 esplorativa \path{run_0024_20260527_122000}, con un seed e cutoff a 7000 step.
 La campagna finale predisposta nel software usa invece \path{bologna_thesis_v1},
 tre seed, nessun cutoff anticipato e include anche \texttt{mp\_super\_no\_safe}.
-Per questo i numeri vanno letti come base interpretativa: servono a spiegare
+Per questo i numeri vanno letti come base interpretativa: aiutano a spiegare
 l'evoluzione del metodo e saranno sostituiti dai risultati definitivi quando la
 campagna senza censura sarà completata.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.88\textwidth]{sumo_bologna_congestion_peak.png}
-    \caption{Esempio di accumulo di veicoli in una simulazione Bologna con
+    \caption{Esempio di accumulo di veicoli in una simulazione su Bologna con
     distribuzione peak e domanda alta.}
     \label{fig:bologna-congestion}
 \end{figure}
 
 La \cref{fig:bologna-congestion} mostra il tipo di condizione che non appare
 nella griglia Manhattan: code concentrate su corridoi specifici, archi corti e
-incroci molto vicini. In questi casi una metrica sola non è sufficiente. Il
+incroci molto vicini. In questi casi una singola metrica non è sufficiente. Il
 tempo medio di attesa resta la misura principale, ma nei casi high deve sempre
 essere letto insieme alla censura, cioè alla quota di viaggi non completati
 entro il cutoff.
@@ -2511,7 +2512,7 @@ entro il cutoff.
 
 La \cref{fig:bologna-wait-bars} confronta i quattro controller più importanti:
 \texttt{fixed\_program0}, \texttt{mp\_base}, \texttt{mp\_program0} e
-\texttt{mp\_super}. La scelta di mostrare questi quattro casi rende leggibile
+\texttt{mp\_super}. La scelta di mostrare questi quattro casi rende più chiaro
 il messaggio centrale del capitolo: il Max-Pressure puro non basta, mentre le
 versioni ibride recuperano il comportamento del programma nativo quando il
 traffico è basso e introducono adattività quando il carico cresce.
@@ -2561,7 +2562,7 @@ balanced e peak, mentre in skewed è leggermente peggiore di
 \texttt{mp\_program0}. Nei casi high il quadro è più delicato. In balanced high
 vince \texttt{mp\_program0}; in skewed high il super migliora il fixed; in peak
 high il super è vicino al fixed come attesa ma completa più viaggi. Questa è la
-zona in cui il cutoff influenza maggiormente la lettura, quindi la valutazione
+zona in cui il cutoff influenza maggiormente la lettura; per questo la valutazione
 finale richiede simulazioni senza limite anticipato.
 
 \section{Censura nei casi ad alto traffico}
@@ -2606,12 +2607,12 @@ ma con 51,3\% di censura; \texttt{mp\_super} ottiene 1335 secondi, ma con
 21,6\% di censura; il fixed arriva a 1356 secondi con 28,4\% di censura. Se si
 considera solo l'attesa, Nmin sembra nettamente migliore. Se si considera anche
 il completamento dei viaggi, il super appare più conservativo ma più robusto.
-La campagna senza cutoff serve proprio a distinguere un vero miglioramento da
+La campagna senza cutoff serve a distinguere un vero miglioramento da
 un effetto dovuto ai viaggi rimasti incompleti.
 
 \section{Uso delle modalità di mp\_super}
 
-Il comportamento del super è interpretabile perché ogni step viene assegnato a
+Il comportamento del super è interpretabile perché ogni step viene associato a
 una modalità. Il dato più utile non è soltanto quale ramo venga scelto, ma
 quanto spesso il controller abbandoni \texttt{program0}. La
 \cref{fig:super-non-program0} mostra questa quota aggregata.
@@ -2666,7 +2667,7 @@ ultima risorsa.
 La valutazione su Bologna porta a una conclusione più realistica di quella su
 Manhattan. Sulla griglia sintetica il Max-Pressure vince in modo netto perché
 il piano fisso non possiede coordinamento specifico e gli incroci sono quasi
-omogenei. Su Bologna, invece, \texttt{fixed\_program0} è un baseline forte: è il
+omogenei. Su Bologna, invece, \texttt{fixed\_program0} è una baseline forte: è il
 programma nativo della mappa, contiene durate e transizioni pensate per quella
 rete e in traffico leggero evita switch inutili.
 
@@ -2679,7 +2680,7 @@ prova a scegliere quale variante Max-Pressure usare quando il traffico lo
 richiede.
 
 Gli specialisti non vanno quindi letti come controller alternativi da usare
-sempre, ma come strumenti utili in regimi specifici. LTA è più sensato quando
+sempre, ma come strumenti utili in regimi specifici. LTA è più indicato quando
 esiste uno squilibrio persistente; Nmin forte quando il traffico arriva a
 ondate; platoon quando sono presenti gruppi compatti; safe quando la corsia a
 valle è quasi satura. La difficoltà del super è selezionare questi strumenti
@@ -2731,7 +2732,7 @@ I risultati principali sono quattro.
     \item Le estensioni specialistiche non sono automaticamente utili. Alcune
     migliorano in regimi specifici, altre rimangono inattive oppure peggiorano
     per costo di switch o eccesso di prudenza.
-    \item Su Bologna, \texttt{fixed\_program0} è un baseline forte. Questo ha
+    \item Su Bologna, \texttt{fixed\_program0} è una baseline forte. Questo ha
     reso necessario un controller ibrido: \texttt{mp\_program0} usa il piano
     statico in low e passa a Max-Pressure solo oltre soglia.
     \item \texttt{mp\_super} generalizza l'ibridazione scegliendo online fra
