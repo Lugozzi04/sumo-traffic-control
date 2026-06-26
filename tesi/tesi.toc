@@ -5,7 +5,7 @@
 \contentsline {chapter}{\numberline {1}Introduzione}{1}{chapter.1}%
 \contentsline {section}{\numberline {1.1}Contesto e motivazioni}{1}{section.1.1}%
 \contentsline {section}{\numberline {1.2}Problema affrontato}{2}{section.1.2}%
-\contentsline {section}{\numberline {1.3}Obiettivi della tesi}{2}{section.1.3}%
+\contentsline {section}{\numberline {1.3}Obiettivi del lavoro di tesi}{2}{section.1.3}%
 \contentsline {section}{\numberline {1.4}Contributi del lavoro}{3}{section.1.4}%
 \contentsline {section}{\numberline {1.5}Organizzazione della tesi}{3}{section.1.5}%
 \contentsline {chapter}{\numberline {2}Contesto e stato dell'arte}{4}{chapter.2}%
@@ -65,7 +65,7 @@
 \contentsline {section}{\numberline {4.8}Anti-spillback}{21}{section.4.8}%
 \contentsline {section}{\numberline {4.9}Platoon extension}{22}{section.4.9}%
 \contentsline {section}{\numberline {4.10}Margini e stabilità dello switch}{22}{section.4.10}%
-\contentsline {section}{\numberline {4.11}Contatori di attivazione}{22}{section.4.11}%
+\contentsline {section}{\numberline {4.11}Contatori di attivazione}{23}{section.4.11}%
 \contentsline {chapter}{\numberline {5}Metodologia e piattaforma sperimentale}{24}{chapter.5}%
 \contentsline {section}{\numberline {5.1}Obiettivi della valutazione}{24}{section.5.1}%
 \contentsline {section}{\numberline {5.2}Pipeline sperimentale}{24}{section.5.2}%

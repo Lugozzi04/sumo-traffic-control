@@ -2393,10 +2393,17 @@
     <bcf:citekey order="16" intorder="2">sumodocs2026</bcf:citekey>
     <bcf:citekey order="17" intorder="1">wegener2008traci</bcf:citekey>
     <bcf:citekey order="17" intorder="2">tracidocs2026</bcf:citekey>
-    <bcf:citekey order="18" intorder="1">anderson2018cyclebased</bcf:citekey>
-    <bcf:citekey order="18" intorder="2">levin2020cyclical</bcf:citekey>
-    <bcf:citekey order="19" intorder="1">xu2024smoothing</bcf:citekey>
-    <bcf:citekey order="19" intorder="2">liu2024nmp</bcf:citekey>
+    <bcf:citekey order="18" intorder="1">varaiya2013maxpressure</bcf:citekey>
+    <bcf:citekey order="18" intorder="2">wongpiromsarn2012distributed</bcf:citekey>
+    <bcf:citekey order="19" intorder="1">wang2022switching</bcf:citekey>
+    <bcf:citekey order="20" intorder="1">wu2018fairness</bcf:citekey>
+    <bcf:citekey order="20" intorder="2">liu2022delay</bcf:citekey>
+    <bcf:citekey order="21" intorder="1">gregoire2015capacity</bcf:citekey>
+    <bcf:citekey order="21" intorder="2">noaeen2021spillback</bcf:citekey>
+    <bcf:citekey order="22" intorder="1">anderson2018cyclebased</bcf:citekey>
+    <bcf:citekey order="22" intorder="2">levin2020cyclical</bcf:citekey>
+    <bcf:citekey order="23" intorder="1">xu2024smoothing</bcf:citekey>
+    <bcf:citekey order="23" intorder="2">liu2024nmp</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nyt">

@@ -1,13 +1,14 @@
 # Fdb version 4
-["biber tesi"] 1781781802.41339 "tesi.bcf" "tesi.bbl" "tesi" 1782138008.69582 0
+["biber tesi"] 1782208175.45541 "tesi.bcf" "tesi.bbl" "tesi" 1782390939.31866 0
   "bibliografia.bib" 1781704750.1375 9334 d585f164020890748c92156c49e3d7df ""
-  "tesi.bcf" 1782138008.60561 110355 6f07fd278c0167f9d6af06bfdf8f0142 "pdflatex"
+  "tesi.bcf" 1782390939.24563 110879 11022cd85bb3aa37e84076ba7adae3a3 "pdflatex"
   (generated)
   "tesi.bbl"
   "tesi.blg"
   (rewritten before read)
-["pdflatex"] 1782138006.88183 "tesi.tex" "tesi.pdf" "tesi" 1782138008.69603 0
+["pdflatex"] 1782390937.43801 "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" "tesi.pdf" "tesi" 1782390939.31886 0
   "/etc/texmf/web2c/texmf.cnf" 1781181955.21747 475 c0e671620eb5563b2130f56340a5fde8 ""
+  "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" 1782390937.28825 135469 a23ab3e08456d36be7f69c8e710461ee ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf-pc.enc" 1698694482 3136 bbe665bd0bb471a2da1e8fd326cff9fa ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc" 1698694482 2914 fdbc4a54b9bc76f4551b5303f2737d33 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ot1-tlf.enc" 1422827479 2083 60e36f8eac802fcaf19eabe2633b406e ""
@@ -323,12 +324,12 @@
   "figures/sumo_bologna_overview.png" 1781699660.39016 74688 e5e5a81172ae12b8215a19ac3ab1bb1d ""
   "figures/sumo_manhattan_intersection.png" 1781699039.83708 6992 151f138ffd1164ad7ba19b3aa01fc00c ""
   "figures/sumo_manhattan_overview.png" 1781698623.78454 8521 05cf8b9af90bcb78b00ac690d2526870 ""
-  "tesi.aux" 1782138008.58661 36531 0d83f8f050506d1f20d2ddd4feb75494 "pdflatex"
-  "tesi.bbl" 1781781802.85033 42570 3af3843833d38382e354eea41129148a "biber tesi"
-  "tesi.out" 1782138008.60361 30497 e90528e59b6aac3e501e2837c5da9cee "pdflatex"
-  "tesi.run.xml" 1782138008.60624 2313 39f255d0c0a315c7cad3c120f97dc340 "pdflatex"
-  "tesi.tex" 1782137986.47761 134370 9fe1a8eedf16dd45cadd653c09586f07 ""
-  "tesi.toc" 1782138008.60624 14367 80f22a8e81ebdd64f75182c7422d9bf3 "pdflatex"
+  "tesi.aux" 1782390939.22922 37090 734023586769bcaef30e9ee2cb1d2906 "pdflatex"
+  "tesi.bbl" 1782208175.88124 42570 3af3843833d38382e354eea41129148a "biber tesi"
+  "tesi.out" 1782390939.24512 30543 81419047b4dbaac3ce58015e44bc6767 "pdflatex"
+  "tesi.run.xml" 1782390939.24774 2313 39f255d0c0a315c7cad3c120f97dc340 "pdflatex"
+  "tesi.tex" 1782390937.28825 135469 a23ab3e08456d36be7f69c8e710461ee ""
+  "tesi.toc" 1782390939.24774 14375 f46899f9fb9c8f6ad1928a566fc359a2 "pdflatex"
   (generated)
   "tesi.aux"
   "tesi.bcf"

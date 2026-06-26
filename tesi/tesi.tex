@@ -430,7 +430,7 @@ piattaforma registra esplicitamente la quota di viaggi non conclusi e considera
 la censura una condizione necessaria per interpretare correttamente le altre
 metriche.
 
-\section{Obiettivi della tesi}
+\section{Obiettivi del lavoro di tesi}
 
 Gli obiettivi sono i seguenti:
 
@@ -582,7 +582,7 @@ La sottrazione della coda downstream distingue il Max-Pressure da una politica
 che osserva soltanto gli ingressi: un movimento perde priorità se conduce a
 una corsia già occupata. Formulazioni più generali includono turning ratio,
 pesi, portate di saturazione o stime dei tassi di svolta; alcuni lavori hanno
-studiato anche versioni che non richiedono routing rates noti a priori
+studiato anche versioni che non richiedono tassi di instradamento noti a priori
 \cite{gregoire2014unknownrouting}. La scelta semplificata adottata è coerente
 con l'obiettivo di ottenere un controller locale interpretabile e applicabile
 alle mappe disponibili.
@@ -694,7 +694,7 @@ veicoli. Per questo il progetto impiega una simulazione microscopica.
 
 \subsection{SUMO}
 
-SUMO, \emph{Simulation of Urban MObility}, è un simulatore open source,
+SUMO\footnote{\url{https://www.eclipse.org/sumo/}}, \emph{Simulation of Urban MObility}, è un simulatore open source,
 microscopico e a passi discreti, progettato per reti stradali di dimensione
 urbana \cite{behrisch2011sumo,sumodocs2026}. Le reti sono descritte tramite file
 XML contenenti archi, corsie, connessioni, incroci e programmi semaforici. La
@@ -708,7 +708,7 @@ necessarie.
 
 \subsection{Interfaccia TraCI}
 
-TraCI, \emph{Traffic Control Interface}, espone un protocollo con cui un
+TraCI\footnote{\url{https://sumo.dlr.de/docs/TraCI.html}}, \emph{Traffic Control Interface}, espone un protocollo con cui un
 processo esterno può interrogare e comandare una simulazione SUMO
 \cite{wegener2008traci,tracidocs2026}. A ogni passo il controller legge, tra le
 altre grandezze, veicoli fermi, occupazione delle corsie, stato delle fasi e
@@ -869,7 +869,8 @@ output dei casi vengono aggregati in report di campagna.
         data/.style={draw, cylinder, shape border rotate=90, aspect=0.22,
                      align=center, minimum height=12mm, text width=29mm,
                      fill=black!3},
-        arrow/.style={-{Latex[length=2.2mm]}, thick}
+        arrow/.style={-{Latex[length=2.2mm]}, thick},
+        biarrow/.style={<->, >={Latex[length=2.2mm]}, thick}
     ]
         \node[box] (ablation) {Pipeline sperimentale\\\texttt{run\_ablation.py}};
         \node[box, right=of ablation] (runner) {Runner della simulazione\\\texttt{runner.py}};
@@ -880,15 +881,18 @@ output dei casi vengono aggregati in report di campagna.
         \node[data, below=18mm of controller] (outputs) {CSV, tripinfo,\\contatori e log};
         \node[box, left=of outputs] (reports) {Aggregazione e report};
 
-        \draw[arrow] (ablation) -- (runner);
-        \draw[arrow] (population) -- (runner);
-        \draw[arrow] (runner) -- (sumo);
-        \draw[arrow] (sumo) -- (traci);
-        \draw[arrow] (traci) -- (controller);
-        \draw[arrow] (controller) -- (runner);
-        \draw[arrow] (runner) -- (outputs);
-        \draw[arrow] (outputs) -- (reports);
-        \draw[arrow] (ablation) |- (reports);
+        \draw[arrow] (ablation.east) -- (runner.west);
+        \draw[arrow] (ablation.south) -- (population.north);
+        \draw[arrow] (population.north east) -- (runner.south west);
+        \draw[arrow] (runner.east) -- (sumo.west);
+        \draw[arrow] (runner.south) -- (controller.north);
+        \draw[biarrow] (sumo.south) -- (traci.north);
+        \draw[biarrow] (traci.west) -- (controller.east);
+        \draw[arrow] (runner.south east) -- ++(7mm,-7mm)
+            |- (outputs.east);
+        \draw[arrow] (outputs.west) -- (reports.east);
+        \draw[arrow] (ablation.west) -- ++(-8mm,0)
+            |- (reports.west);
     \end{tikzpicture}
     \caption{Architettura della piattaforma sperimentale.}
     \label{fig:architettura}
@@ -985,7 +989,7 @@ nessun worker modifica un input condiviso mentre altri casi sono in corso.
 
 Si è scelto di non incorporare la logica adattiva nei file XML dei programmi
 semaforici. Il controller Python osserva e comanda SUMO mediante TraCI. Il
-vantaggio è la facilità di sperimentazione e di strumentazione; lo svantaggio è
+vantaggio è la facilità di sperimentazione e di strumentazione, lo svantaggio è
 un costo di comunicazione a ogni passo. Per le dimensioni studiate, la maggiore
 chiarezza e modificabilità prevalgono su tale costo.
 
@@ -1019,7 +1023,7 @@ reale.
 \chapter{Implementazione dei controller Max-Pressure}
 \label{chap:implementazione}
 
-Il calcolo della pressione occupa poche righe; la parte più delicata consiste
+Il calcolo della pressione occupa poche righe, la parte più delicata consiste
 nel trasformare quel calcolo in azioni compatibili con programmi semaforici
 eterogenei. Il capitolo descrive prima la rappresentazione dei semafori e la
 macchina a stati, quindi le estensioni valutate. Le formule corrispondono alla
@@ -1096,7 +1100,7 @@ indica con $q_l(t)$ il valore associato alla corsia $l$.
 La scelta del numero di veicoli fermi, anziché del numero totale presente,
 rende il punteggio sensibile alla congestione effettiva vicino
 all'intersezione. Non rappresenta tuttavia in modo completo veicoli in
-avvicinamento o capacità fisica residua; le estensioni downstream e platoon
+avvicinamento o capacità fisica residua, le estensioni downstream e platoon
 sono state introdotte anche per compensare questa limitazione.
 
 \subsection{Calcolo della pressione}
@@ -1117,6 +1121,10 @@ Una pressione negativa è ammessa: indica che le uscite sono più cariche degli
 ingressi. Se tutte le fasi valide hanno un punteggio finito, viene comunque
 scelta la migliore in senso relativo. Nel caso anti-spillback una fase può
 ricevere valore $-\infty$ e viene esclusa.
+
+Questa implementazione conserva la struttura locale upstream--downstream delle
+formulazioni decentralizzate del Max-Pressure
+\cite{varaiya2013maxpressure,wongpiromsarn2012distributed}.
 
 \subsection{Selezione della fase}
 
@@ -1203,7 +1211,9 @@ stima del costo della transizione. Il margine complessivo è
 
 in cui $\gamma$ è il guadagno lost-time, $s$ una portata di saturazione
 espressa in veicoli al secondo e $L_{\phi_c}$ il tempo perso. La variante finale
-Manhattan usa $\gamma=0{,}60$ e $s=0{,}50$.
+Manhattan usa $\gamma=0{,}60$ e $s=0{,}50$. Il margine rende esplicito il costo
+del cambio di fase, problema affrontato anche nelle formulazioni Max-Pressure
+che considerano lo switching loss \cite{wang2022switching}.
 
 L'effetto atteso è ridurre switch marginali. Un valore eccessivo può tuttavia
 rendere il controller lento a reagire e prolungare fasi non più ottimali. Per
@@ -1262,7 +1272,9 @@ usa $\mu=5$ e $w_{1/2}=20$ secondi.
 La funzione cresce rapidamente all'inizio e poi satura. Non garantisce un
 ordine rigido delle fasi, ma rende progressivamente più difficile ignorare un
 movimento con domanda persistente. Il contatore registra quante volte è stato
-applicato un bonus positivo e la somma complessiva dei bonus.
+applicato un bonus positivo e la somma complessiva dei bonus. La regola affronta
+così lo stesso compromesso fra throughput e fairness studiato nei controller
+basati sul ritardo \cite{wu2018fairness,liu2022delay}.
 
 \section{Penalità downstream}
 
@@ -1284,9 +1296,11 @@ senza prevenire alcun blocco reale.
 
 \section{Anti-spillback}
 
-Il blocco rigido usa due stime della saturazione downstream. La prima è
-l'occupazione filtrata $\bar{o}_j$. La seconda approssima il riempimento della
-capacità di stoccaggio:
+Il blocco rigido usa due stime della saturazione downstream. La scelta di
+considerare la capacità finita delle corsie segue il principio degli approcci
+capacity-aware e anti-spillback \cite{gregoire2015capacity,noaeen2021spillback}.
+La prima stima è l'occupazione filtrata $\bar{o}_j$; la seconda approssima il
+riempimento della capacità di stoccaggio:
 
 \begin{equation}
     f_j=\min\left\{1,
