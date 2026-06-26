@@ -156,4 +156,8 @@
 \contentsline {section}{\numberline {A.1}Configurazioni delle campagne}{56}{section.Alph1.1}%
 \contentsline {section}{\numberline {A.2}Output e risultati completi}{56}{section.Alph1.2}%
 \contentsline {section}{\numberline {A.3}Struttura essenziale del software}{57}{section.Alph1.3}%
-\contentsline {chapter}{Riferimenti bibliografici}{58}{appendix*.17}%
+\contentsline {chapter}{\numberline {B}Dettagli implementativi}{58}{appendix.Alph2}%
+\contentsline {section}{\numberline {B.1}Costruzione dei movimenti dalle fasi SUMO}{58}{section.Alph2.1}%
+\contentsline {section}{\numberline {B.2}Calcolo della pressione di fase}{59}{section.Alph2.2}%
+\contentsline {section}{\numberline {B.3}Selezione delle modalità di \texttt {mp\_super}}{60}{section.Alph2.3}%
+\contentsline {chapter}{Riferimenti bibliografici}{63}{appendix*.17}%

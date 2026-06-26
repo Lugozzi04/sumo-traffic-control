@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.6.18)  25 JUN 2026 14:35
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023/Debian) (preloaded format=pdflatex 2026.6.18)  26 JUN 2026 17:13
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -1664,14 +1664,14 @@ Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             See the microtype manual for details.
  [28] [29] [30] [31]
 Capitolo 6.
-<figures/sumo_manhattan_overview.png, id=1113, 807.015pt x 784.9325pt>
+<figures/sumo_manhattan_overview.png, id=1134, 807.015pt x 784.9325pt>
 File: figures/sumo_manhattan_overview.png Graphic file (type png)
 <use figures/sumo_manhattan_overview.png>
 Package pdftex.def Info: figures/sumo_manhattan_overview.png  used on input line 1777.
 (pdftex.def)             Requested size: 208.61623pt x 202.90387pt.
 LaTeX Font Info:    Font shape `T1/ntxtlf/m/it' will be
 (Font)              scaled to size 10.0pt on input line 1778.
-<figures/sumo_manhattan_intersection.png, id=1115, 807.015pt x 784.9325pt>
+<figures/sumo_manhattan_intersection.png, id=1136, 807.015pt x 784.9325pt>
 File: figures/sumo_manhattan_intersection.png Graphic file (type png)
 <use figures/sumo_manhattan_intersection.png>
 Package pdftex.def Info: figures/sumo_manhattan_intersection.png  used on input line 1783.
@@ -1684,12 +1684,12 @@ LaTeX Font Info:    Font shape `T1/ntxtlf/m/n' will be
 (Font)              scaled to size 8.0pt on input line 1873.
  [34] [35] [36] [37] [38]
 Capitolo 7.
-<figures/sumo_bologna_overview.png, id=1161, 823.075pt x 789.95125pt>
+<figures/sumo_bologna_overview.png, id=1181, 823.075pt x 789.95125pt>
 File: figures/sumo_bologna_overview.png Graphic file (type png)
 <use figures/sumo_bologna_overview.png>
 Package pdftex.def Info: figures/sumo_bologna_overview.png  used on input line 2092.
 (pdftex.def)             Requested size: 208.61623pt x 200.21146pt.
-<figures/sumo_bologna_intersection.png, id=1162, 828.09375pt x 788.9475pt>
+<figures/sumo_bologna_intersection.png, id=1182, 828.09375pt x 788.9475pt>
 File: figures/sumo_bologna_intersection.png Graphic file (type png)
 <use figures/sumo_bologna_intersection.png>
 Package pdftex.def Info: figures/sumo_bologna_intersection.png  used on input line 2098.
@@ -1698,7 +1698,7 @@ Package pdftex.def Info: figures/sumo_bologna_intersection.png  used on input li
 
  <./figures/sumo_bologna_overview.png> <./figures/sumo_bologna_intersection.png>] [40] [41] [42] [43] [44] [45] [46] [47]
 Capitolo 8.
-<figures/sumo_bologna_congestion_peak.png, id=1212, 1117.17375pt x 808.01875pt>
+<figures/sumo_bologna_congestion_peak.png, id=1232, 1117.17375pt x 808.01875pt>
 File: figures/sumo_bologna_congestion_peak.png Graphic file (type png)
 <use figures/sumo_bologna_congestion_peak.png>
 Package pdftex.def Info: figures/sumo_bologna_congestion_peak.png  used on input line 2525.
@@ -1720,14 +1720,29 @@ Appendice A.
 [56
 
 ] [57]
+Appendice B.
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
+File: lstlang1.sty 2023/02/27 1.9 listings language file
+)
+Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on input line 2948.
+LaTeX Font Info:    Font shape `T1/ntxtlf/m/n' will be
+(Font)              scaled to size 6.0pt on input line 2949.
+LaTeX Font Info:    Font shape `T1/ntxtt/b/n' in size <10.95> not available
+(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 2949.
+ [58
+
+] [59]
+LaTeX Font Info:    Font shape `T1/ntxtt/b/n' in size <17.28> not available
+(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 3027.
+ [60] [61] [62]
 LaTeX Font Info:    Font shape `T1/ntxtlf/m/sc' will be
-(Font)              scaled to size 12.0pt on input line 2912.
+(Font)              scaled to size 12.0pt on input line 3094.
 Package microtype Info: Character `029' is missing
 (microtype)             in font `T1/ntxtlf/m/sc/12'.
 (microtype)             Ignoring protrusion settings for this character.
- [58
+ [63
 
-{/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf-pc.enc}] [59] [60] (./tesi.aux
+{/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf-pc.enc}] [64] [65] (./tesi.aux
 Package cleveref Info: loaded `italian' language definitions on input line 8.
 Package cleveref Info: loaded `italian' language definitions on input line 9.
 )
@@ -1736,24 +1751,24 @@ LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2020/03/25>
  ***********
 Package rerunfilecheck Info: File `tesi.out' has not changed.
-(rerunfilecheck)             Checksum: 81419047B4DBAAC3CE58015E44BC6767;30543.
+(rerunfilecheck)             Checksum: 81648A9371A398333FA7E50FB63683C9;31491.
 Package logreq Info: Writing requests to 'tesi.run.xml'.
 \openout1 = `tesi.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 56699 strings out of 476098
- 1248890 string characters out of 5793537
- 2083512 words of memory out of 5000000
- 77364 multiletter control sequences out of 15000+600000
- 684718 words of font info for 303 fonts, out of 8000000 for 9000
+ 57342 strings out of 476098
+ 1256807 string characters out of 5793537
+ 2236607 words of memory out of 5000000
+ 77868 multiletter control sequences out of 15000+600000
+ 688446 words of font info for 308 fonts, out of 8000000 for 9000
  59 hyphenation exceptions out of 8191
- 84i,19n,131p,1214b,2477s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/share/texlive/texmf-dist/fonts/type1/public/newtx/NewTXMI.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/NewTXMI7.pfb></usr/share/texmf/fonts/type1/public/tex-gyre/qtmr.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/t1xtt.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/t1xtt.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/txexs.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/txmiaX.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/txsys.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmb.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmr.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmri.pfb>
-Output written on tesi.pdf (68 pages, 475452 bytes).
+ 84i,19n,131p,1214b,2795s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/share/texlive/texmf-dist/fonts/type1/public/newtx/NewTXMI.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/NewTXMI7.pfb></usr/share/texmf/fonts/type1/public/tex-gyre/qtmr.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/t1xbtt.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/t1xtt.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/t1xtt.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/txexs.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/txmiaX.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/txsys.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmb.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmr.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmri.pfb>
+Output written on tesi.pdf (73 pages, 496941 bytes).
 PDF statistics:
- 1452 PDF objects out of 1728 (max. 8388607)
- 1334 compressed objects within 14 object streams
- 333 named destinations out of 1000 (max. 500000)
- 51470 words of extra memory for PDF output out of 51595 (max. 10000000)
+ 1649 PDF objects out of 1728 (max. 8388607)
+ 1522 compressed objects within 16 object streams
+ 464 named destinations out of 1000 (max. 500000)
+ 54574 words of extra memory for PDF output out of 61914 (max. 10000000)
 

@@ -1,14 +1,14 @@
 # Fdb version 4
-["biber tesi"] 1782208175.45541 "tesi.bcf" "tesi.bbl" "tesi" 1782390939.31866 0
+["biber tesi"] 1782485786.06112 "tesi.bcf" "tesi.bbl" "tesi" 1782486806.08884 0
   "bibliografia.bib" 1781704750.1375 9334 d585f164020890748c92156c49e3d7df ""
-  "tesi.bcf" 1782390939.24563 110879 11022cd85bb3aa37e84076ba7adae3a3 "pdflatex"
+  "tesi.bcf" 1782486806.01585 110879 11022cd85bb3aa37e84076ba7adae3a3 "pdflatex"
   (generated)
   "tesi.bbl"
   "tesi.blg"
   (rewritten before read)
-["pdflatex"] 1782390937.43801 "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" "tesi.pdf" "tesi" 1782390939.31886 0
+["pdflatex"] 1782486804.21864 "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" "tesi.pdf" "tesi" 1782486806.08904 0
   "/etc/texmf/web2c/texmf.cnf" 1781181955.21747 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" 1782390937.28825 135469 a23ab3e08456d36be7f69c8e710461ee ""
+  "/home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex" 1782486804.06877 142418 bdb2dfaabd76ec0f96067ee8386a3108 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf-pc.enc" 1698694482 3136 bbe665bd0bb471a2da1e8fd326cff9fa ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc" 1698694482 2914 fdbc4a54b9bc76f4551b5303f2737d33 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ot1-tlf.enc" 1422827479 2083 60e36f8eac802fcaf19eabe2633b406e ""
@@ -46,6 +46,7 @@
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/txmiaSTbb.tfm" 1569879884 920 99acdf374993fd46fd345f9cac168080 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/txmiaX.tfm" 1634244313 1716 a6b113dfe808a82f532d14b1f370053f ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/txsys.tfm" 1699567298 1660 d580b6f461bbd2ab53b1fd3851108c0e ""
+  "/usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm" 1136768653 1436 f00b2a275be56a8355f5c3b07a5a7a4c ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xtt.tfm" 1136768653 1384 8943063000d26272532f74ca134dfecd ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xttsl.tfm" 1136768653 1624 fb8f48c6308ace0a799f9278aba03e18 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/newtx/NewTXMI.pfb" 1572128992 32409 1452fa0ce4fabfb48acd5d077e296f6d ""
@@ -56,6 +57,7 @@
   "/usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmb.pfb" 1698694482 255251 958c6ad4e5518904a53cf1118c612893 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmr.pfb" 1698694482 286816 82db2bfe6920054b1a43661c07078412 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/newtx/ztmri.pfb" 1698694482 248316 6c047e35119cde1bffb3263909816feb ""
+  "/usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/t1xbtt.pfb" 1136849748 26580 8886cc7827569e05fd10df25f221aef6 ""
   "/usr/share/texlive/texmf-dist/fonts/type1/public/txfonts/t1xtt.pfb" 1136849748 26301 f08b3c26ea42c3177a262c2ac37d6a91 ""
   "/usr/share/texlive/texmf-dist/fonts/vf/public/newtx/ntx-Regular-tlf-ot1.vf" 1583272976 956 44be8e0aea9c6d145fc21c9948a6b4b5 ""
   "/usr/share/texlive/texmf-dist/fonts/vf/public/newtx/ntxexx.vf" 1699567298 1716 73c8d39d4c3ace9ec98a8f066bb3b494 ""
@@ -260,6 +262,7 @@
   "/usr/share/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg" 1279039959 678 4792914a8f45be57bb98413425e4c7af ""
   "/usr/share/texlive/texmf-dist/tex/latex/listings/listings.cfg" 1677530001 1829 d8258b7d94f5f955e70c623e525f9f45 ""
   "/usr/share/texlive/texmf-dist/tex/latex/listings/listings.sty" 1677530001 80947 75a96bb4c9f40ae31d54a01d924df2ff ""
+  "/usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty" 1677530001 205154 31132370016e8c97e49bc3862419679b ""
   "/usr/share/texlive/texmf-dist/tex/latex/listings/lstmisc.sty" 1677530001 77021 d05e9115c67855816136d82929db8892 ""
   "/usr/share/texlive/texmf-dist/tex/latex/logreq/logreq.def" 1284153563 1620 fb1c32b818f2058eca187e5c41dfae77 ""
   "/usr/share/texlive/texmf-dist/tex/latex/logreq/logreq.sty" 1284153563 6187 b27afc771af565d3a9ff1ca7d16d0d46 ""
@@ -324,12 +327,12 @@
   "figures/sumo_bologna_overview.png" 1781699660.39016 74688 e5e5a81172ae12b8215a19ac3ab1bb1d ""
   "figures/sumo_manhattan_intersection.png" 1781699039.83708 6992 151f138ffd1164ad7ba19b3aa01fc00c ""
   "figures/sumo_manhattan_overview.png" 1781698623.78454 8521 05cf8b9af90bcb78b00ac690d2526870 ""
-  "tesi.aux" 1782390939.22922 37090 734023586769bcaef30e9ee2cb1d2906 "pdflatex"
-  "tesi.bbl" 1782208175.88124 42570 3af3843833d38382e354eea41129148a "biber tesi"
-  "tesi.out" 1782390939.24512 30543 81419047b4dbaac3ce58015e44bc6767 "pdflatex"
-  "tesi.run.xml" 1782390939.24774 2313 39f255d0c0a315c7cad3c120f97dc340 "pdflatex"
-  "tesi.tex" 1782390937.28825 135469 a23ab3e08456d36be7f69c8e710461ee ""
-  "tesi.toc" 1782390939.24774 14375 f46899f9fb9c8f6ad1928a566fc359a2 "pdflatex"
+  "tesi.aux" 1782486805.99885 38429 2fc6da9214de5a7bbecfa697bc1a821d "pdflatex"
+  "tesi.bbl" 1782485786.47988 42570 3af3843833d38382e354eea41129148a "biber tesi"
+  "tesi.out" 1782486806.01427 31491 81648a9371a398333fa7e50fb63683c9 "pdflatex"
+  "tesi.run.xml" 1782486806.01671 2313 39f255d0c0a315c7cad3c120f97dc340 "pdflatex"
+  "tesi.tex" 1782486804.06877 142418 bdb2dfaabd76ec0f96067ee8386a3108 ""
+  "tesi.toc" 1782486806.01671 14775 66c035e475a73c45a4e86265a6666d31 "pdflatex"
   (generated)
   "tesi.aux"
   "tesi.bcf"

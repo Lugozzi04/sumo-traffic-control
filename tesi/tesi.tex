@@ -1149,7 +1149,7 @@ Il valore predefinito del minimo verde è 10 secondi. Prima di tale durata la
 fase non viene rivalutata. Il massimo verde è 120 secondi e opera come limite
 di sicurezza: se esiste una fase alternativa finita, il controller può forzare il cambio
 quando il limite è raggiunto. Minimo e massimo non determinano quindi un ciclo
-fisso; delimitano la frequenza delle decisioni adattive.
+fisso, ma delimitano la frequenza delle decisioni adattive.
 
 È importante distinguere questo comportamento da un piano statico. Il fixed
 mantiene una durata prestabilita indipendentemente dalle code. Il Max-Pressure
@@ -2905,6 +2905,188 @@ distribuzioni balanced, skewed e peak. \texttt{utils/run\_ablation.py}
 definisce gli scenario pack, esegue le campagne batch e produce i report.
 Infine, la cartella \texttt{tests/} contiene i test automatici usati per
 controllare scenari, popolazioni e logiche del meta-controller.
+
+\chapter{Dettagli implementativi}
+\label{app:listati}
+
+Questa appendice riporta alcuni estratti rappresentativi del codice reale del
+progetto. Non si tratta di pseudocodice: i nomi delle funzioni, delle variabili
+e delle strutture corrispondono all'implementazione in
+\texttt{src/controllers/max\_pressure.py}. Per contenere la lunghezza, tuttavia,
+i listati sono stati adattati eliminando parti accessorie come annotazioni di
+tipo complete, cache interne e controlli ripetitivi. L'obiettivo è mostrare il
+nucleo dei metodi senza trasformare l'appendice nella copia integrale dei file
+sorgente.
+
+Prima dei listati è utile chiarire le principali funzioni e strutture richiamate:
+
+\begin{itemize}
+    \item \texttt{traci} è l'interfaccia Python con cui il controller osserva e
+    comanda la simulazione SUMO.
+    \item \texttt{getControlledLinks()} restituisce, per ogni posizione della
+    stringa semaforica, i collegamenti controllati tra corsia in ingresso e
+    corsia in uscita.
+    \item \texttt{tl\_data} è la struttura interna associata a un semaforo e
+    contiene, tra le altre informazioni, le fasi principali e i movimenti
+    abilitati da ciascuna fase.
+    \item \texttt{\_is\_downstream\_blocked()} verifica se una corsia di uscita è
+    considerata satura secondo la logica anti-spillback.
+    \item \texttt{\_movement\_downstream\_penalty()} calcola la penalità da
+    sottrarre alla pressione quando una corsia downstream è congestionata.
+    \item \texttt{snapshot} raccoglie gli indicatori osservati online da
+    \texttt{mp\_super}: carico, imbalance, wait imbalance, burstiness, plotoni e
+    saturazione downstream.
+\end{itemize}
+
+\section{Costruzione dei movimenti dalle fasi SUMO}
+
+Il primo estratto mostra come una fase SUMO venga trasformata nell'insieme dei
+movimenti controllati. Il codice considera principali solo le fasi con almeno
+un verde e senza giallo; per ogni posizione verde della stringa semaforica
+recupera da TraCI le corsie di ingresso e uscita corrispondenti.
+
+\begin{lstlisting}[language=Python,caption={Estrazione dei movimenti controllati dalle fasi SUMO.}]
+def _build_traffic_light_data(self, tl_id: str, logic):
+    controlled_links = traci.trafficlight.getControlledLinks(tl_id)
+    movements_by_phase = {}
+
+    for phase_index, phase in enumerate(logic.phases):
+        if not self._is_main_phase_state(phase.state):
+            continue
+
+        seen_movements = set()
+        movements = []
+
+        for signal_index, signal_state in enumerate(phase.state):
+            if signal_state not in ("g", "G"):
+                continue
+            if signal_index >= len(controlled_links):
+                continue
+
+            for in_lane, out_lane, _ in controlled_links[signal_index]:
+                movement = (in_lane, out_lane)
+                if movement in seen_movements:
+                    continue
+                seen_movements.add(movement)
+                movements.append(movement)
+
+        if movements:
+            movements_by_phase[phase_index] = movements
+
+    return movements_by_phase
+
+def _is_main_phase_state(state: str) -> bool:
+    return (
+        any(char in ("g", "G") for char in state)
+        and not any(char in ("y", "Y") for char in state)
+    )
+\end{lstlisting}
+
+\section{Calcolo della pressione di fase}
+
+Il secondo estratto contiene il nucleo del Max-Pressure: per ogni fase vengono
+sommate le differenze tra coda in ingresso e coda in uscita dei movimenti
+abilitati. La stessa funzione integra anche la penalità downstream e il blocco
+anti-spillback, quando abilitati.
+
+\begin{lstlisting}[language=Python,caption={Calcolo della pressione associata alle fasi principali.}]
+def _phase_pressures(self, tl_data):
+    pressures = {}
+    phase_demand = {}
+
+    def queue_on_lane(lane_id):
+        return float(traci.lane.getLastStepHaltingNumber(lane_id))
+
+    for phase_index, movements in tl_data.movements_by_phase.items():
+        pressure = 0.0
+        demand_sum = 0.0
+        phase_blocked = False
+
+        for in_lane, out_lane in movements:
+            if self._is_downstream_blocked(out_lane):
+                phase_blocked = True
+                break
+
+            in_queue = queue_on_lane(in_lane)
+            out_queue = queue_on_lane(out_lane)
+            downstream_penalty = self._movement_downstream_penalty(out_lane)
+
+            demand_sum += in_queue
+            pressure += in_queue - out_queue - downstream_penalty
+
+        if phase_blocked:
+            pressures[phase_index] = float("-inf")
+            phase_demand[phase_index] = 0.0
+        else:
+            pressures[phase_index] = pressure
+            phase_demand[phase_index] = demand_sum
+
+    return pressures, phase_demand
+\end{lstlisting}
+
+\section{Selezione delle modalità di \texttt{mp\_super}}
+
+Il terzo estratto mostra la logica rule-based del meta-controller. La decisione
+dipende da indicatori calcolati online: carico, sbilanciamento della domanda,
+sbilanciamento dell'attesa, burstiness, plotoni e saturazione downstream. La
+modalità \texttt{program0} rimane il comportamento predefinito quando il carico
+non supera le soglie.
+
+\begin{lstlisting}[language=Python,caption={Regole di selezione della modalità in \texttt{mp\_super}.}]
+def _select_super_mode(self, snapshot, current_mode="program0"):
+    bursty = snapshot.burstiness >= self.super_burstiness_threshold
+    wait_starved = snapshot.wait_imbalance >= self.super_wait_imbalance_threshold
+    imbalanced = snapshot.imbalance >= self.super_imbalance_threshold
+    platoon = snapshot.platoon_score >= self.super_platoon_threshold
+
+    if (
+        self.super_safe_enabled
+        and snapshot.downstream_score >= self.super_downstream_threshold
+        and snapshot.load >= self.super_nmin_load
+        and (bursty or wait_starved)
+    ):
+        return "safe"
+
+    program0_threshold = (
+        self.super_low_load
+        if current_mode == "program0"
+        else self.super_program0_exit_load
+    )
+    if snapshot.load < program0_threshold:
+        return "program0"
+
+    if snapshot.load >= self.super_nmin_load:
+        if bursty:
+            return "nmin"
+        if wait_starved and imbalanced:
+            return "lta"
+        if wait_starved and not imbalanced:
+            return "fair"
+        if platoon and not bursty:
+            return "platoon"
+        return "nmin"
+
+    if snapshot.load >= self.super_high_load:
+        if bursty:
+            return "nmin"
+        if wait_starved and imbalanced:
+            return "lta"
+        if wait_starved and not bursty and not imbalanced:
+            return "fair"
+        if platoon and not wait_starved:
+            return "platoon"
+        return "base"
+
+    if wait_starved and imbalanced and not bursty:
+        return "lta"
+    if wait_starved and not imbalanced and not bursty:
+        return "fair"
+    if platoon and not wait_starved:
+        return "platoon"
+    if bursty:
+        return "base"
+    return "base"
+\end{lstlisting}
 
 
 \fi
