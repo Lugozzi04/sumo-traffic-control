@@ -731,13 +731,9 @@ BOLOGNA_THESIS_V1_SCENARIO_NAMES: tuple[str, ...] = (
 _TUNING_MATRIX_V2_BY_NAME = {
     scenario.name: scenario for scenario in TUNING_MATRIX_V2_SCENARIOS
 }
-MP_SUPER_NO_SAFE_SCENARIO = Scenario(
-    "mp_super_no_safe",
-    _TUNING_MATRIX_V2_BY_NAME["mp_super"].flags + ("--super-disable-safe",),
-)
 BOLOGNA_THESIS_V1_SCENARIOS: tuple[Scenario, ...] = tuple(
     _TUNING_MATRIX_V2_BY_NAME[name] for name in BOLOGNA_THESIS_V1_SCENARIO_NAMES
-) + (MP_SUPER_NO_SAFE_SCENARIO,)
+)
 
 SCENARIO_PACKS: dict[str, tuple[Scenario, ...]] = {
     "tuned_v1": TUNED_V1_SCENARIOS,

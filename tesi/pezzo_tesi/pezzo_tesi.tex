@@ -446,6 +446,10 @@ Il lavoro è partito da una base software composta dal collegamento con SUMO, da
 un runner, da un generatore di popolazioni e da un controller fisso, che sono
 stati poi integrati ed estesi con:
 
+Nel seguito, con \emph{campagna sperimentale} si intende un insieme organizzato
+di simulazioni eseguite con una stessa configurazione generale, variando in modo
+controllato mappa, livello di domanda, seed e scenario di controllo.
+
 \begin{itemize}
     \item un'implementazione completa del Max-Pressure, comprensiva di macchina
     a stati per preservare giallo e all-red;
@@ -455,7 +459,7 @@ stati poi integrati ed estesi con:
     profili di guida;
     \item una pipeline batch con preflight, cache delle popolazioni,
     parallelismo, tracciamento del progresso e report automatici;
-    \item il calcolo esplicito di throughput e censura a partire dai file
+    \item il calcolo esplicito di viaggi completati e censura a partire dai file
     \texttt{tripinfo};
     \item una campagna finale su Manhattan $8\times8$ composta da 135
     simulazioni valide, tre livelli di domanda e cinque seed;
@@ -510,7 +514,7 @@ assegnato anche in assenza di domanda e non può essere trasferito
 immediatamente a una coda inattesa. Il confronto sperimentale deve tuttavia
 essere formulato con cautela: battere un particolare piano statico non equivale
 a dimostrare la superiorità rispetto a ogni possibile piano ottimizzato. Nella
-campagna Manhattan il riferimento è il \emph{program0} nativo della mappa, non
+campagna Manhattan il riferimento è il \texttt{program0} nativo della mappa, non
 un piano coordinato ottimizzato a posteriori sui casi di test.
 
 \subsection{Controllo attuato e adattivo}

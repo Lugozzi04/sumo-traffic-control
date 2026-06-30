@@ -174,16 +174,7 @@ class RunAblationDemandTest(unittest.TestCase):
                 "mp_spillback_on90_off80",
                 "mp_fair_mu5_w20",
                 "mp_platoon_x2",
-                "mp_super_no_safe",
             ],
-        )
-        scenarios = {
-            scenario.name: scenario
-            for scenario in SCENARIO_PACKS["bologna_thesis_v1"]
-        }
-        self.assertEqual(
-            scenarios["mp_super_no_safe"].flags,
-            scenarios["mp_super"].flags + ("--super-disable-safe",),
         )
 
     def test_default_delta_baseline_prefers_program0_then_tuned(self) -> None:

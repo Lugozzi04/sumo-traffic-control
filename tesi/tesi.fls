@@ -3,7 +3,7 @@ INPUT /etc/texmf/web2c/texmf.cnf
 INPUT /usr/share/texmf/web2c/texmf.cnf
 INPUT /usr/share/texlive/texmf-dist/web2c/texmf.cnf
 INPUT /var/lib/texmf/web2c/pdftex/pdflatex.fmt
-INPUT /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/tesi/tesi.tex
+INPUT tesi.tex
 OUTPUT tesi.log
 INPUT /usr/share/texlive/texmf-dist/tex/latex/base/report.cls
 INPUT /usr/share/texlive/texmf-dist/tex/latex/base/report.cls
@@ -560,8 +560,8 @@ INPUT ./tesi.toc
 INPUT ./tesi.toc
 INPUT tesi.toc
 OUTPUT tesi.toc
-INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/ntx-Italic-tlf-t1.tfm
+INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/ntx-Bold-tlf-t1.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/vf/public/newtx/ntxmia.vf
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/txmiaSTbb.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/vf/public/newtx/ntxmi.vf
@@ -624,6 +624,7 @@ INPUT /usr/share/texlive/texmf-dist/tex/latex/txfonts/t1txtt.fd
 INPUT /usr/share/texlive/texmf-dist/tex/latex/txfonts/t1txtt.fd
 INPUT /usr/share/texlive/texmf-dist/tex/latex/txfonts/t1txtt.fd
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xttsl.tfm
+INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm
 INPUT ./figures/sumo_manhattan_overview.png
 INPUT ./figures/sumo_manhattan_overview.png
 INPUT ./figures/sumo_manhattan_overview.png
@@ -694,10 +695,12 @@ INPUT ./figures/sumo_bologna_intersection.png
 INPUT ./figures/sumo_bologna_intersection.png
 INPUT ./figures/sumo_bologna_intersection.png
 INPUT ./figures/sumo_bologna_intersection.png
+INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm
 INPUT ./figures/sumo_bologna_congestion_peak.png
 INPUT ./figures/sumo_bologna_congestion_peak.png
 INPUT ./figures/sumo_bologna_congestion_peak.png
 INPUT ./figures/sumo_bologna_congestion_peak.png
+INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xtt.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xtt.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/vf/public/newtx/ntxmia.vf
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/txmiaSTbb.tfm
@@ -708,7 +711,6 @@ INPUT /usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
 INPUT /usr/share/texlive/texmf-dist/tex/latex/listings/lstlang1.sty
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-t1.tfm
-INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/public/newtx/ntx-Regular-tlf-sc-t1.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf-pc.enc

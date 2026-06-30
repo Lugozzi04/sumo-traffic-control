@@ -36,128 +36,120 @@
 \contentsline {subsection}{\numberline {3.2.3}Osservabilità}{11}{subsection.3.2.3}%
 \contentsline {section}{\numberline {3.3}Architettura generale}{11}{section.3.3}%
 \contentsline {subsection}{\numberline {3.3.1}Runner delle simulazioni}{12}{subsection.3.3.1}%
-\contentsline {subsection}{\numberline {3.3.2}Generazione delle popolazioni}{12}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.2}Generazione delle popolazioni}{13}{subsection.3.3.2}%
 \contentsline {subsection}{\numberline {3.3.3}Controller semaforici}{13}{subsection.3.3.3}%
 \contentsline {subsection}{\numberline {3.3.4}Raccolta e aggregazione delle metriche}{13}{subsection.3.3.4}%
-\contentsline {section}{\numberline {3.4}Flusso di esecuzione di una simulazione}{13}{section.3.4}%
+\contentsline {section}{\numberline {3.4}Flusso di esecuzione di una simulazione}{14}{section.3.4}%
 \contentsline {section}{\numberline {3.5}Scelte progettuali}{14}{section.3.5}%
 \contentsline {subsection}{\numberline {3.5.1}Separazione tra controller e simulatore}{14}{subsection.3.5.1}%
-\contentsline {subsection}{\numberline {3.5.2}Configurazione mediante parametri}{14}{subsection.3.5.2}%
-\contentsline {subsection}{\numberline {3.5.3}Gestione delle mappe reali e sintetiche}{14}{subsection.3.5.3}%
+\contentsline {subsection}{\numberline {3.5.2}Configurazione mediante parametri}{15}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Gestione delle mappe reali e sintetiche}{15}{subsection.3.5.3}%
 \contentsline {chapter}{\numberline {4}Implementazione dei controller Max-Pressure}{16}{chapter.4}%
 \contentsline {section}{\numberline {4.1}Rappresentazione dei semafori}{16}{section.4.1}%
 \contentsline {subsection}{\numberline {4.1.1}Identificazione delle fasi principali}{16}{subsection.4.1.1}%
-\contentsline {subsection}{\numberline {4.1.2}Costruzione dei movimenti}{16}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.2}Costruzione dei movimenti}{17}{subsection.4.1.2}%
 \contentsline {subsection}{\numberline {4.1.3}Conservazione delle transizioni di sicurezza}{17}{subsection.4.1.3}%
 \contentsline {section}{\numberline {4.2}Controller Max-Pressure di base}{17}{section.4.2}%
 \contentsline {subsection}{\numberline {4.2.1}Misura delle code}{17}{subsection.4.2.1}%
-\contentsline {subsection}{\numberline {4.2.2}Calcolo della pressione}{17}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.2}Calcolo della pressione}{18}{subsection.4.2.2}%
 \contentsline {subsection}{\numberline {4.2.3}Selezione della fase}{18}{subsection.4.2.3}%
 \contentsline {subsection}{\numberline {4.2.4}Vincoli di minimo e massimo verde}{18}{subsection.4.2.4}%
-\contentsline {section}{\numberline {4.3}Macchina a stati del controller}{18}{section.4.3}%
+\contentsline {section}{\numberline {4.3}Macchina a stati del controller}{19}{section.4.3}%
 \contentsline {subsection}{\numberline {4.3.1}Fase attiva e target pendente}{19}{subsection.4.3.1}%
 \contentsline {subsection}{\numberline {4.3.2}Gestione di giallo e all-red}{19}{subsection.4.3.2}%
 \contentsline {subsection}{\numberline {4.3.3}Recupero dalle transizioni anomale}{19}{subsection.4.3.3}%
-\contentsline {section}{\numberline {4.4}Lost-Time-Aware}{19}{section.4.4}%
+\contentsline {section}{\numberline {4.4}Lost-Time-Aware}{20}{section.4.4}%
 \contentsline {section}{\numberline {4.5}Minimo verde dinamico Nmin}{20}{section.4.5}%
-\contentsline {section}{\numberline {4.6}Fairness}{20}{section.4.6}%
+\contentsline {section}{\numberline {4.6}Fairness}{21}{section.4.6}%
 \contentsline {section}{\numberline {4.7}Penalità downstream}{21}{section.4.7}%
-\contentsline {section}{\numberline {4.8}Anti-spillback}{21}{section.4.8}%
+\contentsline {section}{\numberline {4.8}Anti-spillback}{22}{section.4.8}%
 \contentsline {section}{\numberline {4.9}Platoon extension}{22}{section.4.9}%
 \contentsline {section}{\numberline {4.10}Margini e stabilità dello switch}{22}{section.4.10}%
 \contentsline {section}{\numberline {4.11}Contatori di attivazione}{23}{section.4.11}%
 \contentsline {chapter}{\numberline {5}Metodologia e piattaforma sperimentale}{24}{chapter.5}%
 \contentsline {section}{\numberline {5.1}Obiettivi della valutazione}{24}{section.5.1}%
 \contentsline {section}{\numberline {5.2}Pipeline sperimentale}{24}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Generazione dei casi sperimentali}{24}{subsection.5.2.1}%
-\contentsline {subsection}{\numberline {5.2.2}Esecuzione parallela}{25}{subsection.5.2.2}%
-\contentsline {subsection}{\numberline {5.2.3}Organizzazione delle campagne}{25}{subsection.5.2.3}%
-\contentsline {subsection}{\numberline {5.2.4}Report automatici}{25}{subsection.5.2.4}%
+\contentsline {subsection}{\numberline {5.2.1}Generazione dei casi sperimentali}{25}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}Organizzazione delle campagne}{25}{subsection.5.2.2}%
+\contentsline {subsection}{\numberline {5.2.3}Report automatici}{25}{subsection.5.2.3}%
 \contentsline {section}{\numberline {5.3}Generazione della domanda di traffico}{26}{section.5.3}%
 \contentsline {subsection}{\numberline {5.3.1}Livelli low, medium e high}{26}{subsection.5.3.1}%
-\contentsline {subsection}{\numberline {5.3.2}Distribuzione balanced}{27}{subsection.5.3.2}%
-\contentsline {subsection}{\numberline {5.3.3}Distribuzione skewed}{27}{subsection.5.3.3}%
-\contentsline {subsection}{\numberline {5.3.4}Distribuzione peak}{27}{subsection.5.3.4}%
-\contentsline {subsection}{\numberline {5.3.5}Seed e riproducibilità}{28}{subsection.5.3.5}%
-\contentsline {section}{\numberline {5.4}Profilo di guida human-light}{28}{section.5.4}%
-\contentsline {section}{\numberline {5.5}Controller di confronto}{28}{section.5.5}%
-\contentsline {subsection}{\numberline {5.5.1}Fixed program0}{28}{subsection.5.5.1}%
-\contentsline {subsection}{\numberline {5.5.2}Fixed tuned}{29}{subsection.5.5.2}%
-\contentsline {subsection}{\numberline {5.5.3}Max-Pressure di base}{29}{subsection.5.5.3}%
-\contentsline {section}{\numberline {5.6}Metriche}{29}{section.5.6}%
-\contentsline {subsection}{\numberline {5.6.1}Tempo di attesa}{29}{subsection.5.6.1}%
-\contentsline {subsection}{\numberline {5.6.2}Tempo di viaggio e time loss}{29}{subsection.5.6.2}%
-\contentsline {subsection}{\numberline {5.6.3}Velocità media}{29}{subsection.5.6.3}%
-\contentsline {subsection}{\numberline {5.6.4}Viaggi completati e tasso di completamento}{30}{subsection.5.6.4}%
-\contentsline {subsection}{\numberline {5.6.5}Censura}{30}{subsection.5.6.5}%
-\contentsline {section}{\numberline {5.7}Criteri di confronto}{30}{section.5.7}%
-\contentsline {section}{\numberline {5.8}Ambiente hardware e software}{30}{section.5.8}%
-\contentsline {section}{\numberline {5.9}Minacce alla validità}{31}{section.5.9}%
-\contentsline {chapter}{\numberline {6}Valutazione su Manhattan 8x8}{32}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Motivazione dello scenario sintetico}{32}{section.6.1}%
-\contentsline {section}{\numberline {6.2}Topologia della rete}{32}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Configurazione sperimentale}{33}{section.6.3}%
-\contentsline {section}{\numberline {6.4}Confronto tra Max-Pressure e controllo fisso}{33}{section.6.4}%
-\contentsline {section}{\numberline {6.5}Valutazione delle singole estensioni}{35}{section.6.5}%
-\contentsline {subsection}{\numberline {6.5.1}Lost-Time-Aware}{35}{subsection.6.5.1}%
-\contentsline {subsection}{\numberline {6.5.2}Nmin dinamico}{35}{subsection.6.5.2}%
-\contentsline {subsection}{\numberline {6.5.3}Fairness}{35}{subsection.6.5.3}%
-\contentsline {subsection}{\numberline {6.5.4}Penalità downstream}{36}{subsection.6.5.4}%
-\contentsline {subsection}{\numberline {6.5.5}Anti-spillback}{36}{subsection.6.5.5}%
-\contentsline {subsection}{\numberline {6.5.6}Platoon extension}{36}{subsection.6.5.6}%
-\contentsline {subsection}{\numberline {6.5.7}Margini di switch}{37}{subsection.6.5.7}%
-\contentsline {section}{\numberline {6.6}Analisi dei contatori di attivazione}{37}{section.6.6}%
-\contentsline {section}{\numberline {6.7}Confronto complessivo}{37}{section.6.7}%
-\contentsline {section}{\numberline {6.8}Indicazioni ricavate per lo scenario reale}{38}{section.6.8}%
-\contentsline {chapter}{\numberline {7}Adattamento alla rete di Bologna}{39}{chapter.7}%
-\contentsline {section}{\numberline {7.1}Caratteristiche della rete}{39}{section.7.1}%
-\contentsline {section}{\numberline {7.2}Problemi riscontrati}{40}{section.7.2}%
-\contentsline {subsection}{\numberline {7.2.1}Complessità della topologia}{40}{subsection.7.2.1}%
-\contentsline {subsection}{\numberline {7.2.2}Stalli e congestione}{40}{subsection.7.2.2}%
-\contentsline {subsection}{\numberline {7.2.3}Durata delle simulazioni e censura}{40}{subsection.7.2.3}%
-\contentsline {section}{\numberline {7.3}Preparazione della mappa e compatibilità}{41}{section.7.3}%
-\contentsline {section}{\numberline {7.4}Analisi del programma semaforico program0}{41}{section.7.4}%
-\contentsline {section}{\numberline {7.5}Limiti del Max-Pressure puro su Bologna}{42}{section.7.5}%
-\contentsline {subsection}{\numberline {7.5.1}Costo degli switch}{42}{subsection.7.5.1}%
-\contentsline {subsection}{\numberline {7.5.2}Prestazioni nel traffico leggero}{42}{subsection.7.5.2}%
-\contentsline {subsection}{\numberline {7.5.3}Assenza di coordinamento esplicito}{43}{subsection.7.5.3}%
-\contentsline {section}{\numberline {7.6}Calibrazione della domanda}{43}{section.7.6}%
-\contentsline {section}{\numberline {7.7}Introduzione delle distribuzioni skewed e peak}{43}{section.7.7}%
-\contentsline {section}{\numberline {7.8}Controller ibrido mp\_program0}{44}{section.7.8}%
-\contentsline {subsection}{\numberline {7.8.1}Misura del carico locale}{44}{subsection.7.8.1}%
-\contentsline {subsection}{\numberline {7.8.2}Passaggio tra program0 e Max-Pressure}{44}{subsection.7.8.2}%
-\contentsline {subsection}{\numberline {7.8.3}Isteresi e stabilità della selezione}{44}{subsection.7.8.3}%
-\contentsline {section}{\numberline {7.9}Meta-controller mp\_super}{45}{section.7.9}%
-\contentsline {subsection}{\numberline {7.9.1}Motivazione}{45}{subsection.7.9.1}%
-\contentsline {subsection}{\numberline {7.9.2}Carico (load)}{45}{subsection.7.9.2}%
-\contentsline {subsection}{\numberline {7.9.3}Squilibrio della domanda (imbalance)}{46}{subsection.7.9.3}%
-\contentsline {subsection}{\numberline {7.9.4}Squilibrio dell'attesa (wait imbalance)}{46}{subsection.7.9.4}%
-\contentsline {subsection}{\numberline {7.9.5}Variabilità temporale (burstiness)}{46}{subsection.7.9.5}%
-\contentsline {subsection}{\numberline {7.9.6}Rilevazione dei plotoni (platoon score)}{46}{subsection.7.9.6}%
-\contentsline {subsection}{\numberline {7.9.7}Saturazione downstream}{46}{subsection.7.9.7}%
-\contentsline {subsection}{\numberline {7.9.8}Regole di selezione delle modalità}{47}{subsection.7.9.8}%
-\contentsline {subsection}{\numberline {7.9.9}Isteresi temporale}{47}{subsection.7.9.9}%
-\contentsline {section}{\numberline {7.10}Evoluzione delle soglie di mp\_super}{47}{section.7.10}%
-\contentsline {chapter}{\numberline {8}Valutazione finale su Bologna}{48}{chapter.8}%
-\contentsline {section}{\numberline {8.1}Protocollo sperimentale}{48}{section.8.1}%
-\contentsline {section}{\numberline {8.2}Risultati aggregati}{49}{section.8.2}%
-\contentsline {section}{\numberline {8.3}Completezza e variabilità}{50}{section.8.3}%
-\contentsline {section}{\numberline {8.4}Comportamento delle varianti specialistiche}{50}{section.8.4}%
-\contentsline {section}{\numberline {8.5}Uso delle modalità di mp\_super}{51}{section.8.5}%
-\contentsline {section}{\numberline {8.6}Discussione dei risultati}{52}{section.8.6}%
-\contentsline {section}{\numberline {8.7}Limiti della valutazione}{52}{section.8.7}%
-\contentsline {chapter}{\numberline {9}Conclusioni}{53}{chapter.9}%
-\contentsline {section}{\numberline {9.1}Sintesi del lavoro}{53}{section.9.1}%
-\contentsline {section}{\numberline {9.2}Risultati principali}{53}{section.9.2}%
-\contentsline {section}{\numberline {9.3}Risposta agli obiettivi della tesi}{54}{section.9.3}%
-\contentsline {section}{\numberline {9.4}Limiti}{54}{section.9.4}%
-\contentsline {section}{\numberline {9.5}Sviluppi futuri}{54}{section.9.5}%
-\contentsline {chapter}{\numberline {A}Configurazioni sperimentali}{56}{appendix.Alph1}%
-\contentsline {section}{\numberline {A.1}Configurazioni delle campagne}{56}{section.Alph1.1}%
-\contentsline {section}{\numberline {A.2}Output e risultati completi}{56}{section.Alph1.2}%
-\contentsline {section}{\numberline {A.3}Struttura essenziale del software}{57}{section.Alph1.3}%
-\contentsline {chapter}{\numberline {B}Dettagli implementativi}{58}{appendix.Alph2}%
-\contentsline {section}{\numberline {B.1}Costruzione dei movimenti dalle fasi SUMO}{58}{section.Alph2.1}%
-\contentsline {section}{\numberline {B.2}Calcolo della pressione di fase}{59}{section.Alph2.2}%
-\contentsline {section}{\numberline {B.3}Selezione delle modalità di \texttt {mp\_super}}{60}{section.Alph2.3}%
-\contentsline {chapter}{Riferimenti bibliografici}{63}{appendix*.17}%
+\contentsline {subsection}{\numberline {5.3.2}Seed e riproducibilità}{27}{subsection.5.3.2}%
+\contentsline {section}{\numberline {5.4}Profilo di guida human-light}{27}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Controller di confronto}{27}{section.5.5}%
+\contentsline {subsection}{\numberline {5.5.1}\texttt {fixed\_program0}}{27}{subsection.5.5.1}%
+\contentsline {subsection}{\numberline {5.5.2}\texttt {fixed\_tuned}}{28}{subsection.5.5.2}%
+\contentsline {section}{\numberline {5.6}Metriche}{28}{section.5.6}%
+\contentsline {subsection}{\numberline {5.6.1}Tempo di attesa}{28}{subsection.5.6.1}%
+\contentsline {subsection}{\numberline {5.6.2}Tempo di viaggio e time loss}{28}{subsection.5.6.2}%
+\contentsline {subsection}{\numberline {5.6.3}Velocità media}{28}{subsection.5.6.3}%
+\contentsline {subsection}{\numberline {5.6.4}Viaggi completati e tasso di completamento}{28}{subsection.5.6.4}%
+\contentsline {subsection}{\numberline {5.6.5}Censura}{29}{subsection.5.6.5}%
+\contentsline {section}{\numberline {5.7}Criteri di confronto}{29}{section.5.7}%
+\contentsline {chapter}{\numberline {6}Valutazione su Manhattan 8x8}{30}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Motivazione dello scenario sintetico}{30}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Topologia della rete}{30}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Configurazione sperimentale}{31}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Confronto tra Max-Pressure e controllo fisso}{31}{section.6.4}%
+\contentsline {section}{\numberline {6.5}Valutazione delle singole estensioni}{33}{section.6.5}%
+\contentsline {subsection}{\numberline {6.5.1}Effetto chiaro: Nmin}{33}{subsection.6.5.1}%
+\contentsline {subsection}{\numberline {6.5.2}Varianti quasi equivalenti a \texttt {mp\_base}}{33}{subsection.6.5.2}%
+\contentsline {subsection}{\numberline {6.5.3}Varianti penalizzate dalla domanda uniforme}{33}{subsection.6.5.3}%
+\contentsline {section}{\numberline {6.6}Analisi dei contatori di attivazione}{34}{section.6.6}%
+\contentsline {section}{\numberline {6.7}Confronto complessivo}{34}{section.6.7}%
+\contentsline {section}{\numberline {6.8}Indicazioni ricavate per lo scenario reale}{35}{section.6.8}%
+\contentsline {chapter}{\numberline {7}Adattamento alla rete di Bologna}{36}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Caratteristiche della rete}{36}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Problemi riscontrati}{37}{section.7.2}%
+\contentsline {subsection}{\numberline {7.2.1}Complessità della topologia}{37}{subsection.7.2.1}%
+\contentsline {subsection}{\numberline {7.2.2}Stalli e congestione}{37}{subsection.7.2.2}%
+\contentsline {subsection}{\numberline {7.2.3}Durata delle simulazioni e censura}{37}{subsection.7.2.3}%
+\contentsline {section}{\numberline {7.3}Preparazione della mappa e compatibilità}{38}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Analisi del programma semaforico \texttt {program0}}{38}{section.7.4}%
+\contentsline {section}{\numberline {7.5}Limiti del Max-Pressure puro su Bologna}{39}{section.7.5}%
+\contentsline {subsection}{\numberline {7.5.1}Costo degli switch}{39}{subsection.7.5.1}%
+\contentsline {subsection}{\numberline {7.5.2}Prestazioni nel traffico leggero}{39}{subsection.7.5.2}%
+\contentsline {subsection}{\numberline {7.5.3}Assenza di coordinamento esplicito}{40}{subsection.7.5.3}%
+\contentsline {section}{\numberline {7.6}Calibrazione della domanda}{40}{section.7.6}%
+\contentsline {section}{\numberline {7.7}Distribuzioni di domanda per Bologna}{40}{section.7.7}%
+\contentsline {subsection}{\numberline {7.7.1}\texttt {balanced}}{40}{subsection.7.7.1}%
+\contentsline {subsection}{\numberline {7.7.2}\texttt {skewed}}{41}{subsection.7.7.2}%
+\contentsline {subsection}{\numberline {7.7.3}\texttt {peak}}{41}{subsection.7.7.3}%
+\contentsline {section}{\numberline {7.8}Controller ibrido \texttt {mp\_program0}}{41}{section.7.8}%
+\contentsline {subsection}{\numberline {7.8.1}Misura del carico locale}{41}{subsection.7.8.1}%
+\contentsline {subsection}{\numberline {7.8.2}Passaggio tra \texttt {program0} e Max-Pressure}{42}{subsection.7.8.2}%
+\contentsline {subsection}{\numberline {7.8.3}Isteresi e stabilità della selezione}{42}{subsection.7.8.3}%
+\contentsline {section}{\numberline {7.9}Meta-controller mp\_super}{42}{section.7.9}%
+\contentsline {subsection}{\numberline {7.9.1}Motivazione}{42}{subsection.7.9.1}%
+\contentsline {subsection}{\numberline {7.9.2}Carico (load)}{43}{subsection.7.9.2}%
+\contentsline {subsection}{\numberline {7.9.3}Squilibrio della domanda (imbalance)}{43}{subsection.7.9.3}%
+\contentsline {subsection}{\numberline {7.9.4}Squilibrio dell'attesa (wait imbalance)}{43}{subsection.7.9.4}%
+\contentsline {subsection}{\numberline {7.9.5}Variabilità temporale (burstiness)}{43}{subsection.7.9.5}%
+\contentsline {subsection}{\numberline {7.9.6}Rilevazione dei plotoni (platoon score)}{44}{subsection.7.9.6}%
+\contentsline {subsection}{\numberline {7.9.7}Saturazione downstream}{44}{subsection.7.9.7}%
+\contentsline {subsection}{\numberline {7.9.8}Regole di selezione delle modalità}{44}{subsection.7.9.8}%
+\contentsline {subsection}{\numberline {7.9.9}Isteresi temporale}{45}{subsection.7.9.9}%
+\contentsline {section}{\numberline {7.10}Evoluzione delle soglie di mp\_super}{45}{section.7.10}%
+\contentsline {chapter}{\numberline {8}Valutazione finale su Bologna}{46}{chapter.8}%
+\contentsline {section}{\numberline {8.1}Protocollo sperimentale}{46}{section.8.1}%
+\contentsline {section}{\numberline {8.2}Risultati aggregati}{47}{section.8.2}%
+\contentsline {section}{\numberline {8.3}Completezza e variabilità}{49}{section.8.3}%
+\contentsline {section}{\numberline {8.4}Comportamento delle varianti specialistiche}{49}{section.8.4}%
+\contentsline {section}{\numberline {8.5}Uso delle modalità di \texttt {mp\_super}}{49}{section.8.5}%
+\contentsline {section}{\numberline {8.6}Discussione dei risultati}{50}{section.8.6}%
+\contentsline {section}{\numberline {8.7}Limiti della valutazione}{51}{section.8.7}%
+\contentsline {chapter}{\numberline {9}Conclusioni}{52}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Sintesi del lavoro}{52}{section.9.1}%
+\contentsline {section}{\numberline {9.2}Risultati principali}{52}{section.9.2}%
+\contentsline {section}{\numberline {9.3}Risposta agli obiettivi della tesi}{53}{section.9.3}%
+\contentsline {section}{\numberline {9.4}Limiti}{53}{section.9.4}%
+\contentsline {section}{\numberline {9.5}Sviluppi futuri}{53}{section.9.5}%
+\contentsline {chapter}{\numberline {A}Configurazioni sperimentali}{55}{appendix.Alph1}%
+\contentsline {section}{\numberline {A.1}Configurazioni delle campagne}{55}{section.Alph1.1}%
+\contentsline {section}{\numberline {A.2}Output e risultati completi}{55}{section.Alph1.2}%
+\contentsline {section}{\numberline {A.3}Struttura essenziale del software}{56}{section.Alph1.3}%
+\contentsline {chapter}{\numberline {B}Dettagli implementativi}{57}{appendix.Alph2}%
+\contentsline {section}{\numberline {B.1}Costruzione dei movimenti dalle fasi SUMO}{57}{section.Alph2.1}%
+\contentsline {section}{\numberline {B.2}Calcolo della pressione di fase}{58}{section.Alph2.2}%
+\contentsline {section}{\numberline {B.3}Selezione delle modalità di \texttt {mp\_super}}{59}{section.Alph2.3}%
+\contentsline {chapter}{Riferimenti bibliografici}{62}{appendix*.17}%

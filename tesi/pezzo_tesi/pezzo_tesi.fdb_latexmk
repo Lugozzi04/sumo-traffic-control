@@ -1,12 +1,12 @@
 # Fdb version 4
-["biber pezzo_tesi"] 1781788016.71167 "pezzo_tesi.bcf" "pezzo_tesi.bbl" "pezzo_tesi" 1781788125.57479 0
+["biber pezzo_tesi"] 1781788016.71167 "pezzo_tesi.bcf" "pezzo_tesi.bbl" "pezzo_tesi" 1782816061.76761 0
   "bibliografia.bib" 1781787691.55304 9334 d585f164020890748c92156c49e3d7df ""
-  "pezzo_tesi.bcf" 1781788125.49486 110067 7b2f519f58da95a6f603f5d254716fba "pdflatex"
+  "pezzo_tesi.bcf" 1782816061.68557 110067 7b2f519f58da95a6f603f5d254716fba "pdflatex"
   (generated)
   "pezzo_tesi.bbl"
   "pezzo_tesi.blg"
   (rewritten before read)
-["pdflatex"] 1781788124.4959 "pezzo_tesi.tex" "pezzo_tesi.pdf" "pezzo_tesi" 1781788125.57498 0
+["pdflatex"] 1782816060.61642 "pezzo_tesi.tex" "pezzo_tesi.pdf" "pezzo_tesi" 1782816061.76781 0
   "/etc/texmf/web2c/texmf.cnf" 1781181955.21747 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf-pc.enc" 1698694482 3136 bbe665bd0bb471a2da1e8fd326cff9fa ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc" 1698694482 2914 fdbc4a54b9bc76f4551b5303f2737d33 ""
@@ -232,6 +232,7 @@
   "/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/color.cfg" 1459978653 1213 620bba36b25224fa9b7e1ccb4ecb76fd ""
   "/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg" 1465944070 1224 978390e9c2234eab29404bc21b268d1e ""
   "/usr/share/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def" 1663965824 19448 1e988b341dda20961a6b931bcde55519 ""
+  "/usr/share/texlive/texmf-dist/tex/latex/graphics/color.sty" 1654720880 7233 e46ce9241d2b2ca2a78155475fdd557a ""
   "/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty" 1654720880 18387 8f900a490197ebaf93c02ae9476d4b09 ""
   "/usr/share/texlive/texmf-dist/tex/latex/graphics/graphicx.sty" 1654720880 8010 a8d949cbdbc5c983593827c9eec252e1 ""
   "/usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty" 1654720880 2671 7e67d78d9b88c845599a85b2d41f2e39 ""
@@ -291,11 +292,13 @@
   "/usr/share/texlive/texmf-dist/tex/latex/refcount/refcount.sty" 1576624809 9878 9e94e8fa600d95f9c7731bb21dfb67a4 ""
   "/usr/share/texlive/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty" 1657483315 9714 ba3194bd52c8499b3f1e3eb91d409670 ""
   "/usr/share/texlive/texmf-dist/tex/latex/setspace/setspace.sty" 1670275497 22490 8cac309b79a4c53a4ffce4b1b07aead0 ""
+  "/usr/share/texlive/texmf-dist/tex/latex/siunitx/siunitx.sty" 1706217749 330278 a251dbbaec6ade657fe551be54fa0659 ""
   "/usr/share/texlive/texmf-dist/tex/latex/titlesec/titlesec.sty" 1698436711 48766 0b93839be28e9744a24c45075c75b2e2 ""
   "/usr/share/texlive/texmf-dist/tex/latex/tools/array.sty" 1698869629 12667 e4b5eb11e4b7239e6c8a52bbe074a6c6 ""
   "/usr/share/texlive/texmf-dist/tex/latex/tools/indentfirst.sty" 1698869629 1618 c5f08dcf49a56107311a81073b35fa4e ""
   "/usr/share/texlive/texmf-dist/tex/latex/tools/longtable.sty" 1698955022 12935 94a3291359b5f73ff1b19345a6983105 ""
   "/usr/share/texlive/texmf-dist/tex/latex/tools/tabularx.sty" 1698869629 7147 d45559f8a31b8c53ada0640516660003 ""
+  "/usr/share/texlive/texmf-dist/tex/latex/translations/translations.sty" 1644096163 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "/usr/share/texlive/texmf-dist/tex/latex/url/url.sty" 1388531844 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "/usr/share/texlive/texmf-dist/tex/latex/xcolor/xcolor.sty" 1700082560 55487 80a65caedd3722f4c20a14a69e785d8f ""
   "/usr/share/texlive/texmf-dist/tex/latex/xkeyval/xkeyval.sty" 1655411236 4937 4ce600ce9bd4ec84d0250eb6892fcf4f ""
@@ -306,14 +309,14 @@
   "/usr/share/texmf/fonts/tfm/public/tex-gyre/ts1-qtmr.tfm" 1480098718 1600 20cdf11dab97d5d39e847571f9314407 ""
   "/usr/share/texmf/fonts/type1/public/tex-gyre/qtmr.pfb" 1480098745 133302 8dca243a80ecf4cfe00077d4bd995bd7 ""
   "/usr/share/texmf/web2c/texmf.cnf" 1707919699 40399 f2c302f7d2af602abb742093540a5834 ""
-  "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1781183153.0241 5312232 f3296911be9cc021788f3f879cf0a47d ""
-  "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1781181965 6802364 4ff626f1f4abd97efbf300a3aca19d58 ""
-  "pezzo_tesi.aux" 1781788125.47779 11120 342ad6bfed8346242179c30071739e99 "pdflatex"
+  "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1781789706.27733 5349216 bf3a80e68d946c7acd95ff030fd9bb63 ""
+  "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1781789710 6832302 834702b7db51e8127b78b0fb6308da0e ""
+  "pezzo_tesi.aux" 1782816061.66757 11120 342ad6bfed8346242179c30071739e99 "pdflatex"
   "pezzo_tesi.bbl" 1781788017.10484 42570 3af3843833d38382e354eea41129148a "biber pezzo_tesi"
-  "pezzo_tesi.out" 1781788125.49379 5358 c0c798df8f4aae5aa9b9bf9ca3e100ec "pdflatex"
-  "pezzo_tesi.run.xml" 1781788125.49694 2355 5dfed1560d6c752e628ddf42e4db5b03 "pdflatex"
-  "pezzo_tesi.tex" 1781788118.01981 33344 80a19b20bee4d2283b1383ab79781ad0 ""
-  "pezzo_tesi.toc" 1781788125.49694 3941 0d90cb883e72c83437db43b5557e8ae0 "pdflatex"
+  "pezzo_tesi.out" 1782816061.68357 5358 c0c798df8f4aae5aa9b9bf9ca3e100ec "pdflatex"
+  "pezzo_tesi.run.xml" 1782816061.68639 2355 5dfed1560d6c752e628ddf42e4db5b03 "pdflatex"
+  "pezzo_tesi.tex" 1782816047.86169 33584 8c1ca04cfaff9ba29d1e3620c277cfb1 ""
+  "pezzo_tesi.toc" 1782816061.68639 3941 0d90cb883e72c83437db43b5557e8ae0 "pdflatex"
   (generated)
   "pezzo_tesi.aux"
   "pezzo_tesi.bcf"
