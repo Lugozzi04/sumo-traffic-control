@@ -81,7 +81,7 @@
 % FIGURE, TABELLE, DIDASCALIE
 % =========================================================
 \usepackage{graphicx}
-\graphicspath{{figures/}}
+\graphicspath{{figures/}{img/}}
 
 \usepackage{float}
 \usepackage{subcaption}
@@ -243,12 +243,9 @@
         \thispagestyle{empty}
         \centering
 
-        {\Large\bfseries
-        UNIVERSITÀ DEGLI STUDI DI\par
-        MODENA E REGGIO EMILIA
-        \par}
+        \includegraphics[width=0.72\textwidth]{Logo_A_Positivo_Colore}\par
 
-        \vspace{1cm}
+        \vspace{0.7cm}
 
         {\large
         Dipartimento di Scienze Fisiche, Informatiche e Matematiche
@@ -344,17 +341,6 @@ carico osservato. Nelle 270 simulazioni considerate, completate senza censura,
 quattro. Il risultato mostra che, su una rete reale, l'adattività può essere
 più efficace quando integra il piano nativo anziché sostituirlo
 continuamente.
-
-\chapter*{Parole chiave}
-\addcontentsline{toc}{chapter}{Parole chiave}
-
-\begin{itemize}
-    \item Sistemi di trasporto intelligenti;
-    \item Controllo semaforico adattivo;
-    \item Simulazione;
-    \item Max-Pressure;
-    \item SUMO.
-\end{itemize}
 
 \cleardoublepage
 \tableofcontents
@@ -1959,9 +1945,10 @@ La rete sintetica del capitolo precedente è regolare, simmetrica e
 completamente controllata; Bologna è invece una rete reale importata in SUMO,
 con incroci eterogenei, archi di lunghezza molto diversa, manovre non
 uniformi e piani semaforici già presenti nella mappa. Il file
-\texttt{bologna.net.xml} contiene 8\,439 giunzioni, 10\,281 archi stradali,
-10\,896 corsie e 228 giunzioni semaforizzate. Per ogni semaforo sono presenti
-due logiche, per un totale di 456 programmi e 2\,216 fasi.
+\texttt{bologna.net.xml} contiene 8\,439 giunzioni totali, di cui 4\,525 non
+interne, 10\,281 archi stradali non interni, 10\,896 corsie non interne e
+228 giunzioni semaforizzate. Per ogni semaforo sono presenti due logiche, per
+un totale di 456 programmi e 2\,216 fasi.
 
 \begin{figure}[htbp]
     \centering
@@ -1985,7 +1972,7 @@ decisione locale: valuta la pressione delle fasi di un singolo incrocio e
 sceglie quella più conveniente nel breve periodo. In una griglia regolare
 questo principio è spesso sufficiente, perché gli incroci sono simili e i
 flussi sono distribuiti in modo abbastanza omogeneo. In una rete reale, invece,
-alcuni nodi hanno un ruolo molto più critico di altri; inoltre il programma
+alcuni nodi hanno un ruolo molto più critico di altri, inoltre il programma
 statico può contenere durate e sequenze specifiche della topologia che un
 controller puramente locale non sfrutta.
 
@@ -2022,32 +2009,15 @@ negativo anche quando la pressione a monte è alta. Le prime versioni dei
 meccanismi downstream e spillback erano troppo rigide: in alcuni casi non si
 attivavano mai, in altri diventavano così invasive da ridurre la capacità utile.
 
-La soluzione adottata è stata separare due concetti. Lo spillback standalone,
-usato come scenario sperimentale, è un meccanismo sempre attivo e quindi può
-essere penalizzante se il fenomeno bersaglio è raro. Il ramo \texttt{safe} di
-\texttt{mp\_super}, invece, è pensato come protezione di emergenza: usa
-l'informazione downstream solo quando il carico è alto e la saturazione a valle
-supera una soglia critica. La soglia elevata adottata nella configurazione
-finale mantiene questo ramo come ultima risorsa, evitando che la prudenza
-downstream domini il comportamento ordinario del controller.
-
-\subsection{Durata delle simulazioni e censura}
-
-Il terzo problema riguarda la durata delle simulazioni. Nei casi ad alto
-traffico Bologna può richiedere molto tempo simulato per svuotarsi dopo la fine
-della generazione dei veicoli. Un cutoff troppo breve produce censura: una
-parte dei viaggi rimane incompleta e le metriche di viaggio vengono calcolate
-solo sui veicoli arrivati. Questo può alterare il confronto, perché un
-controller che completa meno veicoli può apparire migliore su attesa media o
-tempo di viaggio.
-
-Per questa ragione le campagne esplorative hanno usato la censura come metrica
-di controllo, mentre la campagna finale di Bologna è stata lanciata con
-\texttt{--max-steps 0}, cioè senza limite anticipato. La campagna definitiva
-\texttt{run\_0025\_20260614\_143342} usa tre seed e termina soltanto dopo il
-completamento di tutti i viaggi. In questo modo la censura è nulla anche nei
-casi high e il confronto non dipende più dall'esclusione dei veicoli rimasti
-in rete.
+La soluzione adottata è stata separare lo scenario spillback dal ramo
+\texttt{safe} di \texttt{mp\_super}. Lo spillback standalone applica sempre un
+vincolo rigido: se una fase scarica veicoli verso una corsia a valle quasi
+bloccata, quella fase viene esclusa. Il ramo \texttt{safe}, invece, si attiva
+solo in emergenza e combina due protezioni: il blocco spillback delle fasi verso
+uscite sature e la penalità downstream, che riduce la pressione delle fasi verso
+uscite molto occupate ma non ancora bloccate. La soglia elevata adottata nella
+configurazione finale mantiene questo ramo come ultima risorsa, evitando che la
+prudenza downstream domini il comportamento ordinario del controller.
 
 \section{Preparazione della mappa e compatibilità}
 
@@ -2055,17 +2025,10 @@ La rete di Bologna è stata utilizzata tramite i file presenti in
 \path{sumo_xml_files/bologna}. Durante la fase di preparazione sono stati
 controllati i programmi semaforici, le fasi principali e la compatibilità con
 TraCI. Una parte del lavoro software è consistita nel rendere il controller
-robusto rispetto a mappe con più logiche semaforiche: quando serve un
-confronto statico viene selezionato esplicitamente il \texttt{programID=0},
-mentre Max-Pressure usa le fasi principali della logica disponibile.
-
-La pipeline genera popolazioni esterne alla rete e le passa al runner tramite
-file YAML. In questo modo lo stesso insieme di viaggi può essere riutilizzato
-per tutti gli scenari, isolando l'effetto del controller. Le popolazioni sono
-definite da tre parametri principali: numero di veicoli, distribuzione spaziale
-delle route e profilo temporale di partenza. Per Bologna i livelli di domanda
-effettivi sono stati calibrati a 1500, 3000 e 5000 veicoli, generati tra
-0 e 3600 secondi.
+robusto rispetto a mappe con più logiche semaforiche. Gli scenari Max-Pressure
+puri ricavano le fasi controllabili dalla logica selezionata per il semaforo;
+\texttt{mp\_program0} e \texttt{mp\_super}, invece, riusano esplicitamente
+\texttt{program0} quando entrano in modalità statica.
 
 \section{Analisi del programma semaforico \texttt{program0}}
 
@@ -2078,21 +2041,23 @@ conservi configurazioni specifiche della rete. I risultati non permettono
 tuttavia di attribuire il vantaggio a una forma precisa di coordinamento.
 
 La variante \texttt{fixed\_tuned} è stata usata come controllo secondario:
-mantiene una logica statica ma rende più uniformi i verdi principali. I
-risultati mostrano che questa uniformazione peggiora rispetto al
-\texttt{program0} originale. Il piano nativo costituisce quindi un riferimento
-non banale e più appropriato di una temporizzazione identica per tutti gli
-incroci.
+forza ancora \texttt{program0}, ma porta a 30 secondi la durata delle fasi verdi
+principali, cioè le fasi che contengono almeno un segnale verde e non sono
+transizioni gialle. La sequenza delle fasi e i tempi di giallo/all-red restano
+quelli del piano originale. I risultati mostrano che questa uniformazione
+peggiora rispetto al \texttt{program0} originale. Il piano nativo costituisce
+quindi un riferimento non banale e più appropriato di una temporizzazione
+identica per tutti gli incroci.
 
 \section{Limiti del Max-Pressure puro su Bologna}
 
 Il comportamento di \texttt{mp\_base} su Bologna ha evidenziato tre limiti.
 Primo, il controller è locale e non conosce eventuali coordinamenti impliciti
-fra incroci. Secondo, il cambio di fase ha un costo: gialli e all-red riducono
-la capacità utile, soprattutto quando il traffico è leggero e le pressioni sono
-instabili. Terzo, la pressione misura code e downstream in modo reattivo, ma
-non distingue da sola fra traffico persistente, picchi temporanei e
-saturazione downstream.
+fra incroci. Secondo, il costo dello switch, già modellato dalle varianti con
+margine e lost-time-aware, diventa più visibile quando il traffico è leggero e
+le pressioni sono instabili. Terzo, la pressione misura code e downstream in
+modo reattivo, ma non distingue da sola fra traffico persistente, picchi
+temporanei e saturazione downstream.
 
 In pratica, \texttt{mp\_base} rimane una baseline fondamentale, ma non è
 sufficiente per Bologna. Nella campagna finale, su domanda uniforme low
@@ -2101,21 +2066,6 @@ l'attesa media è 406,64 secondi contro 198,65 di
 divario non scompare aumentando la domanda: \texttt{mp\_base} è peggiore del
 piano nativo in tutti i nove gruppi, con incrementi dell'attesa compresi tra il
 27,37\% e il 102,97\%.
-
-\subsection{Costo degli switch}
-
-Ogni switch introduce tempo perso. Su una rete regolare questo costo può essere
-compensato dalla migliore scelta della fase; su Bologna, invece, se il
-controller cambia spesso per rispondere a piccole differenze di pressione può
-rompere un ciclo statico già ragionevole. Per ridurre il problema sono state
-studiate varianti con margine di switch e varianti lost-time-aware, nelle quali
-il cambio è autorizzato solo se il vantaggio di pressione supera una stima del
-costo temporale.
-
-Queste varianti hanno mostrato che il costo degli switch esiste, ma non esiste
-un unico margine ottimo. In alcuni regimi un margine più alto stabilizza; in
-altri impedisce al controller di reagire abbastanza velocemente. Questo è uno
-dei motivi che ha portato al meta-controller.
 
 \subsection{Prestazioni nel traffico leggero}
 
@@ -2127,7 +2077,8 @@ buona prestazione perché evita oscillazioni e assegna tempi stabili.
 La scoperta è stata importante perché ha corretto un'ipotesi iniziale: non è
 vero che un controller dinamico debba essere sempre più veloce di uno fisso.
 Se il traffico non giustifica lo switch, la decisione migliore può essere
-non applicare Max-Pressure. Da qui nasce \texttt{mp\_program0}.
+non applicare Max-Pressure. Da questa osservazione nasce il controller ibrido
+\texttt{mp\_program0}, descritto nella \cref{sec:mp-program0}.
 
 \subsection{Assenza di coordinamento esplicito}
 
@@ -2197,8 +2148,8 @@ estratte più spesso e tendono a caricare maggiormente alcuni corridoi.
 \subsection{\texttt{peak}}
 
 \texttt{Peak} usa lo stesso campionamento spaziale di \texttt{skewed} e
-concentra anche le partenze. L'80\% degli istanti deriva da due distribuzioni
-beta, mentre il 20\% resta uniforme:
+concentra anche le partenze. Ogni istante di partenza combina una componente
+beta, pesata all'80\%, con una componente uniforme, pesata al 20\%:
 
 \begin{equation}
     u_{peak}=0{,}80\,u_{\beta}+0{,}20\,u_{uniforme}.
@@ -2210,12 +2161,13 @@ modo si simulano due ondate di domanda senza fissare manualmente le route più
 cariche: la scelta rimane casuale, ma riproducibile tramite seed.
 
 \section{Controller ibrido \texttt{mp\_program0}}
+\label{sec:mp-program0}
 
 \subsection{Misura del carico locale}
 
 \texttt{mp\_program0} è il primo controller ibrido introdotto per Bologna. La
-sua idea è semplice: quando il carico locale è basso, lascia lavorare
-\texttt{program0}; quando il carico supera una soglia, passa a Max-Pressure. Il
+sua idea è semplice, quando il carico locale è basso, lascia lavorare
+\texttt{program0}, quando il carico supera una soglia, passa a Max-Pressure. Il
 controller non coincide con le formulazioni cycle-based della letteratura, ma
 risponde alla stessa esigenza pratica: conservare una struttura semaforica
 stabile quando l'adattività istantanea non è necessaria
@@ -2227,9 +2179,10 @@ domanda delle fasi:
     \label{eq:program0-load}
 \end{equation}
 
-dove \(d_p(t)\) è la domanda della fase \(p\), \(M\) è il numero complessivo di
-movimenti controllati dall'incrocio e \(\lambda_{ref}\) è il riferimento di
-carico. Nella configurazione usata per Bologna \(\lambda_{ref}=3{,}5\).
+dove \(d_p(t)\) è la domanda della fase \(p\), \(M\) è il numero di movimenti
+ricavati dalle fasi principali dell'incrocio e \(\lambda_{ref}\) è il
+riferimento di carico. Nella configurazione usata per Bologna
+\(\lambda_{ref}=3{,}5\).
 
 \subsection{Passaggio tra \texttt{program0} e Max-Pressure}
 
@@ -2241,7 +2194,7 @@ usate due soglie:
     \item ritorno a \texttt{program0} quando \(L(t)\leq 0{,}40\).
 \end{itemize}
 
-La modalità deve inoltre essere confermata per quattro passi consecutivi. Questa
+La modalità deve inoltre essere confermata per quattro aggiornamenti consecutivi. Questa
 scelta rende il controller più stabile: una variazione istantanea della coda
 non basta per cambiare politica. Il risultato è un controller che preserva il
 vantaggio del piano statico in low e prova a recuperare reattività quando il
@@ -2260,7 +2213,7 @@ sperimentale. Il risultato rilevante, anticipato qui soltanto in termini
 qualitativi, è che una regola ibrida semplice può rimanere competitiva anche
 quando il piano statico nativo è forte.
 
-\section{Meta-controller mp\_super}
+\section{Meta-controller \texttt{mp\_super}}
 
 \subsection{Motivazione}
 
@@ -2363,11 +2316,11 @@ sbilanciata seleziona fairness e un plotone compatto può selezionare platoon;
 in assenza di questi segnali viene comunque usato Nmin forte.
 
 Fra 0,62 e 0,72 valgono regole specialistiche analoghe, ma la modalità di
-ripiego è \texttt{base}. Nel regime intermedio possono essere scelti LTA,
-fairness o platoon; la sola burstiness non attiva Nmin e conduce alla modalità
-\texttt{base}. Questa distinzione è importante: Nmin non dipende
-soltanto dalla presenza di un picco, ma diventa anche la politica predefinita
-nel regime di carico più elevato.
+ripiego è \texttt{base}. In questo intervallo la burstiness può già selezionare
+\texttt{nmin}, mentre attesa e domanda sbilanciate selezionano \texttt{lta}, la
+sola attesa sbilanciata può selezionare \texttt{fair} e un plotone compatto può
+selezionare \texttt{platoon}. Sotto 0,62, invece, la burstiness da sola non
+attiva \texttt{nmin} e porta alla modalità \texttt{base}.
 
 La logica può essere letta come un albero di decisione scritto a mano. Non è un
 modello appreso: le soglie derivano dalle campagne esplorative e
@@ -2377,7 +2330,7 @@ che la taratura resta manuale.
 \subsection{Isteresi temporale}
 
 Oltre all'isteresi sul carico, \texttt{mp\_super} usa una conferma temporale:
-una nuova modalità deve essere proposta per quattro passi consecutivi prima di
+una nuova modalità deve essere proposta per quattro aggiornamenti consecutivi prima di
 essere adottata. Questo riduce il rumore decisionale. Nelle campagne
 esplorative i contatori di switch del super sono comunque elevati nei casi high,
 segno che la rete presenta molti regimi locali diversi. Nella campagna finale
@@ -2404,12 +2357,14 @@ osservabile, non dalla sola ricerca del risultato migliore.
 
 La valutazione su Bologna verifica come i controller adattivi si comportino
 quando competono con un programma semaforico reale già presente nella mappa.
-Il confronto combina tre livelli di domanda, tre distribuzioni spaziali e
-temporali (balanced, skewed e peak) e tre seed. Per ogni combinazione vengono
-analizzati dieci scenari: \texttt{fixed\_program0}, \texttt{fixed\_tuned},
-\texttt{mp\_base}, \texttt{mp\_program0}, \texttt{mp\_super} e le
-varianti LTA, Nmin, spillback, fairness e platoon. La matrice considerata
-comprende quindi 270 simulazioni.
+Il confronto combina tre livelli di domanda, tre insiemi di popolazioni
+(\texttt{balanced}, \texttt{skewed} e \texttt{peak}) e tre seed. Gli insiemi
+variano la distribuzione spaziale dei viaggi e, nel caso \texttt{peak}, anche
+il profilo temporale delle partenze. Per ogni combinazione vengono analizzati
+dieci scenari: \texttt{fixed\_program0}, \texttt{fixed\_tuned},
+\texttt{mp\_base}, \texttt{mp\_program0}, \texttt{mp\_super} e le varianti LTA,
+Nmin, spillback, fairness e platoon. La matrice considerata comprende quindi
+270 simulazioni.
 
 I risultati provengono dalla campagna
 \path{run_0025_20260614_143342}, eseguita con il pack
@@ -2522,12 +2477,14 @@ per attesa riduce anche il tempo medio di viaggio in tutti i gruppi. Il
 percentile 95 dell'attesa migliora dal 3,46\% in balanced low fino al 68,91\%
 in skewed low: il vantaggio non deriva quindi dal sacrificio della coda lunga.
 
-Le deviazioni standard della \cref{tab:bologna-winners} mostrano tuttavia che
-la classifica fra i due ibridi non è sempre stabile. In balanced high le loro
-medie differiscono di soli 2,53 secondi; nei casi peak medium e peak high
-l'ordinamento cambia fra i seed. Con tre repliche è quindi corretto descrivere
-\texttt{mp\_program0} e \texttt{mp\_super} come soluzioni complementari,
-senza attribuire valore generale a differenze nominali molto piccole.
+I dati aggregati mostrano che la classifica fra i due ibridi può variare quando
+le medie sono molto vicine. In balanced high le loro medie differiscono di soli
+2,53 secondi; nei casi peak medium e peak high l'ordinamento cambia fra i seed.
+Questa variabilità non modifica la conclusione principale: nella matrice
+considerata il miglior risultato di gruppo è sempre ottenuto da
+\texttt{mp\_program0} o da \texttt{mp\_super}. I due controller risultano quindi
+complementari: il primo è più semplice, il secondo seleziona dinamicamente il
+ramo Max-Pressure più adatto ai segnali locali.
 
 \section{Comportamento delle varianti specialistiche}
 
@@ -2549,12 +2506,12 @@ verdi principali elimina informazioni utili presenti nella mappa.
 
 \section{Uso delle modalità di \texttt{mp\_super}}
 
-Il comportamento del super è interpretabile perché ogni aggiornamento di un
-semaforo viene associato a una modalità. Si definisce qui
-\emph{passo-modalità} la coppia formata da un incrocio controllato e da un
-passo della simulazione; il conteggio è quindi aggregato sia nel tempo sia sui
-semafori. La \cref{fig:super-non-program0} mostra la quota di passi-modalità
-in cui il controller abbandona \texttt{program0}.
+Il comportamento del super è interpretabile perché, a ogni aggiornamento
+controllabile di un semaforo, il controller registra la modalità attiva. Si
+definisce qui \emph{passo-modalità} la coppia formata da un incrocio controllato
+e da un aggiornamento del controller; il conteggio è quindi aggregato sia nel
+tempo sia sui semafori. La \cref{fig:super-non-program0} mostra la quota di
+passi-modalità in cui il controller abbandona \texttt{program0}.
 
 \begin{figure}[htbp]
     \centering
@@ -2566,7 +2523,7 @@ in cui il controller abbandona \texttt{program0}.
         symbolic x coords={Bal-L,Bal-M,Bal-H,Skw-L,Skw-M,Skw-H,Peak-L,Peak-M,Peak-H},
         xtick=data,
         x tick label style={rotate=45,anchor=east,font=\scriptsize},
-        ylabel={Passi fuori da \texttt{program0} [\%]},
+        ylabel={Aggiornamenti fuori da \texttt{program0} [\%]},
         ymin=0,
         ymax=6.2,
         bar width=12pt,
@@ -2592,11 +2549,14 @@ particolare safe non supera lo 0,76\%, coerentemente con il suo ruolo di
 protezione estrema.
 
 Questi valori mostrano che \texttt{mp\_super} non sostituisce stabilmente il
-piano nativo. Opera piuttosto come uno strato correttivo: osserva carico,
-imbalance, wait imbalance, burstiness, plotoni e saturazione downstream, quindi
-interviene localmente per periodi brevi. Il vantaggio nei casi medium e high
-indica che anche una quota limitata di decisioni adattive può modificare in
-modo sostanziale l'evoluzione della congestione.
+piano nativo, ma non è equivalente a \texttt{fixed\_program0}. Opera piuttosto
+come uno strato correttivo: osserva carico, imbalance, wait imbalance,
+burstiness, plotoni e saturazione downstream, quindi interviene localmente per
+periodi brevi. Il miglioramento rispetto a \texttt{fixed\_program0} è comunque
+evidente: otto gruppi su nove migliorano con \texttt{mp\_super}, e la media
+delle variazioni percentuali dell'attesa è pari a \(-30{,}27\%\). Anche una
+quota limitata di decisioni adattive modifica quindi in modo sostanziale
+l'evoluzione della congestione.
 
 \section{Discussione dei risultati}
 
@@ -2609,18 +2569,19 @@ peggiora le prestazioni osservate.
 
 I risultati sostengono quindi l'ibridazione, non la sostituzione completa del
 piano nativo. \texttt{mp\_program0} è semplice e particolarmente competitivo
-nei casi high skewed e peak. \texttt{mp\_super} vince più gruppi in media,
-soprattutto nei regimi medium e nei casi low non uniformi, ma non domina ogni
-seed né ogni distribuzione. Il risultato più solido è comune ai due
-controller: il piano nativo rimane la modalità predefinita e Max-Pressure
-interviene soltanto quando i segnali locali giustificano il costo del cambio.
+nei casi high skewed e peak. \texttt{mp\_super} vince più gruppi, soprattutto
+nei regimi medium e nei casi low non uniformi. Il risultato più solido è comune
+ai due controller: il piano nativo rimane la modalità predefinita e
+Max-Pressure interviene soltanto quando i segnali locali giustificano il costo
+del cambio.
 
 \section{Limiti della valutazione}
 
 La campagna elimina la censura e usa le stesse popolazioni per tutti gli
-scenari dello stesso gruppo, ma conserva alcuni
-limiti. Tre seed consentono di osservare la variabilità, non di stimare con
-precisione differenze molto piccole. Bologna è inoltre una sola rete reale e
+scenari dello stesso gruppo, producendo un confronto diretto e riproducibile.
+Le tre repliche permettono di verificare la stabilità dei risultati principali;
+differenze di pochi secondi fra scenari ibridi vanno invece lette come
+prestazioni sostanzialmente equivalenti. Bologna è inoltre una sola rete reale e
 le popolazioni sono generate sinteticamente: balanced, skewed e peak
 riproducono regimi diversi, ma non derivano da conteggi osservati sul campo.
 
@@ -2628,8 +2589,11 @@ Le soglie di \texttt{mp\_super} sono interpretabili, ma sono state calibrate
 manualmente attraverso campagne sulla stessa mappa; resta quindi un rischio di
 adattamento eccessivo a Bologna. Infine, i controller mantengono una logica
 locale e non introducono coordinamento esplicito fra incroci adiacenti. Questi
-limiti impediscono di presentare \texttt{mp\_super} come vincitore universale,
-ma non riducono l'evidenza a favore dell'approccio ibrido.
+limiti suggeriscono cautela nell'estendere automaticamente le soglie ad altre
+mappe, ma non riducono l'evidenza centrale della campagna: su Bologna
+il migliore tra i controller ibridi supera il piano nativo in tutti i gruppi
+considerati e rende utilizzabile Max-Pressure anche in presenza di un programma
+semaforico reale già competitivo.
 
 \chapter{Conclusioni}
 \label{chap:conclusioni}
@@ -2676,8 +2640,8 @@ I risultati principali sono cinque.
     \item \texttt{mp\_super} vince cinque gruppi e
     \texttt{mp\_program0} quattro. Il super mantiene \texttt{program0} per
     oltre il 94\% dei passi-modalità e usa Max-Pressure come intervento
-    locale breve. Non emerge quindi un singolo controller dominante in ogni
-    seed, ma una chiara evidenza a favore dell'ibridazione.
+    locale breve. Il risultato conferma che l'ibridazione è efficace anche
+    quando il piano statico di partenza è già competitivo.
 \end{enumerate}
 
 \section{Risposta agli obiettivi della tesi}
@@ -2702,9 +2666,10 @@ attivarlo soltanto nei regimi che giustificano il costo del cambiamento.
 
 \section{Limiti}
 
-La campagna finale Bologna usa tre seed. Questo numero è sufficiente per
-mostrare che alcune differenze cambiano segno fra le repliche, ma non per
-attribuire significatività statistica a distacchi ridotti. I risultati
+La campagna finale Bologna usa tre seed e tutte le simulazioni completano i
+viaggi senza censura. Questo rende il confronto stabile per le conclusioni
+principali; differenze di pochi secondi fra controller ibridi vanno invece
+interpretate come prestazioni sostanzialmente equivalenti. I risultati
 riguardano inoltre due mappe, una sintetica e una reale, e non possono essere
 trasferiti automaticamente ad altre topologie.
 
@@ -2734,6 +2699,11 @@ incroci adiacenti o di indicatori regionali, coerentemente con approcci recenti
 come Smoothing-MP e N-MP \cite{xu2024smoothing,liu2024nmp}. Infine, il
 meccanismo di spillback potrebbe essere reso meno rigido, penalizzando i singoli
 movimenti invece di escludere un'intera fase quando una sola uscita è satura.
+
+Nel complesso, il lavoro mostra che il valore del Max-Pressure non sta
+necessariamente nella sostituzione completa del piano semaforico esistente, ma
+nella capacità di affiancarlo con decisioni locali mirate, osservabili e
+attivate solo quando il traffico lo richiede.
 
 \appendix
 \chapter{Configurazioni sperimentali}
@@ -2780,7 +2750,7 @@ Le soglie principali di \texttt{mp\_super} sono: riferimento di carico 3,5,
 ingresso nei rami Max-Pressure a 0,38, ritorno a \texttt{program0} sotto 0,28,
 regime high a 0,62, ramo Nmin forte a 0,72, imbalance e wait imbalance a 0,50,
 burstiness a 0,10, safe downstream a 0,97 e conferma della modalità per
-quattro passi consecutivi.
+quattro aggiornamenti consecutivi.
 
 \section{Output e risultati completi}
 \label{app:risultati}

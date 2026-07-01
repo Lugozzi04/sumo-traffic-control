@@ -1,12 +1,12 @@
 # Fdb version 4
-["biber tesi"] 1782763732.75606 "tesi.bcf" "tesi.bbl" "tesi" 1782836379.05806 0
+["biber tesi"] 1782763732.75606 "tesi.bcf" "tesi.bbl" "tesi" 1782868802.53059 0
   "bibliografia.bib" 1781704750.1375 9334 d585f164020890748c92156c49e3d7df ""
-  "tesi.bcf" 1782836378.97173 110879 11022cd85bb3aa37e84076ba7adae3a3 "pdflatex"
+  "tesi.bcf" 1782868802.44347 110879 11022cd85bb3aa37e84076ba7adae3a3 "pdflatex"
   (generated)
   "tesi.bbl"
   "tesi.blg"
   (rewritten before read)
-["pdflatex"] 1782836377.18065 "tesi.tex" "tesi.pdf" "tesi" 1782836379.05825 0
+["pdflatex"] 1782868800.60401 "tesi.tex" "tesi.pdf" "tesi" 1782868802.53078 0
   "/etc/texmf/web2c/texmf.cnf" 1781181955.21747 475 c0e671620eb5563b2130f56340a5fde8 ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf-pc.enc" 1698694482 3136 bbe665bd0bb471a2da1e8fd326cff9fa ""
   "/usr/share/texlive/texmf-dist/fonts/enc/dvips/newtx/ntx-ec-tlf.enc" 1698694482 2914 fdbc4a54b9bc76f4551b5303f2737d33 ""
@@ -326,12 +326,13 @@
   "figures/sumo_bologna_overview.png" 1781699660.39016 74688 e5e5a81172ae12b8215a19ac3ab1bb1d ""
   "figures/sumo_manhattan_intersection.png" 1781699039.83708 6992 151f138ffd1164ad7ba19b3aa01fc00c ""
   "figures/sumo_manhattan_overview.png" 1781698623.78454 8521 05cf8b9af90bcb78b00ac690d2526870 ""
-  "tesi.aux" 1782836378.95473 37374 989ec3280ed75b068aefda50990b6902 "pdflatex"
+  "img/Logo_A_Positivo_Colore.png" 1782840104.76586 45702 e8a9122afa322364135b2247b5386518 ""
+  "tesi.aux" 1782868802.42647 37172 288bcf627f338bc2925ec6fcf8e7ebde "pdflatex"
   "tesi.bbl" 1782763733.21306 42570 3af3843833d38382e354eea41129148a "biber tesi"
-  "tesi.out" 1782836378.97085 30252 0b10aa16f899d576d1253f7346fd2d83 "pdflatex"
-  "tesi.run.xml" 1782836378.97323 2313 39f255d0c0a315c7cad3c120f97dc340 "pdflatex"
-  "tesi.tex" 1782836370.17681 138025 7991f0536f653bb9979c9cfa20b999cb ""
-  "tesi.toc" 1782836378.97323 14183 3eb4fffdf8e5e956ad6dfe908aaafef5 "pdflatex"
+  "tesi.out" 1782868802.44211 29734 180b0982eb55d60bad0b426ecee6a92f "pdflatex"
+  "tesi.run.xml" 1782868802.44452 2313 39f255d0c0a315c7cad3c120f97dc340 "pdflatex"
+  "tesi.tex" 1782868790.30451 137245 c76045dd3ea57e72f509d793b955df5e ""
+  "tesi.toc" 1782868802.44452 13943 47ee81c4e9b99b62dd9702ae8d5a606f "pdflatex"
   (generated)
   "tesi.aux"
   "tesi.bcf"
