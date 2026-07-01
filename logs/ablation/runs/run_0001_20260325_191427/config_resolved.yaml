@@ -1,0 +1,45 @@
+run_id: run_0001_20260325_191427
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0001_20260325_191427
+maps:
+- manhattan6x6_100pc
+demands:
+- low
+num_seeds: 1
+jobs: 3
+seed_start: 1
+step_length: 1.0
+max_steps: 5400
+progress_interval: 2.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+demand_presets:
+  low:
+    vehicles: 2000
+    start_time: 0.0
+    end_time: 3600.0
+scenarios:
+- name: mp_base
+  flags: []
+- name: mp_switch_aware
+  flags:
+  - --lost-time-aware
+  - --nmin-dynamic
+- name: mp_downstream_aware
+  flags:
+  - --spillback
+  - --downstream-penalty
+- name: mp_fairness
+  flags:
+  - --fairness
+- name: mp_platoon_safe
+  flags:
+  - --platoon-extension
+  - --spillback
+  - --downstream-penalty
+- name: mp_all_on
+  flags:
+  - --spillback
+  - --lost-time-aware
+  - --downstream-penalty
+  - --fairness
+  - --nmin-dynamic
+  - --platoon-extension

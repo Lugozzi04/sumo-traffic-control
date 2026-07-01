@@ -1,0 +1,77 @@
+run_id: run_0020_20260517_034036
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0020_20260517_034036
+maps:
+- bologna
+demands:
+- high
+num_seeds: 1
+jobs: 1
+seed_start: 1
+scenario_pack: tuning_matrix_v2
+include_fixed_baseline: false
+include_fixed_program0: false
+include_fixed_tuned: false
+include_classic_baselines: false
+include_rbl_baseline: false
+delta_baseline_scenario: mp_base
+step_length: 1.0
+max_steps: 4000
+progress_interval: 15.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+driver_profile: human_light
+runner_global_flags:
+- --driver-profile
+- human_light
+population_generation:
+  mode: preset
+  custom: null
+  presets:
+  - population_set: peak
+    route_sampling: edge_weighted
+    route_weight_exponent: 1.4
+    depart_profile: peaked
+    peak_factor: 0.8
+population_sets:
+- peak
+demand_presets:
+  high:
+    vehicles: 7000
+    start_time: 0.0
+    end_time: 3600.0
+demand_presets_effective_map:
+  bologna:
+    high:
+      vehicles: 5000
+      start_time: 0.0
+      end_time: 3600.0
+scenarios:
+- name: mp_base
+  controller: mp
+  map_suffix: ''
+  flags: []
+- name: mp_spillback_on85_off70
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --spillback
+  - --spillback-on
+  - '0.85'
+  - --spillback-off
+  - '0.70'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+- name: mp_spillback_on90_off80
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --spillback
+  - --spillback-on
+  - '0.90'
+  - --spillback-off
+  - '0.80'
+  - --spillback-min-halts
+  - '3'
+  - --spillback-alpha
+  - '0.30'

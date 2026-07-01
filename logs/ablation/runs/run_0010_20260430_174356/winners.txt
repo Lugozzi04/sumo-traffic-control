@@ -1,0 +1,8 @@
+Run dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0010_20260430_174356
+
+Vincitore per gruppo (criterio: wait medio minimo)
+MAP                    DEMAND   SCENARIO             WAIT[s]  DELTA_WAIT[%]  TRAVEL[s]  DELTA_TRAVEL[%]
+manhattan8x8_100pc     low     rbl_base                0.47         -99.27      68.68           -21.50
+
+Classifica scenari per numero di vittorie
+- rbl_base: 1 vittorie

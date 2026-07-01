@@ -1,0 +1,11 @@
+Run dir: /home/jakubhomoncik/sumo-traffic-control/logs/ablation/runs/run_0028_20260612_131724
+
+Vincitore per gruppo (criterio: wait medio minimo)
+MAP                    SET      DEMAND   SCENARIO             WAIT[s]  DELTA_WAIT[%]  TRAVEL[s]  DELTA_TRAVEL[%]  TIMELOSS[s]  CENSORING[%]
+manhattan8x8_100pc     balance high    mp_fair_mu5_w20        31.81         -53.05     152.23           -17.44       68.91        0.00%
+manhattan8x8_100pc     balance low     mp_nmin_a080_f2        23.54         -64.26     137.47           -22.04       54.58        0.00%
+manhattan8x8_100pc     balance medium  mp_nmin_a080_f2        26.70         -60.09     144.78           -19.81       61.57        0.00%
+
+Classifica scenari per numero di vittorie
+- mp_nmin_a080_f2: 2 vittorie
+- mp_fair_mu5_w20: 1 vittorie

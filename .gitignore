@@ -22,14 +22,19 @@ logs/ablation/*
 !logs/ablation/README.md
 !logs/ablation/runs/
 logs/ablation/runs/*
-!logs/ablation/runs/run_0023_20260612_131724/
-!logs/ablation/runs/run_0023_20260612_131724/**
-logs/ablation/runs/run_0023_20260612_131724/runs/
-logs/ablation/runs/run_0023_20260612_131724/*.txt
-!logs/ablation/runs/run_0025_20260614_143342/
-!logs/ablation/runs/run_0025_20260614_143342/**
-logs/ablation/runs/run_0025_20260614_143342/runs/
-logs/ablation/runs/run_0025_20260614_143342/*.txt
+!logs/ablation/runs/*/
+logs/ablation/runs/*/*
+!logs/ablation/runs/*/config_resolved.yaml
+!logs/ablation/runs/*/run_results.csv
+!logs/ablation/runs/*/summary.md
+!logs/ablation/runs/*/summary_by_group.csv
+!logs/ablation/runs/*/summary_vs_base.csv
+!logs/ablation/runs/*/table.txt
+!logs/ablation/runs/*/winners.txt
+!logs/ablation/runs/*/populations/
+logs/ablation/runs/*/populations/*
+!logs/ablation/runs/*/populations/*.yaml
+logs/ablation/runs/*/runs/
 logs/simulations/
 
 # Generated populations

@@ -1,0 +1,112 @@
+run_id: run_0027_20260614_140642
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0027_20260614_140642
+maps:
+- bologna
+demands:
+- high
+num_seeds: 1
+jobs: 1
+seed_start: 1
+scenario_pack: bologna_thesis_v1
+include_fixed_baseline: false
+include_fixed_program0: false
+include_fixed_tuned: false
+include_classic_baselines: false
+include_rbl_baseline: false
+delta_baseline_scenario: mp_super
+step_length: 1.0
+max_steps: 4000
+progress_interval: 15.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+driver_profile: human_light
+runner_global_flags:
+- --driver-profile
+- human_light
+population_generation:
+  mode: preset
+  custom: null
+  presets:
+  - population_set: balanced
+    route_sampling: uniform
+    route_weight_exponent: 1.0
+    depart_profile: uniform
+    peak_factor: 0.0
+population_sets:
+- balanced
+demand_presets:
+  high:
+    vehicles: 7000
+    start_time: 0.0
+    end_time: 3600.0
+demand_presets_effective_map:
+  bologna:
+    high:
+      vehicles: 5000
+      start_time: 0.0
+      end_time: 3600.0
+scenarios:
+- name: mp_super
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --super-router
+  - --super-load-ref
+  - '3.5'
+  - --super-low-load
+  - '0.38'
+  - --super-program0-exit-load
+  - '0.28'
+  - --super-high-load
+  - '0.62'
+  - --super-imbalance-threshold
+  - '0.50'
+  - --super-wait-imbalance-threshold
+  - '0.50'
+  - --super-burstiness-threshold
+  - '0.10'
+  - --super-platoon-threshold
+  - '0.50'
+  - --super-downstream-threshold
+  - '0.97'
+  - --super-mode-streak
+  - '4'
+  - --super-nmin-load
+  - '0.72'
+  - --super-lta-gain
+  - '0.60'
+  - --super-lta-sat-flow
+  - '0.50'
+  - --super-nmin-alpha
+  - '1.20'
+  - --super-nmin-floor
+  - '4'
+  - --super-nmin-min-green
+  - '4.0'
+  - --super-nmin-demand-gain
+  - '0.40'
+  - --super-nmin-empty-release-seconds
+  - '1.5'
+  - --fairness-mu
+  - '5.0'
+  - --fairness-w-half
+  - '20.0'
+  - --platoon-headway-threshold
+  - '2.1'
+  - --platoon-gap-out-seconds
+  - '2.1'
+  - --platoon-max-extra-green
+  - '2.0'
+  - --platoon-guard-occ
+  - '0.90'
+  - --spillback-on
+  - '0.90'
+  - --spillback-off
+  - '0.80'
+  - --spillback-min-halts
+  - '3'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-beta
+  - '0.4'
+  - --downstream-alpha
+  - '0.30'

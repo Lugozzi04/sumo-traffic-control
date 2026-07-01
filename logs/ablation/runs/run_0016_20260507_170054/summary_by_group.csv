@@ -1,0 +1,2 @@
+map,demand,scenario,runs,avg_mean_wait_s,std_mean_wait_s,avg_p95_wait_s,avg_mean_travel_s,std_mean_travel_s,avg_p95_travel_s,avg_mean_speed_mps,avg_vehicles_count
+masa_100pc,low,mp_base,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

@@ -1,0 +1,5 @@
+map,demand,scenario,delta_baseline_scenario,avg_mean_wait_s,avg_mean_travel_s,wait_delta_vs_base_pct,travel_delta_vs_base_pct
+manhattan8x8_100pc,high,fixed_program0,fixed_program0,45.893578,119.001835,0.0,0.0
+manhattan8x8_100pc,high,fixed_tuned,fixed_program0,39.911927,115.07156,-13.0337,-3.3027
+manhattan8x8_100pc,high,mp_base,fixed_program0,22.941284,107.420183,-50.012,-9.7323
+manhattan8x8_100pc,high,rbl_base,fixed_program0,8.902752,91.018349,-80.6013,-23.5152

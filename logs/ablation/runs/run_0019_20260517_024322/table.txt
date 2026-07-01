@@ -1,0 +1,10 @@
+Run dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0019_20260517_024322
+Gruppi: 1
+Ordinamento: wait (asc)
+
+=== bologna / high ===
+Rank | Scenario                | MeanWait[s] | DeltaWait[%] | MeanTravel[s] | DeltaTravel[%] | MeanTimeLoss[s] | DeltaTimeLoss[s] | Censoring[%] | P95Wait[s] | P95Travel[s] | MeanSpeed[m/s] | Completed | Runs
+-----+-------------------------+-------------+--------------+---------------+----------------+-----------------+------------------+--------------+------------+--------------+----------------+-----------+-----
+1    | mp_base                 | 1881.75     | +0.00        | 2382.98       | +0.00          | 2137.92         | +0.00            | 55.48%       | 6296.75    | 7177.00      | 4.55           | 2226      | 1
+2    | mp_spillback_on90_off80 | 1881.75     | +0.00        | 2382.98       | +0.00          | 2137.92         | +0.00            | 55.48%       | 6296.75    | 7177.00      | 4.55           | 2226      | 1
+3    | mp_spillback_on97_off90 | 1881.75     | +0.00        | 2382.98       | +0.00          | 2137.92         | +0.00            | 55.48%       | 6296.75    | 7177.00      | 4.55           | 2226      | 1

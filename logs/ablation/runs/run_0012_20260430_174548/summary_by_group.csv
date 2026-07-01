@@ -1,0 +1,4 @@
+map,demand,scenario,runs,avg_mean_wait_s,std_mean_wait_s,avg_p95_wait_s,avg_mean_travel_s,std_mean_travel_s,avg_p95_travel_s,avg_mean_speed_mps,avg_vehicles_count
+manhattan8x8_100pc,low,fixed_base,1,9.192308,0.0,26.0,30.5,0.0,54.0,7.87028,26.0
+manhattan8x8_100pc,low,mp_base,1,4.192308,0.0,7.0,30.5,0.0,54.0,8.602526,26.0
+manhattan8x8_100pc,low,rbl_base,1,0.0,0.0,0.0,30.423077,0.0,53.5,10.882521,26.0

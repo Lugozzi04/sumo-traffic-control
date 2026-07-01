@@ -1,0 +1,8 @@
+Run dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0019_20260517_024322
+
+Vincitore per gruppo (criterio: wait medio minimo)
+MAP                    SET      DEMAND   SCENARIO             WAIT[s]  DELTA_WAIT[%]  TRAVEL[s]  DELTA_TRAVEL[%]  TIMELOSS[s]  CENSORING[%]
+bologna                custom  high    mp_base              1881.75          +0.00    2382.98            +0.00     2137.92       55.48%
+
+Classifica scenari per numero di vittorie
+- mp_base: 1 vittorie

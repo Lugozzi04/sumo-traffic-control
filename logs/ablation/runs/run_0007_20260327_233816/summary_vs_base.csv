@@ -1,0 +1,4 @@
+map,demand,scenario,avg_mean_wait_s,avg_mean_travel_s,wait_delta_vs_base_pct,travel_delta_vs_base_pct
+manhattan3x3_100pc,low,mp_base,3.346154,29.615385,0.0,0.0
+manhattan3x3_100pc,low,mp_lta_plus_nmin,3.346154,29.615385,0.0,0.0
+manhattan3x3_100pc,low,mp_nmin_only,3.346154,29.615385,0.0,0.0

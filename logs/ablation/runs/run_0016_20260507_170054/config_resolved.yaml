@@ -1,0 +1,39 @@
+run_id: run_0016_20260507_170054
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0016_20260507_170054
+maps:
+- masa_100pc
+demands:
+- low
+num_seeds: 1
+jobs: 1
+seed_start: 1
+scenario_pack: tuning_matrix_v1
+include_fixed_baseline: false
+include_fixed_program0: false
+include_fixed_tuned: false
+include_rbl_baseline: false
+delta_baseline_scenario: mp_base
+step_length: 1.0
+max_steps: 1
+progress_interval: 15.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+driver_profile: default
+runner_global_flags:
+- --driver-profile
+- default
+demand_presets:
+  low:
+    vehicles: 2000
+    start_time: 0.0
+    end_time: 3600.0
+demand_presets_effective_map:
+  masa_100pc:
+    low:
+      vehicles: 1200
+      start_time: 0.0
+      end_time: 3600.0
+scenarios:
+- name: mp_base
+  controller: mp
+  map_suffix: ''
+  flags: []

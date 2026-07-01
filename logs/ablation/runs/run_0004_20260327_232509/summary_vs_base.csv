@@ -1,0 +1,7 @@
+map,demand,scenario,avg_mean_wait_s,avg_mean_travel_s,wait_delta_vs_base_pct,travel_delta_vs_base_pct
+manhattan3x3_100pc,low,mp_all_on,7.212121,44.242424,-2.6585,0.0
+manhattan3x3_100pc,low,mp_base,7.409091,44.242424,0.0,0.0
+manhattan3x3_100pc,low,mp_downstream_aware,7.742424,44.227273,4.499,-0.0342
+manhattan3x3_100pc,low,mp_fairness,7.121212,44.242424,-3.8855,0.0
+manhattan3x3_100pc,low,mp_platoon_safe,7.636364,44.0,3.0675,-0.5479
+manhattan3x3_100pc,low,mp_switch_aware,7.409091,44.242424,0.0,0.0

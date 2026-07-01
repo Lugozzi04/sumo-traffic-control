@@ -1,0 +1,29 @@
+run_id: run_0008_20260328_153614
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0008_20260328_153614
+maps:
+- manhattan3x3_100pc
+demands:
+- low
+num_seeds: 1
+jobs: 1
+seed_start: 1
+scenario_pack: tuned_v1
+step_length: 1.0
+max_steps: 30
+progress_interval: 15.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+demand_presets:
+  low:
+    vehicles: 2000
+    start_time: 0.0
+    end_time: 3600.0
+scenarios:
+- name: mp_base
+  flags: []
+- name: mp_fairness
+  flags:
+  - --fairness
+  - --fairness-mu
+  - '3.0'
+  - --fairness-w-half
+  - '45.0'

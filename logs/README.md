@@ -1,5 +1,5 @@
 # Simulation logs
 
-This directory contains selected experiment results used by the thesis analysis.
+This directory contains selected simulation artifacts that are useful for inspecting the experimental work.
 
-Only compact, reproducible artifacts are versioned: resolved configurations, generated populations and aggregated CSV/Markdown summaries. Raw per-simulation folders and temporary runtime files are intentionally ignored because they are large and can be regenerated from the tracked configuration.
+The `ablation/` subdirectory keeps compact artifacts for all available ablation campaigns: resolved configurations, generated populations and aggregated reports. Raw per-simulation folders and temporary runtime files are intentionally ignored because they are large and can be regenerated from the tracked configuration and populations.

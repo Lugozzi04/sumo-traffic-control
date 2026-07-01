@@ -1,0 +1,253 @@
+run_id: run_0011_20260430_174438
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0011_20260430_174438
+maps:
+- manhattan8x8_100pc
+demands:
+- low
+num_seeds: 1
+jobs: 2
+seed_start: 1
+scenario_pack: tuning_matrix_v1
+include_fixed_baseline: true
+include_rbl_baseline: true
+delta_baseline_scenario: fixed_base
+step_length: 1.0
+max_steps: 90
+progress_interval: 2.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+demand_presets:
+  low:
+    vehicles: 2000
+    start_time: 0.0
+    end_time: 3600.0
+scenarios:
+- name: mp_base
+  controller: mp
+  map_suffix: ''
+  flags: []
+- name: mp_lta_g020
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --lost-time-aware
+  - --lost-time-sat-flow
+  - '0.35'
+  - --lost-time-gain
+  - '0.20'
+- name: mp_lta_g030
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --lost-time-aware
+  - --lost-time-sat-flow
+  - '0.35'
+  - --lost-time-gain
+  - '0.30'
+- name: mp_lta_g040
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --lost-time-aware
+  - --lost-time-sat-flow
+  - '0.35'
+  - --lost-time-gain
+  - '0.40'
+- name: mp_nmin_only
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --nmin-dynamic
+  - --lost-time-sat-flow
+  - '0.35'
+  - --nmin-alpha
+  - '0.60'
+  - --nmin-floor
+  - '1'
+  - --nmin-empty-release-seconds
+  - '1.2'
+- name: mp_lta_plus_nmin
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --lost-time-aware
+  - --nmin-dynamic
+  - --lost-time-sat-flow
+  - '0.35'
+  - --lost-time-gain
+  - '0.30'
+  - --nmin-alpha
+  - '0.60'
+  - --nmin-floor
+  - '1'
+  - --nmin-empty-release-seconds
+  - '1.2'
+- name: mp_downstream_b08
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --spillback
+  - --spillback-on
+  - '0.95'
+  - --spillback-off
+  - '0.85'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-penalty
+  - --downstream-beta
+  - '0.8'
+  - --downstream-alpha
+  - '0.30'
+- name: mp_downstream_b12
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --spillback
+  - --spillback-on
+  - '0.95'
+  - --spillback-off
+  - '0.85'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-penalty
+  - --downstream-beta
+  - '1.2'
+  - --downstream-alpha
+  - '0.30'
+- name: mp_downstream_b16
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --spillback
+  - --spillback-on
+  - '0.95'
+  - --spillback-off
+  - '0.85'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-penalty
+  - --downstream-beta
+  - '1.6'
+  - --downstream-alpha
+  - '0.30'
+- name: mp_platoon_x2
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --platoon-extension
+  - --platoon-headway-threshold
+  - '1.6'
+  - --platoon-gap-out-seconds
+  - '1.6'
+  - --platoon-max-extra-green
+  - '2.0'
+  - --platoon-guard-occ
+  - '0.80'
+  - --spillback
+  - --spillback-on
+  - '0.95'
+  - --spillback-off
+  - '0.85'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-penalty
+  - --downstream-beta
+  - '1.00'
+  - --downstream-alpha
+  - '0.30'
+- name: mp_platoon_x3
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --platoon-extension
+  - --platoon-headway-threshold
+  - '1.6'
+  - --platoon-gap-out-seconds
+  - '1.6'
+  - --platoon-max-extra-green
+  - '3.0'
+  - --platoon-guard-occ
+  - '0.80'
+  - --spillback
+  - --spillback-on
+  - '0.95'
+  - --spillback-off
+  - '0.85'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-penalty
+  - --downstream-beta
+  - '1.00'
+  - --downstream-alpha
+  - '0.30'
+- name: mp_platoon_x4
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --platoon-extension
+  - --platoon-headway-threshold
+  - '1.6'
+  - --platoon-gap-out-seconds
+  - '1.6'
+  - --platoon-max-extra-green
+  - '4.0'
+  - --platoon-guard-occ
+  - '0.80'
+  - --spillback
+  - --spillback-on
+  - '0.95'
+  - --spillback-off
+  - '0.85'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-penalty
+  - --downstream-beta
+  - '1.00'
+  - --downstream-alpha
+  - '0.30'
+- name: mp_fair_mu2
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --fairness
+  - --fairness-mu
+  - '2.0'
+  - --fairness-w-half
+  - '45.0'
+- name: mp_fair_mu3
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --fairness
+  - --fairness-mu
+  - '3.0'
+  - --fairness-w-half
+  - '45.0'
+- name: mp_fair_mu4
+  controller: mp
+  map_suffix: ''
+  flags:
+  - --fairness
+  - --fairness-mu
+  - '4.0'
+  - --fairness-w-half
+  - '45.0'
+- name: fixed_base
+  controller: fixed
+  map_suffix: ''
+  flags: []
+- name: rbl_base
+  controller: fixed
+  map_suffix: _rbl
+  flags: []

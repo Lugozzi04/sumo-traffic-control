@@ -1,0 +1,19 @@
+Run dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0022_20260526_121656
+
+Vincitore per gruppo (criterio: wait medio minimo)
+MAP                    SET      DEMAND   SCENARIO             WAIT[s]  DELTA_WAIT[%]  TRAVEL[s]  DELTA_TRAVEL[%]  TIMELOSS[s]  CENSORING[%]
+bologna                balance high    mp_program0           711.30          -4.70    1114.49            -1.51      932.17        5.52%
+bologna                balance low     mp_super              191.37          -5.90     464.69            -2.28      295.07        0.00%
+bologna                balance medium  mp_super              379.90         -28.12     706.43           -18.63      532.65        0.00%
+bologna                peak    high    mp_nmin_a120_f4      1026.65         -24.26    1439.58           -25.78     1239.01       51.28%
+bologna                peak    low     mp_super              452.67         -35.23     867.26           -22.39      662.90        0.00%
+bologna                peak    medium  mp_super              874.14         -12.48    1418.73            -5.32     1212.86        4.30%
+bologna                skewed  high    mp_lta_g060_sf050     913.41         -25.17    1270.90           -27.34     1065.95       48.20%
+bologna                skewed  low     mp_super              248.60         -38.56     603.55           -22.77      400.08        0.00%
+bologna                skewed  medium  mp_super              597.24         -20.44    1083.59            -9.52      876.14        0.13%
+
+Classifica scenari per numero di vittorie
+- mp_super: 6 vittorie
+- mp_lta_g060_sf050: 1 vittorie
+- mp_nmin_a120_f4: 1 vittorie
+- mp_program0: 1 vittorie

@@ -1,0 +1,35 @@
+run_id: run_0010_20260430_174356
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0010_20260430_174356
+maps:
+- manhattan8x8_100pc
+demands:
+- low
+num_seeds: 1
+jobs: 1
+seed_start: 1
+scenario_pack: tuning_matrix_v1
+include_fixed_baseline: true
+include_rbl_baseline: true
+delta_baseline_scenario: fixed_base
+step_length: 1.0
+max_steps: 180
+progress_interval: 2.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+demand_presets:
+  low:
+    vehicles: 2000
+    start_time: 0.0
+    end_time: 3600.0
+scenarios:
+- name: mp_base
+  controller: mp
+  map_suffix: ''
+  flags: []
+- name: fixed_base
+  controller: fixed
+  map_suffix: ''
+  flags: []
+- name: rbl_base
+  controller: fixed
+  map_suffix: _rbl
+  flags: []

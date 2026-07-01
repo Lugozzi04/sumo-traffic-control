@@ -1,0 +1,4 @@
+map,population_set,demand,scenario,delta_baseline_scenario,avg_mean_wait_s,avg_mean_travel_s,avg_mean_time_loss_s,wait_delta_vs_base_pct,travel_delta_vs_base_pct,time_loss_delta_vs_base_s
+masa_100pc,peak,high,mp_base,mp_base,49.62565,195.835355,100.717296,0.0,0.0,0.0
+masa_100pc,peak,high,mp_spillback_on90_off80,mp_base,49.62565,195.835355,100.717296,0.0,0.0,0.0
+masa_100pc,peak,high,mp_spillback_on97_off90,mp_base,49.62565,195.835355,100.717296,0.0,0.0,0.0

@@ -1,0 +1,45 @@
+run_id: run_0017_20260509_174007
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0017_20260509_174007
+maps:
+- manhattan3x3_100pc
+demands:
+- low
+num_seeds: 1
+jobs: 1
+seed_start: 1
+scenario_pack: tuning_matrix_v2
+include_fixed_baseline: false
+include_fixed_program0: false
+include_fixed_tuned: false
+include_classic_baselines: false
+include_rbl_baseline: false
+delta_baseline_scenario: mp_base
+step_length: 1.0
+max_steps: 60
+progress_interval: 5.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+driver_profile: default
+runner_global_flags:
+- --driver-profile
+- default
+population_generation:
+  route_sampling: edge_weighted
+  route_weight_exponent: 1.2
+  depart_profile: peaked
+  peak_factor: 0.75
+demand_presets:
+  low:
+    vehicles: 2000
+    start_time: 0.0
+    end_time: 3600.0
+demand_presets_effective_map:
+  manhattan3x3_100pc:
+    low:
+      vehicles: 2000
+      start_time: 0.0
+      end_time: 3600.0
+scenarios:
+- name: mp_base
+  controller: mp
+  map_suffix: ''
+  flags: []

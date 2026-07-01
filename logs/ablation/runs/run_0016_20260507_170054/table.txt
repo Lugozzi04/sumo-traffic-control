@@ -1,0 +1,8 @@
+Run dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0016_20260507_170054
+Gruppi: 1
+Ordinamento: wait (asc)
+
+=== masa_100pc / low ===
+Rank | Scenario | MeanWait[s] | DeltaWait[%] | MeanTravel[s] | DeltaTravel[%] | P95Wait[s] | P95Travel[s] | MeanSpeed[m/s] | Runs
+-----+----------+-------------+--------------+---------------+----------------+------------+--------------+----------------+-----
+1    | mp_base  | 0.00        | +0.00        | 0.00          | +0.00          | 0.00       | 0.00         | 0.00           | 1

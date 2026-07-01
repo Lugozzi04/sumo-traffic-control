@@ -1,0 +1,2 @@
+map,population_set,demand,scenario,delta_baseline_scenario,avg_mean_wait_s,avg_mean_travel_s,avg_mean_time_loss_s,wait_delta_vs_base_pct,travel_delta_vs_base_pct,time_loss_delta_vs_base_s
+bologna,balanced,high,mp_super,mp_super,351.872643,663.987235,500.973394,0.0,0.0,0.0

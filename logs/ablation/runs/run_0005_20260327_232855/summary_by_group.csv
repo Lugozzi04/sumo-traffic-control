@@ -1,0 +1,7 @@
+map,demand,scenario,runs,avg_mean_wait_s,std_mean_wait_s,avg_p95_wait_s,avg_mean_travel_s,std_mean_travel_s,avg_p95_travel_s,avg_mean_speed_mps,avg_vehicles_count
+manhattan3x3_100pc,low,mp_all_on,1,3.346154,0.0,14.25,29.615385,0.0,54.0,9.489317,26.0
+manhattan3x3_100pc,low,mp_base,1,3.346154,0.0,14.25,29.615385,0.0,54.0,9.489317,26.0
+manhattan3x3_100pc,low,mp_downstream_aware,1,3.384615,0.0,13.75,29.615385,0.0,54.0,9.261326,26.0
+manhattan3x3_100pc,low,mp_fairness,1,3.346154,0.0,14.25,29.615385,0.0,54.0,9.489317,26.0
+manhattan3x3_100pc,low,mp_platoon_safe,1,3.461538,0.0,14.5,29.615385,0.0,54.0,9.258158,26.0
+manhattan3x3_100pc,low,mp_switch_aware,1,3.346154,0.0,14.25,29.615385,0.0,54.0,9.489317,26.0

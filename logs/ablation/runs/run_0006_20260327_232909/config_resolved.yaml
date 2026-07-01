@@ -1,0 +1,70 @@
+run_id: run_0006_20260327_232909
+run_dir: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/logs/ablation/runs/run_0006_20260327_232909
+maps:
+- manhattan3x3_100pc
+demands:
+- low
+num_seeds: 1
+jobs: 1
+seed_start: 1
+scenario_pack: tuning_matrix_v1
+step_length: 1.0
+max_steps: 60
+progress_interval: 5.0
+python_exe: /home/lugozzi/Desktop/tirocinio/Codice/sumo-traffic-control/.venv/bin/python
+demand_presets:
+  low:
+    vehicles: 2000
+    start_time: 0.0
+    end_time: 3600.0
+scenarios:
+- name: mp_base
+  flags: []
+- name: mp_lta_g030
+  flags:
+  - --lost-time-aware
+  - --lost-time-sat-flow
+  - '0.35'
+  - --lost-time-gain
+  - '0.30'
+- name: mp_downstream_b12
+  flags:
+  - --spillback
+  - --spillback-on
+  - '0.95'
+  - --spillback-off
+  - '0.85'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-penalty
+  - --downstream-beta
+  - '1.2'
+  - --downstream-alpha
+  - '0.30'
+- name: mp_platoon_x3
+  flags:
+  - --platoon-extension
+  - --platoon-headway-threshold
+  - '1.6'
+  - --platoon-gap-out-seconds
+  - '1.6'
+  - --platoon-max-extra-green
+  - '3.0'
+  - --platoon-guard-occ
+  - '0.80'
+  - --spillback
+  - --spillback-on
+  - '0.95'
+  - --spillback-off
+  - '0.85'
+  - --spillback-min-halts
+  - '2'
+  - --spillback-alpha
+  - '0.30'
+  - --downstream-penalty
+  - --downstream-beta
+  - '1.00'
+  - --downstream-alpha
+  - '0.30'
