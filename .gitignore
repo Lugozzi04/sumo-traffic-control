@@ -1,16 +1,58 @@
+# Python / local environment
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE / OS files
 .idea/
+.vscode/
+.DS_Store
+Thumbs.db
 
 # Runtime outputs
-logs/*.csv
+logs/*
+!logs/.gitkeep
 logs/ablation/
 logs/simulations/
-sumo_xml_files/vehicletypes.rou.xml
-usefull_commands
-appunti.txt
 
 # Generated populations
 data/populations/*.yaml
 !data/populations/.gitkeep
+!data/populations/screenshots/
+!data/populations/screenshots/*.yaml
+
+# SUMO generated/intermediate files
+sumo_xml_files/vehicletypes.rou.xml
+routes.rou.xml
+trips.trips.xml
+**/tmp/
+*.tripinfo.xml
+*.edgedata.xml
+*.netstate.xml
+*.summary.xml
+*.vehroute.xml
+
+# Thesis and LaTeX material are kept outside this code repository
+tesi/
+install_latex_deps.sh
+install_latex_deps.ps1
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+
+# Personal notes
+/*.txt
+!/requirements.txt
+usefull_commands
