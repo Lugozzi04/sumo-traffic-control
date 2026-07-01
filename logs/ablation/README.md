@@ -45,3 +45,10 @@ Visible campaigns:
 - `runs/run_0029_20260614_143342`
 
 Note: `run_0028_20260612_131724` and `run_0029_20260614_143342` were renamed from duplicated `run_0023` and `run_0025` identifiers to keep the campaign list unambiguous.
+
+Thesis mapping:
+
+- Manhattan 8x8 results discussed in the thesis: `runs/run_0028_20260612_131724`.
+- Bologna final results discussed in the thesis: `runs/run_0029_20260614_143342`.
+
+The Bologna campaign directory also preserves the exploratory `mp_super_no_safe` scenario. It is kept online for transparency, but it is not part of the 270 simulations considered in the thesis text; the thesis discussion uses the ten-scenario subset without that exploratory variant.
