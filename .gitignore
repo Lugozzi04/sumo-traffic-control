@@ -16,7 +16,20 @@ Thumbs.db
 # Runtime outputs
 logs/*
 !logs/.gitkeep
-logs/ablation/
+!logs/README.md
+!logs/ablation/
+logs/ablation/*
+!logs/ablation/README.md
+!logs/ablation/runs/
+logs/ablation/runs/*
+!logs/ablation/runs/run_0023_20260612_131724/
+!logs/ablation/runs/run_0023_20260612_131724/**
+logs/ablation/runs/run_0023_20260612_131724/runs/
+logs/ablation/runs/run_0023_20260612_131724/*.txt
+!logs/ablation/runs/run_0025_20260614_143342/
+!logs/ablation/runs/run_0025_20260614_143342/**
+logs/ablation/runs/run_0025_20260614_143342/runs/
+logs/ablation/runs/run_0025_20260614_143342/*.txt
 logs/simulations/
 
 # Generated populations
